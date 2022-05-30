@@ -6,8 +6,8 @@
 #include "GameTimer.h"
 
 GameTimer::GameTimer()
-: mSecondsPerCount(0.0), mDeltaTime(-1.0), mBaseTime(0), 
-  mPausedTime(0), mPrevTime(0), mCurrTime(0), mStopped(false)
+	: mSecondsPerCount(0.0), mDeltaTime(-1.0), mBaseTime(0),
+	  mPausedTime(0), mPrevTime(0), mCurrTime(0), mStopped(false)
 {
 	__int64 countsPerSec;
 	QueryPerformanceFrequency((LARGE_INTEGER*)&countsPerSec);
@@ -16,7 +16,7 @@ GameTimer::GameTimer()
 
 // Returns the total time elapsed since Reset() was called, NOT counting any
 // time when the clock is stopped.
-float GameTimer::TotalTime()const
+float GameTimer::TotalTime() const
 {
 	// If we are stopped, do not count the time that has passed since we stopped.
 	// Moreover, if we previously already had a pause, the distance 
@@ -27,9 +27,9 @@ float GameTimer::TotalTime()const
 	// ----*---------------*-----------------*------------*------------*------> time
 	//  mBaseTime       mStopTime        startTime     mStopTime    mCurrTime
 
-	if( mStopped )
+	if (mStopped)
 	{
-		return (float)(((mStopTime - mPausedTime)-mBaseTime)*mSecondsPerCount);
+		return (float)(((mStopTime - mPausedTime) - mBaseTime) * mSecondsPerCount);
 	}
 
 	// The distance mCurrTime - mBaseTime includes paused time,
@@ -41,14 +41,14 @@ float GameTimer::TotalTime()const
 	//                     |<--paused time-->|
 	// ----*---------------*-----------------*------------*------> time
 	//  mBaseTime       mStopTime        startTime     mCurrTime
-	
+
 	else
 	{
-		return (float)(((mCurrTime-mPausedTime)-mBaseTime)*mSecondsPerCount);
+		return (float)(((mCurrTime - mPausedTime) - mBaseTime) * mSecondsPerCount);
 	}
 }
 
-float GameTimer::DeltaTime()const
+float GameTimer::DeltaTime() const
 {
 	return (float)mDeltaTime;
 }
@@ -58,7 +58,9 @@ void GameTimer::Reset()
 	__int64 currTime;
 	QueryPerformanceCounter((LARGE_INTEGER*)&currTime);
 
+	//! initialize mBaseTime to the current time, which is considered as the time when the application started
 	mBaseTime = currTime;
+	//! It is important to intialize mPrevTime to the current time before the message loops starts, because for the first frame of animation, there is no previous time stamp. 
 	mPrevTime = currTime;
 	mStopTime = 0;
 	mStopped  = false;
@@ -76,11 +78,18 @@ void GameTimer::Start()
 	// ----*---------------*-----------------*------------> time
 	//  mBaseTime       mStopTime        startTime     
 
-	if( mStopped )
+	// if we are resuming the timer from a stopped state
+	if (mStopped)
 	{
-		mPausedTime += (startTime - mStopTime);	
+		// then accumulate the paused time
+		mPausedTime += (startTime - mStopTime);
 
+		// since we are starting the timer back up,
+		// the current previous time is not valid, as it occurred while paused.
+		// so reset it to the current time. 
 		mPrevTime = startTime;
+
+		// no longer stopped
 		mStopTime = 0;
 		mStopped  = false;
 	}
@@ -88,11 +97,14 @@ void GameTimer::Start()
 
 void GameTimer::Stop()
 {
-	if( !mStopped )
+	// if we are already stopped, then don't do anything
+	if (!mStopped)
 	{
 		__int64 currTime;
 		QueryPerformanceCounter((LARGE_INTEGER*)&currTime);
 
+		// otherwise, save the time we stopped at, and
+		// set the bool flag indicating the timer is stopped
 		mStopTime = currTime;
 		mStopped  = true;
 	}
@@ -100,18 +112,19 @@ void GameTimer::Stop()
 
 void GameTimer::Tick()
 {
-	if( mStopped )
+	if (mStopped)
 	{
 		mDeltaTime = 0.0;
 		return;
 	}
 
+	// get the time this frame
 	__int64 currTime;
 	QueryPerformanceCounter((LARGE_INTEGER*)&currTime);
 	mCurrTime = currTime;
 
 	// Time difference between this frame and the previous.
-	mDeltaTime = (mCurrTime - mPrevTime)*mSecondsPerCount;
+	mDeltaTime = (mCurrTime - mPrevTime) * mSecondsPerCount;
 
 	// Prepare for next frame.
 	mPrevTime = mCurrTime;
@@ -119,9 +132,8 @@ void GameTimer::Tick()
 	// Force nonnegative.  The DXSDK's CDXUTTimer mentions that if the 
 	// processor goes into a power save mode or we get shuffled to another
 	// processor, then mDeltaTime can be negative.
-	if(mDeltaTime < 0.0)
+	if (mDeltaTime < 0.0)
 	{
 		mDeltaTime = 0.0;
 	}
 }
-

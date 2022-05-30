@@ -15,16 +15,16 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="InitFunctions.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="tol.cpp">
+    <ClCompile Include="xmvec3.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="VectorOps.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="xmvec3.cpp">
+    <ClCompile Include="InitFunctions.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="tol.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
