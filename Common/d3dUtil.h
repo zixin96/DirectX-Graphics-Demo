@@ -6,11 +6,11 @@
 
 #pragma once
 
-#include <windows.h>
+#include <Windows.h>
 #include <wrl.h>
 #include <dxgi1_4.h>
 #include <d3d12.h>
-#include <D3Dcompiler.h>
+#include <d3dcompiler.h>
 #include <DirectXMath.h>
 #include <DirectXPackedVector.h>
 #include <DirectXColors.h>
@@ -55,10 +55,15 @@ inline void d3dSetDebugName(ID3D12DeviceChild* obj, const char* name)
 	}
 }
 
+/**
+ * \brief Converts a string to a wstring (used in ThrowIfFailed macro)
+ * \param str String to be converted
+ * \return the resulting wstring
+ */
 inline std::wstring AnsiToWString(const std::string& str)
 {
-	WCHAR buffer[512];
-	MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, buffer, 512);
+	WCHAR buffer[512];                                            // output wide character string buffer
+	MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, buffer, 512); // Maps a character string to a UTF-16 (wide character) string: https://docs.microsoft.com/en-us/windows/win32/api/stringapiset/nf-stringapiset-multibytetowidechar
 	return std::wstring(buffer);
 }
 
@@ -90,13 +95,19 @@ inline std::wstring AnsiToWString(const std::string& str)
 #endif 		
     */
 
+/**
+ * \brief Utilities class that contains useful D3D helper functions
+ */
 class d3dUtil
 {
 	public:
 		static bool IsKeyDown(int vkeyCode);
 
-		static std::string ToString(HRESULT hr);
-
+		/**
+		 * \brief Rounds the byte size of the buffer to be a multiple of the minimum hardware allocation size (256 bytes). 
+		 * \param byteSize The given byte size of the buffer
+		 * \return The rounded byte size of the buffer
+		 */
 		static UINT CalcConstantBufferByteSize(UINT byteSize)
 		{
 			// Constant buffers must be a multiple of the minimum hardware
@@ -158,13 +169,17 @@ struct SubmeshGeometry
 	DirectX::BoundingBox Bounds;
 };
 
+/**
+ * \brief Groups a vertex and index buffer together to define a group of geometry
+ */
 struct MeshGeometry
 {
 	// Give it a name so we can look it up by name.
 	std::string Name;
 
-	// System memory copies.  Use Blobs because the vertex/index format can be generic.
-	// It is up to the client to cast appropriately.  
+	// System memory copies of geometry.
+	// Use Blobs because the vertex/index format can be generic. It is up to the client to cast appropriately.
+	//! It is common to store system memory copies of geometry for things like picking and collision detection
 	Microsoft::WRL::ComPtr<ID3DBlob> VertexBufferCPU = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> IndexBufferCPU  = nullptr;
 

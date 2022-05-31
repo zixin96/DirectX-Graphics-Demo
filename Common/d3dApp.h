@@ -5,7 +5,8 @@
 #pragma once
 
 #if defined(DEBUG) || defined(_DEBUG)
-#define _CRTDBG_MAP_ALLOC
+// Enable memory leak detection: https://docs.microsoft.com/en-us/visualstudio/debugger/finding-memory-leaks-using-the-crt-library?view=vs-2022
+#define _CRTDBG_MAP_ALLOC // CRT: C Run Time Library
 #include <crtdbg.h>
 #endif
 

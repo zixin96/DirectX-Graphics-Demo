@@ -2,6 +2,10 @@
 
 #include "d3dUtil.h"
 
+/**
+ * \brief A light wrapper around upload buffer (e.g. constant buffer)
+ * \tparam T Data type in the upload buffer
+ */
 template <typename T>
 class UploadBuffer
 {
@@ -51,6 +55,11 @@ class UploadBuffer
 			return mUploadBuffer.Get();
 		}
 
+		/**
+		 * \brief Update a particular element in the buffer
+		 * \param elementIndex The index of the element to update
+		 * \param data Update data
+		 */
 		void CopyData(int elementIndex, const T& data)
 		{
 			memcpy(&mMappedData[elementIndex * mElementByteSize], &data, sizeof(T));
@@ -61,5 +70,5 @@ class UploadBuffer
 		BYTE*                                  mMappedData = nullptr;
 
 		UINT mElementByteSize  = 0;
-		bool mIsConstantBuffer = false;
+		bool mIsConstantBuffer = false; // we need to know if this upload buffer is a constant buffer b/c constant buffer has 256 bytes size requirement
 };

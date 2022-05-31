@@ -3,14 +3,21 @@
 //***************************************************************************************
 
 #include "d3dApp.h"
-#include <WindowsX.h>
+#include <WindowsX.h> // for GET_X/Y_LPARAM macros
 
 using Microsoft::WRL::ComPtr;
 using namespace std;
 using namespace DirectX;
 
-LRESULT CALLBACK
-MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+/**
+ * \brief Main window procedure where we write the code that we want to execute in response to a message our window receives.
+ * \param hwnd The handle to the window receiving the message
+ * \param msg A predefined constant value identifying the message
+ * \param wParam Extra information about the message which is dependent upon the specific message
+ * \param lParam Extra information about the message which is dependent upon the specific message
+ * \return whether the procedure is a success or failure.
+ */
+LRESULT CALLBACK MainWndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) // CALLBACK identifier: Windows will be calling this function outside of the code space of the program when it needs to process a message 
 {
 	// Forward hwnd on because we can get messages (e.g., WM_CREATE)
 	// before CreateWindow returns, and thus before mhMainWnd is valid.
@@ -153,6 +160,7 @@ void D3DApp::OnResize()
 	// Flush before changing any resources.
 	FlushCommandQueue();
 
+	// reset the command list to prep for recreation commands
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
 	// Release the previous resources we will be recreating.
@@ -179,12 +187,12 @@ void D3DApp::OnResize()
 		// create an RTV to it 
 		md3dDevice->CreateRenderTargetView(mSwapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
 		// next entry in heap
-		rtvHeapHandle.Offset(1, mRtvDescriptorSize);
+		rtvHeapHandle.Offset(1, mRtvDescriptorSize); //? Why hardcode 1 here? 
 	}
 
 	// Create the depth/stencil buffer resource.
 	D3D12_RESOURCE_DESC depthStencilDesc;
-	depthStencilDesc.Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	depthStencilDesc.Dimension        = D3D12_RESOURCE_DIMENSION_TEXTURE2D; // the type of resource
 	depthStencilDesc.Alignment        = 0;
 	depthStencilDesc.Width            = mClientWidth;
 	depthStencilDesc.Height           = mClientHeight;
@@ -246,6 +254,16 @@ void D3DApp::OnResize()
 	mScissorRect = {0, 0, mClientWidth, mClientHeight};
 }
 
+/**
+ * \brief The window procedure function for the main application window.
+ * Override this method if there is a message you need to handle that this function does not handle.
+ * If you override this method, any message that you do not handle should be forwarded to this function.
+ * \param hwnd The handle to the window receiving the message
+ * \param msg A predefined constant value identifying the message
+ * \param wParam Extra information about the message which is dependent upon the specific message
+ * \param lParam Extra information about the message which is dependent upon the specific message
+ * \return whether the procedure is a success or failure.
+ */
 LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (msg)
@@ -358,15 +376,15 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		case WM_LBUTTONDOWN:
 		case WM_MBUTTONDOWN:
 		case WM_RBUTTONDOWN:
-			OnMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			OnMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // GET_X/Y_LPARAM retrieves the signed x/y-coordinate from LPARAM value
 			return 0;
 		case WM_LBUTTONUP:
 		case WM_MBUTTONUP:
 		case WM_RBUTTONUP:
-			OnMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			OnMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // GET_X/Y_LPARAM retrieves the signed x/y-coordinate from LPARAM value
 			return 0;
 		case WM_MOUSEMOVE:
-			OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam));
+			OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // GET_X/Y_LPARAM retrieves the signed x/y-coordinate from LPARAM value
 			return 0;
 		case WM_KEYUP:
 			if (wParam == VK_ESCAPE)
@@ -374,7 +392,9 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 				PostQuitMessage(0);
 			}
 			else if ((int)wParam == VK_F2)
+			{
 				Set4xMsaaState(!m4xMsaaState);
+			}
 
 			return 0;
 	}
@@ -382,20 +402,26 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	return DefWindowProc(hwnd, msg, wParam, lParam);
 }
 
+/**
+ * \brief Initializes a window 
+ * \return whether the initialization is a success
+ */
 bool D3DApp::InitMainWindow()
 {
+	// describe basic properties of the window by filling out a WNDCLASS(window class) structure
 	WNDCLASS wc;
-	wc.style         = CS_HREDRAW | CS_VREDRAW;
-	wc.lpfnWndProc   = MainWndProc;
-	wc.cbClsExtra    = 0;
-	wc.cbWndExtra    = 0;
-	wc.hInstance     = mhAppInst;
-	wc.hIcon         = LoadIcon(0, IDI_APPLICATION);
-	wc.hCursor       = LoadCursor(0, IDC_ARROW);
-	wc.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH);
-	wc.lpszMenuName  = 0;
-	wc.lpszClassName = L"MainWnd";
+	wc.style         = CS_HREDRAW | CS_VREDRAW;            // the class style: H(orizontal)REDRAW and V(ertical)REDRAW: the window is to be repainted when either the horizontal or vertical window size is changed. (doesn't seem to change anything, btw)
+	wc.lpfnWndProc   = MainWndProc;                        // Windows that are created based on this WNDCLASS instance will use MainWndProc as the window procedure. 
+	wc.cbClsExtra    = 0;                                  // our program does not require any extra memory slots
+	wc.cbWndExtra    = 0;                                  // our program does not require any extra memory slots
+	wc.hInstance     = mhAppInst;                          // a handle to the application instance 
+	wc.hIcon         = LoadIcon(0, IDI_APPLICATION);       // a handle to an icon 
+	wc.hCursor       = LoadCursor(0, IDC_ARROW);           // a handle to a cursor 
+	wc.hbrBackground = (HBRUSH)GetStockObject(NULL_BRUSH); // a handle to a brush which specifies the background color for the client area of the window
+	wc.lpszMenuName  = 0;                                  // the window's menu
+	wc.lpszClassName = L"MainWnd";                         // the name of the window class structure we are creating. This name is used to identify the class structure for later use
 
+	// register the window class so that we can create windows based on it
 	if (!RegisterClass(&wc))
 	{
 		MessageBox(0, L"RegisterClass Failed.", 0, 0);
@@ -408,8 +434,18 @@ bool D3DApp::InitMainWindow()
 	int width  = R.right - R.left;
 	int height = R.bottom - R.top;
 
-	mhMainWnd = CreateWindow(L"MainWnd", mMainWndCaption.c_str(),
-	                         WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, width, height, 0, 0, mhAppInst, 0);
+	mhMainWnd = CreateWindow(L"MainWnd",
+	                         mMainWndCaption.c_str(),
+	                         WS_OVERLAPPEDWINDOW,
+	                         CW_USEDEFAULT,
+	                         CW_USEDEFAULT,
+	                         width,
+	                         height,
+	                         0,
+	                         0,
+	                         mhAppInst,
+	                         0);
+
 	if (!mhMainWnd)
 	{
 		MessageBox(0, L"CreateWindow Failed.", 0, 0);

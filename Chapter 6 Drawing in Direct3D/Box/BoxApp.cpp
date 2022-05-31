@@ -22,6 +22,9 @@ struct Vertex
 	XMFLOAT4 Color;
 };
 
+/**
+ * \brief Constant data per-object
+ */
 struct ObjectConstants
 {
 	XMFLOAT4X4 WorldViewProj = MathHelper::Identity4x4();
@@ -33,18 +36,18 @@ class BoxApp : public D3DApp
 		BoxApp(HINSTANCE hInstance);
 		BoxApp(const BoxApp& rhs)            = delete;
 		BoxApp& operator=(const BoxApp& rhs) = delete;
-		~BoxApp();
+		~BoxApp() override;
 
-		virtual bool Initialize() override;
+		bool Initialize() override;
 
 	private:
-		virtual void OnResize() override;
-		virtual void Update(const GameTimer& gt) override;
-		virtual void Draw(const GameTimer& gt) override;
+		void OnResize() override;
+		void Update(const GameTimer& gt) override;
+		void Draw(const GameTimer& gt) override;
 
-		virtual void OnMouseDown(WPARAM btnState, int x, int y) override;
-		virtual void OnMouseUp(WPARAM btnState, int x, int y) override;
-		virtual void OnMouseMove(WPARAM btnState, int x, int y) override;
+		void OnMouseDown(WPARAM btnState, int x, int y) override;
+		void OnMouseUp(WPARAM btnState, int x, int y) override;
+		void OnMouseMove(WPARAM btnState, int x, int y) override;
 
 		void BuildDescriptorHeaps();
 		void BuildConstantBuffers();
@@ -289,18 +292,21 @@ void BoxApp::BuildDescriptorHeaps()
 
 void BoxApp::BuildConstantBuffers()
 {
+	// constant buffer to store the constants of n object (in this case, we have a single object)
 	mObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(md3dDevice.Get(), 1, true);
 
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 
+	// address to start of the buffer (0th constant buffer)
 	D3D12_GPU_VIRTUAL_ADDRESS cbAddress = mObjectCB->Resource()->GetGPUVirtualAddress();
-	// Offset to the ith object constant buffer in the buffer.
-	int boxCBufIndex = 0;
+
+	// Offset to the ith object constant buffer in the buffer. (in this case, we have a single object)
+	int boxCBufIndex = 0; // i
 	cbAddress += boxCBufIndex * objCBByteSize;
 
 	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
 	cbvDesc.BufferLocation = cbAddress;
-	cbvDesc.SizeInBytes    = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+	cbvDesc.SizeInBytes    = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants)); // must be a multiple of 256
 
 	md3dDevice->CreateConstantBufferView(
 	                                     &cbvDesc,
@@ -324,14 +330,19 @@ void BoxApp::BuildRootSignature()
 	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable);
 
 	// A root signature is an array of root parameters.
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(1, slotRootParameter, 0, nullptr,
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(1,
+	                                        slotRootParameter,
+	                                        0,
+	                                        nullptr,
 	                                        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	// create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
 	ComPtr<ID3DBlob> serializedRootSig = nullptr;
 	ComPtr<ID3DBlob> errorBlob         = nullptr;
-	HRESULT          hr                = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
-	                                                                 serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+	HRESULT          hr                = D3D12SerializeRootSignature(&rootSigDesc,
+	                                                                 D3D_ROOT_SIGNATURE_VERSION_1,
+	                                                                 serializedRootSig.GetAddressOf(),
+	                                                                 errorBlob.GetAddressOf());
 
 	if (errorBlob != nullptr)
 	{
@@ -352,6 +363,10 @@ void BoxApp::BuildShadersAndInputLayout()
 
 	mvsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_0");
 	mpsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
+
+	// Offline:
+	// mvsByteCode = d3dUtil::LoadBinary(L"Shaders\\color2.cso");
+	// mpsByteCode = d3dUtil::LoadBinary(L"Shaders\\color2.cso");
 
 	mInputLayout =
 	{
@@ -420,7 +435,10 @@ void BoxApp::BuildBoxGeometry()
 	                                                        mBoxGeo->VertexBufferUploader);
 
 	mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                       mCommandList.Get(), indices.data(), ibByteSize, mBoxGeo->IndexBufferUploader);
+	                                                       mCommandList.Get(),
+	                                                       indices.data(),
+	                                                       ibByteSize,
+	                                                       mBoxGeo->IndexBufferUploader);
 
 	mBoxGeo->VertexByteStride     = sizeof(Vertex);
 	mBoxGeo->VertexBufferByteSize = vbByteSize;
@@ -439,7 +457,7 @@ void BoxApp::BuildPSO()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc;
 	ZeroMemory(&psoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-	psoDesc.InputLayout    = {mInputLayout.data(), (UINT)mInputLayout.size()};
+	psoDesc.InputLayout    = {mInputLayout.data(), (UINT)mInputLayout.size()}; // fill in D3D12_INPUT_LAYOUT_DESC
 	psoDesc.pRootSignature = mRootSignature.Get();
 	psoDesc.VS             =
 	{
@@ -454,7 +472,7 @@ void BoxApp::BuildPSO()
 	psoDesc.RasterizerState       = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	psoDesc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	psoDesc.DepthStencilState     = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	psoDesc.SampleMask            = UINT_MAX;
+	psoDesc.SampleMask            = UINT_MAX; // do not disable any samples
 	psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	psoDesc.NumRenderTargets      = 1;
 	psoDesc.RTVFormats[0]         = mBackBufferFormat;
