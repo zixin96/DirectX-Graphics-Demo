@@ -105,16 +105,11 @@ class LandAndWavesApp : public D3DApp
 		std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 
 		// save a reference to the wave render item so that we can set its vertex buffer on the fly
-		RenderItem* mWavesRitem = nullptr;
-
-		// List of all the render items.
-		std::vector<std::unique_ptr<RenderItem>> mAllRitems;
-
-		// Render items divided by PSO
-		//! declare an array consisting of "Count" vectors of RenderItem*
-		std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
-
+		RenderItem*            mWavesRitem = nullptr;
 		std::unique_ptr<Waves> mWaves;
+
+		std::vector<std::unique_ptr<RenderItem>> mAllRitems;                           // List of all the render items.
+		std::vector<RenderItem*>                 mRitemLayer[(int)RenderLayer::Count]; //! Render items divided by PSO. declare an array consisting of "Count" vectors of RenderItem*
 
 		PassConstants mMainPassCB;
 
@@ -175,8 +170,6 @@ bool LandAndWavesApp::Initialize()
 
 	// Reset the command list to prep for initialization commands.
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
-
-	mWaves = std::make_unique<Waves>(128, 128, 1.0f, 0.03f, 4.0f, 0.2f);
 
 	BuildRootSignature();
 	BuildShadersAndInputLayout();
@@ -456,7 +449,7 @@ void LandAndWavesApp::UpdateWaves(const GameTimer& gt)
 
 void LandAndWavesApp::BuildRootSignature()
 {
-	// root signature takes 2 root descriptors CBVs 
+	// root signature takes 2 root parameters of root-descriptors type
 	CD3DX12_ROOT_PARAMETER slotRootParameter[2];
 
 	// Create root CBV.
@@ -496,6 +489,7 @@ void LandAndWavesApp::BuildShadersAndInputLayout()
 	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_0");
 	mShaders["opaquePS"]   = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
 
+	// corresponds to Vertex struct in FrameResource.h
 	mInputLayout =
 	{
 		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
@@ -506,7 +500,25 @@ void LandAndWavesApp::BuildShadersAndInputLayout()
 void LandAndWavesApp::BuildLandGeometry()
 {
 	GeometryGenerator           geoGen;
-	GeometryGenerator::MeshData grid = geoGen.CreateGrid(160.0f, 160.0f, 200, 200);
+	GeometryGenerator::MeshData grid = geoGen.CreateGrid(260.0f, 260.0f, 200, 200);
+
+	//
+	// We are concatenating all the geometry into one big vertex/index buffer.  So
+	// define the regions in the buffer each submesh covers.
+	// In this, we only have a single submesh representing the land geometry
+	//
+
+	UINT gridVertexOffset = 0;
+	UINT gridIndexOffset  = 0;
+
+	SubmeshGeometry submesh;
+	submesh.IndexCount         = (UINT)grid.Indices32.size();
+	submesh.StartIndexLocation = gridIndexOffset;
+	submesh.BaseVertexLocation = gridVertexOffset;
+
+	auto geo              = std::make_unique<MeshGeometry>();
+	geo->Name             = "landGeo";
+	geo->DrawArgs["grid"] = submesh;
 
 	// after we have created the grid, we can extract the vertex elements we want from the MeshData grid,
 	// turn the flat grid into a surface representing hills, and generate a color for each vertex
@@ -565,8 +577,6 @@ void LandAndWavesApp::BuildLandGeometry()
 	std::vector<std::uint16_t> indices    = grid.GetIndices16();
 	const UINT                 ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
-	auto geo  = std::make_unique<MeshGeometry>();
-	geo->Name = "landGeo";
 
 	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
 	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
@@ -591,18 +601,13 @@ void LandAndWavesApp::BuildLandGeometry()
 	geo->IndexFormat          = DXGI_FORMAT_R16_UINT;
 	geo->IndexBufferByteSize  = ibByteSize;
 
-	SubmeshGeometry submesh;
-	submesh.IndexCount         = (UINT)indices.size();
-	submesh.StartIndexLocation = 0;
-	submesh.BaseVertexLocation = 0;
-
-	geo->DrawArgs["grid"] = submesh;
-
-	mGeometries["landGeo"] = std::move(geo);
+	mGeometries[geo->Name] = std::move(geo);
 }
 
 void LandAndWavesApp::BuildWavesGeometryBuffers()
 {
+	mWaves = std::make_unique<Waves>(128, 128, 1.0f, 0.03f, 4.0f, 0.2f);
+
 	std::vector<std::uint16_t> indices(3 * mWaves->TriangleCount()); // 3 indices per face
 	assert(mWaves->VertexCount() < 0x0000ffff);                      //? Why limit vertex count under 65535? 
 
@@ -660,7 +665,7 @@ void LandAndWavesApp::BuildWavesGeometryBuffers()
 
 	geo->DrawArgs["grid"] = submesh;
 
-	mGeometries["waterGeo"] = std::move(geo);
+	mGeometries[geo->Name] = std::move(geo);
 }
 
 void LandAndWavesApp::BuildPSOs()
@@ -718,7 +723,7 @@ void LandAndWavesApp::BuildFrameResources()
 void LandAndWavesApp::BuildRenderItems()
 {
 	auto wavesRitem                = std::make_unique<RenderItem>();
-	wavesRitem->World              = MathHelper::Identity4x4();
+	XMStoreFloat4x4(&wavesRitem->World, XMMatrixScaling(2.f, 1.f, 2.0f));
 	wavesRitem->ObjCBIndex         = 0;
 	wavesRitem->Geo                = mGeometries["waterGeo"].get();
 	wavesRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -730,8 +735,9 @@ void LandAndWavesApp::BuildRenderItems()
 
 	mRitemLayer[(int)RenderLayer::Opaque].push_back(wavesRitem.get());
 
-	auto gridRitem                = std::make_unique<RenderItem>();
-	gridRitem->World              = MathHelper::Identity4x4();
+	auto gridRitem = std::make_unique<RenderItem>();
+	XMStoreFloat4x4(&gridRitem->World, XMMatrixTranslation(0.f, 12.f, 0.0f));
+
 	gridRitem->ObjCBIndex         = 1;
 	gridRitem->Geo                = mGeometries["landGeo"].get();
 	gridRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;

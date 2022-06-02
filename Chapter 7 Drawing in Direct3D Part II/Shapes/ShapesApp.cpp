@@ -86,10 +86,10 @@ class ShapesApp : public D3DApp
 		FrameResource*                              mCurrFrameResource      = nullptr;
 		int                                         mCurrFrameResourceIndex = 0;
 
-		ComPtr<ID3D12RootSignature>  mRootSignature = nullptr;
-		ComPtr<ID3D12DescriptorHeap> mCbvHeap       = nullptr;
+		ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 
-		ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
+		ComPtr<ID3D12DescriptorHeap> mCbvHeap       = nullptr;
+		UINT                         mPassCbvOffset = 0;
 
 		std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 		std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
@@ -99,13 +99,9 @@ class ShapesApp : public D3DApp
 
 		// List of all the render items.
 		std::vector<std::unique_ptr<RenderItem>> mAllRitems;
-
-		// Render items divided by PSO.
-		std::vector<RenderItem*> mOpaqueRitems;
+		std::vector<RenderItem*>                 mOpaqueRitems; // Render items divided by PSO.
 
 		PassConstants mMainPassCB;
-
-		UINT mPassCbvOffset = 0;
 
 		bool mIsWireframe = false;
 
@@ -378,7 +374,7 @@ void ShapesApp::UpdateObjectCBs(const GameTimer& gt)
 	}
 }
 
- // need to be called once per rendering pass
+// need to be called once per rendering pass
 void ShapesApp::UpdateMainPassCB(const GameTimer& gt)
 {
 	XMMATRIX view = XMLoadFloat4x4(&mView);
@@ -407,6 +403,7 @@ void ShapesApp::UpdateMainPassCB(const GameTimer& gt)
 	currPassCB->CopyData(0, mMainPassCB);
 }
 
+// See Notability
 void ShapesApp::BuildDescriptorHeaps()
 {
 	UINT objCount = (UINT)mOpaqueRitems.size();
@@ -427,6 +424,7 @@ void ShapesApp::BuildDescriptorHeaps()
 		              IID_PPV_ARGS(&mCbvHeap)));
 }
 
+// see notability
 void ShapesApp::BuildConstantBufferViews()
 {
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
@@ -480,23 +478,24 @@ void ShapesApp::BuildConstantBufferViews()
 
 void ShapesApp::BuildRootSignature()
 {
+	// root signature takes 2 root parameters of descriptor-tables type 
+	CD3DX12_ROOT_PARAMETER slotRootParameter[2];
+
 	// Describes a descriptor range
 	CD3DX12_DESCRIPTOR_RANGE cbvTable0;
-	cbvTable0.Init(
-	               D3D12_DESCRIPTOR_RANGE_TYPE_CBV, // the type of descriptor range: constant-buffer views (CBVs)
+	cbvTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, // the type of descriptor range: constant-buffer views (CBVs)
 	               1,                               // The number of descriptors in the range
 	               0);                              // The base shader register in the range
 	// type + base shader register matches ": register (b0)" in the shader
 
 	CD3DX12_DESCRIPTOR_RANGE cbvTable1;
-	cbvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
-
-	// declare an array of root parameters
-	CD3DX12_ROOT_PARAMETER slotRootParameter[2];
+	cbvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+	               1,
+	               1);
 
 	// Create root CBVs.
-	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable0);
-	slotRootParameter[1].InitAsDescriptorTable(1, &cbvTable1);
+	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable0); // per-object CBV
+	slotRootParameter[1].InitAsDescriptorTable(1, &cbvTable1); // per-pass CBV
 
 	// A root signature is an array of root parameters.
 	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(2,                                                             // The number of slots in the root signature. This number is also the number of elements in the pParameters array (second parameter)
@@ -532,6 +531,7 @@ void ShapesApp::BuildShadersAndInputLayout()
 	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_1");
 	mShaders["opaquePS"]   = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_1");
 
+	// corresponds to Vertex struct in FrameResource.h
 	mInputLayout =
 	{
 		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
@@ -587,6 +587,13 @@ void ShapesApp::BuildShapeGeometry()
 	cylinderSubmesh.StartIndexLocation = cylinderIndexOffset;
 	cylinderSubmesh.BaseVertexLocation = cylinderVertexOffset;
 
+	auto geo                  = std::make_unique<MeshGeometry>();
+	geo->Name                 = "shapeGeo";
+	geo->DrawArgs["box"]      = boxSubmesh;
+	geo->DrawArgs["grid"]     = gridSubmesh;
+	geo->DrawArgs["sphere"]   = sphereSubmesh;
+	geo->DrawArgs["cylinder"] = cylinderSubmesh;
+
 	//
 	// Extract the vertex elements we are interested in and pack the
 	// vertices of all the meshes into one vertex buffer.
@@ -634,9 +641,6 @@ void ShapesApp::BuildShapeGeometry()
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
-	auto geo  = std::make_unique<MeshGeometry>();
-	geo->Name = "shapeGeo";
-
 	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
 	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
 
@@ -644,20 +648,21 @@ void ShapesApp::BuildShapeGeometry()
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                    mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+	                                                    mCommandList.Get(),
+	                                                    vertices.data(),
+	                                                    vbByteSize,
+	                                                    geo->VertexBufferUploader);
 
 	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                   mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+	                                                   mCommandList.Get(),
+	                                                   indices.data(),
+	                                                   ibByteSize,
+	                                                   geo->IndexBufferUploader);
 
 	geo->VertexByteStride     = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
 	geo->IndexFormat          = DXGI_FORMAT_R16_UINT;
 	geo->IndexBufferByteSize  = ibByteSize;
-
-	geo->DrawArgs["box"]      = boxSubmesh;
-	geo->DrawArgs["grid"]     = gridSubmesh;
-	geo->DrawArgs["sphere"]   = sphereSubmesh;
-	geo->DrawArgs["cylinder"] = cylinderSubmesh;
 
 	mGeometries[geo->Name] = std::move(geo);
 }
@@ -682,17 +687,16 @@ void ShapesApp::BuildPSOs()
 		reinterpret_cast<BYTE*>(mShaders["opaquePS"]->GetBufferPointer()),
 		mShaders["opaquePS"]->GetBufferSize()
 	};
-	opaquePsoDesc.RasterizerState          = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
-	opaquePsoDesc.BlendState               = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.DepthStencilState        = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.SampleMask               = UINT_MAX;
-	opaquePsoDesc.PrimitiveTopologyType    = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	opaquePsoDesc.NumRenderTargets         = 1;
-	opaquePsoDesc.RTVFormats[0]            = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count         = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality       = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
-	opaquePsoDesc.DSVFormat                = mDepthStencilFormat;
+	opaquePsoDesc.RasterizerState       = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.DepthStencilState     = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.SampleMask            = UINT_MAX;
+	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	opaquePsoDesc.NumRenderTargets      = 1;
+	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
+	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
+	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 
 
@@ -796,10 +800,6 @@ void ShapesApp::BuildRenderItems()
 
 void ShapesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 {
-	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-
-	auto objectCB = mCurrFrameResource->ObjectCB->Resource();
-
 	// For each render item...
 	for (size_t i = 0; i < ritems.size(); ++i)
 	{
