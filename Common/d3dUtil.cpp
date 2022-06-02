@@ -41,12 +41,11 @@ ComPtr<ID3DBlob> d3dUtil::LoadBinary(const std::wstring& filename)
 	return blob;
 }
 
-ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(
-	ID3D12Device*              device,
-	ID3D12GraphicsCommandList* cmdList,
-	const void*                initData,
-	UINT64                     byteSize,
-	ComPtr<ID3D12Resource>&    uploadBuffer)
+ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(ID3D12Device*              device,
+                                                    ID3D12GraphicsCommandList* cmdList,
+                                                    const void*                initData,
+                                                    UINT64                     byteSize,
+                                                    ComPtr<ID3D12Resource>&    uploadBuffer)
 {
 	ComPtr<ID3D12Resource> defaultBuffer;
 
@@ -100,11 +99,10 @@ ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(
 	return defaultBuffer;
 }
 
-ComPtr<ID3DBlob> d3dUtil::CompileShader(
-	const std::wstring&     filename,
-	const D3D_SHADER_MACRO* defines,
-	const std::string&      entrypoint,
-	const std::string&      target)
+ComPtr<ID3DBlob> d3dUtil::CompileShader(const std::wstring&     filename,
+                                        const D3D_SHADER_MACRO* defines,
+                                        const std::string&      entrypoint,
+                                        const std::string&      target)
 {
 	// use debug flags in debug mode
 	UINT compileFlags = 0;
@@ -116,8 +114,15 @@ ComPtr<ID3DBlob> d3dUtil::CompileShader(
 
 	ComPtr<ID3DBlob> byteCode = nullptr;
 	ComPtr<ID3DBlob> errors;
-	hr = D3DCompileFromFile(filename.c_str(), defines, D3D_COMPILE_STANDARD_FILE_INCLUDE,
-	                        entrypoint.c_str(), target.c_str(), compileFlags, 0, &byteCode, &errors);
+	hr = D3DCompileFromFile(filename.c_str(),
+	                        defines,
+	                        D3D_COMPILE_STANDARD_FILE_INCLUDE,
+	                        entrypoint.c_str(),
+	                        target.c_str(),
+	                        compileFlags,
+	                        0,
+	                        &byteCode,
+	                        &errors);
 
 	if (errors != nullptr)
 		OutputDebugStringA((char*)errors->GetBufferPointer());

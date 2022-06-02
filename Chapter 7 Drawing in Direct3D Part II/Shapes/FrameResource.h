@@ -4,11 +4,17 @@
 #include "../../Common/MathHelper.h"
 #include "../../Common/UploadBuffer.h"
 
+/**
+ * \brief This buffer stores constant data associated with an object
+ */
 struct ObjectConstants
 {
 	DirectX::XMFLOAT4X4 World = MathHelper::Identity4x4();
 };
 
+/**
+ * \brief This buffer stores constant data that is fixed over a given rendering pass 
+ */
 struct PassConstants
 {
 	DirectX::XMFLOAT4X4 View                = MathHelper::Identity4x4();

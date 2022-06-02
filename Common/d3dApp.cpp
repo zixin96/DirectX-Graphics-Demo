@@ -131,8 +131,12 @@ bool D3DApp::Initialize()
 	return true;
 }
 
+/**
+ * \brief Create the render target and depth stencil descriptor heaps to store the descriptors/views
+ */
 void D3DApp::CreateRtvAndDsvDescriptorHeaps()
 {
+	// we need a heap to store SwapChainBufferCount RTVs
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
 	rtvHeapDesc.NumDescriptors = SwapChainBufferCount;
 	rtvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
@@ -141,7 +145,7 @@ void D3DApp::CreateRtvAndDsvDescriptorHeaps()
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
 		              &rtvHeapDesc, IID_PPV_ARGS(mRtvHeap.GetAddressOf())));
 
-
+	// we need a heap to store 1 DSV
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
 	dsvHeapDesc.NumDescriptors = 1;
 	dsvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
@@ -187,7 +191,8 @@ void D3DApp::OnResize()
 		// create an RTV to it 
 		md3dDevice->CreateRenderTargetView(mSwapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
 		// next entry in heap
-		rtvHeapHandle.Offset(1, mRtvDescriptorSize); //? Why hardcode 1 here? 
+		rtvHeapHandle.Offset(1,                   // The number of descriptors by which to increment.
+		                     mRtvDescriptorSize); // The amount by which to increment for each descriptor, including padding.
 	}
 
 	// Create the depth/stencil buffer resource.
@@ -208,13 +213,14 @@ void D3DApp::OnResize()
 
 	depthStencilDesc.SampleDesc.Count   = m4xMsaaState ? 4 : 1;
 	depthStencilDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
-	depthStencilDesc.Layout             = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-	depthStencilDesc.Flags              = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+	depthStencilDesc.Layout             = D3D12_TEXTURE_LAYOUT_UNKNOWN;            // let driver to choose the most efficient layout
+	depthStencilDesc.Flags              = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL; // flags for depth/stencil buffer
 
 	D3D12_CLEAR_VALUE optClear;
 	optClear.Format               = mDepthStencilFormat;
 	optClear.DepthStencil.Depth   = 1.0f;
 	optClear.DepthStencil.Stencil = 0;
+
 	ThrowIfFailed(md3dDevice->CreateCommittedResource(
 		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		              D3D12_HEAP_FLAG_NONE,
@@ -222,6 +228,9 @@ void D3DApp::OnResize()
 		              D3D12_RESOURCE_STATE_COMMON,
 		              &optClear,
 		              IID_PPV_ARGS(mDepthStencilBuffer.GetAddressOf())));
+
+	// before using the depth/stencil buffer, we must create an associated
+	// depth/stencil view to be bound to the pipeline
 
 	// Create the depth/stencil descriptor to mip level 0 of entire resource using the format of the resource.
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
@@ -233,7 +242,8 @@ void D3DApp::OnResize()
 
 	// Transition the resource from its initial state to be used as a depth buffer.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mDepthStencilBuffer.Get(),
-	                                                                       D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+	                                                                       D3D12_RESOURCE_STATE_COMMON,
+	                                                                       D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
 	// Execute the resize commands.
 	ThrowIfFailed(mCommandList->Close());
@@ -489,7 +499,9 @@ bool D3DApp::InitDirect3D()
 			              IID_PPV_ARGS(&md3dDevice)));
 	}
 
-	ThrowIfFailed(md3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE,
+	ThrowIfFailed(md3dDevice->CreateFence(
+		              0, // The initial value for the fence
+		              D3D12_FENCE_FLAG_NONE,
 		              IID_PPV_ARGS(&mFence)));
 
 	mRtvDescriptorSize       = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -536,7 +548,7 @@ void D3DApp::CreateCommandObjects()
 		              IID_PPV_ARGS(mDirectCmdListAlloc.GetAddressOf()))); //? Why use GetAddressOf()? use & as shown here: https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-createcommandallocator
 
 	ThrowIfFailed(md3dDevice->CreateCommandList(
-		              0,
+		              0, // For single-GPU operation, set this to zero
 		              D3D12_COMMAND_LIST_TYPE_DIRECT,
 		              mDirectCmdListAlloc.Get(), // Associated command allocator
 		              nullptr,                   // Initial PipelineStateObject
@@ -548,6 +560,10 @@ void D3DApp::CreateCommandObjects()
 	mCommandList->Close();
 }
 
+/**
+ * \brief Create a swap chain. This function can be called multiple times,
+ * which allows us to recreate the swap chain with different settings at runtime
+ */
 void D3DApp::CreateSwapChain()
 {
 	// Release the previous swapchain we will be recreating.
@@ -556,7 +572,7 @@ void D3DApp::CreateSwapChain()
 	DXGI_SWAP_CHAIN_DESC sd;
 	sd.BufferDesc.Width                   = mClientWidth;
 	sd.BufferDesc.Height                  = mClientHeight;
-	sd.BufferDesc.RefreshRate.Numerator   = 60; // TODO: change this No 60hz bs
+	sd.BufferDesc.RefreshRate.Numerator   = 60; // TODO: Changing this value doesn't affect refresh rate, investigate 
 	sd.BufferDesc.RefreshRate.Denominator = 1;
 	sd.BufferDesc.Format                  = mBackBufferFormat;
 	sd.BufferDesc.ScanlineOrdering        = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
@@ -571,7 +587,7 @@ void D3DApp::CreateSwapChain()
 	sd.Flags                              = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
 	ThrowIfFailed(mdxgiFactory->CreateSwapChain(
-		              mCommandQueue.Get(), // Note: Swap chain uses queue to perform flush (which means they submit the actual commands to display a buffer to the screen)
+		              mCommandQueue.Get(), // we pass a pointer to the command queue b/c swap chain need to submit to the queue the actual commands to display a buffer to the screen
 		              &sd,
 		              mSwapChain.GetAddressOf()));
 }
@@ -614,6 +630,10 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3DApp::CurrentBackBufferView() const
 	                                     mRtvDescriptorSize);                            // byte size of descriptor
 }
 
+/**
+ * \brief Return the CPU descriptor handle that represents the start of the heap that holds the depth-stencil view 
+ * \return the CPU descriptor handle
+ */
 D3D12_CPU_DESCRIPTOR_HANDLE D3DApp::DepthStencilView() const
 {
 	return mDsvHeap->GetCPUDescriptorHandleForHeapStart();

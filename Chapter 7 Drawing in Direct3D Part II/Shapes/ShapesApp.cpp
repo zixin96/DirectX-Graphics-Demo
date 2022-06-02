@@ -17,7 +17,7 @@ using namespace DirectX::PackedVector;
 const int gNumFrameResources = 3;
 
 // Lightweight structure stores parameters to draw a shape.  This will
-// vary from app-to-app.
+// vary from app-to-app. Each shape is an item in the world.
 struct RenderItem
 {
 	RenderItem() = default;
@@ -29,7 +29,7 @@ struct RenderItem
 
 	// Dirty flag indicating the object data has changed and we need to update the constant buffer.
 	// Because we have an object cbuffer for each FrameResource, we have to apply the
-	// update to each FrameResource.  Thus, when we modify obect data we should set 
+	// update to each FrameResource.  Thus, when we modify object data we should set 
 	// NumFramesDirty = gNumFrameResources so that each frame resource gets the update.
 	int NumFramesDirty = gNumFrameResources;
 
@@ -53,18 +53,18 @@ class ShapesApp : public D3DApp
 		ShapesApp(HINSTANCE hInstance);
 		ShapesApp(const ShapesApp& rhs)            = delete;
 		ShapesApp& operator=(const ShapesApp& rhs) = delete;
-		~ShapesApp();
+		~ShapesApp() override;
 
-		virtual bool Initialize() override;
+		bool Initialize() override;
 
 	private:
-		virtual void OnResize() override;
-		virtual void Update(const GameTimer& gt) override;
-		virtual void Draw(const GameTimer& gt) override;
+		void OnResize() override;
+		void Update(const GameTimer& gt) override;
+		void Draw(const GameTimer& gt) override;
 
-		virtual void OnMouseDown(WPARAM btnState, int x, int y) override;
-		virtual void OnMouseUp(WPARAM btnState, int x, int y) override;
-		virtual void OnMouseMove(WPARAM btnState, int x, int y) override;
+		void OnMouseDown(WPARAM btnState, int x, int y) override;
+		void OnMouseUp(WPARAM btnState, int x, int y) override;
+		void OnMouseMove(WPARAM btnState, int x, int y) override;
 
 		void OnKeyboardInput(const GameTimer& gt);
 		void UpdateCamera(const GameTimer& gt);
@@ -281,6 +281,9 @@ void ShapesApp::Draw(const GameTimer& gt)
 	// Because we are on the GPU timeline, the new fence point won't be 
 	// set until the GPU finishes processing all the commands prior to this Signal().
 	mCommandQueue->Signal(mFence.Get(), mCurrentFence);
+
+	// note that GPU could still be working on commands from previous frames,
+	// but that is OK, because we are not touching any frame resources associated with those frames. 
 }
 
 void ShapesApp::OnMouseDown(WPARAM btnState, int x, int y)
@@ -352,6 +355,7 @@ void ShapesApp::UpdateCamera(const GameTimer& gt)
 	XMStoreFloat4x4(&mView, view);
 }
 
+// only need to be updated when an object's world matrix changes
 void ShapesApp::UpdateObjectCBs(const GameTimer& gt)
 {
 	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
@@ -374,6 +378,7 @@ void ShapesApp::UpdateObjectCBs(const GameTimer& gt)
 	}
 }
 
+ // need to be called once per rendering pass
 void ShapesApp::UpdateMainPassCB(const GameTimer& gt)
 {
 	XMMATRIX view = XMLoadFloat4x4(&mView);
@@ -475,13 +480,18 @@ void ShapesApp::BuildConstantBufferViews()
 
 void ShapesApp::BuildRootSignature()
 {
+	// Describes a descriptor range
 	CD3DX12_DESCRIPTOR_RANGE cbvTable0;
-	cbvTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
+	cbvTable0.Init(
+	               D3D12_DESCRIPTOR_RANGE_TYPE_CBV, // the type of descriptor range: constant-buffer views (CBVs)
+	               1,                               // The number of descriptors in the range
+	               0);                              // The base shader register in the range
+	// type + base shader register matches ": register (b0)" in the shader
 
 	CD3DX12_DESCRIPTOR_RANGE cbvTable1;
 	cbvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
 
-	// Root parameter can be a table, root descriptor or root constants.
+	// declare an array of root parameters
 	CD3DX12_ROOT_PARAMETER slotRootParameter[2];
 
 	// Create root CBVs.
@@ -489,14 +499,20 @@ void ShapesApp::BuildRootSignature()
 	slotRootParameter[1].InitAsDescriptorTable(1, &cbvTable1);
 
 	// A root signature is an array of root parameters.
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(2, slotRootParameter, 0, nullptr,
-	                                        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(2,                                                             // The number of slots in the root signature. This number is also the number of elements in the pParameters array (second parameter)
+	                                        slotRootParameter,                                             // An array of D3D12_ROOT_PARAMETER structures for the slots in the root signature.
+	                                        0,                                                             // Specifies the number of static samplers
+	                                        nullptr,                                                       // Pointer to one or more D3D12_STATIC_SAMPLER_DESC structures.
+	                                        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT); // Input Assembler is used
 
 	// create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
+	// Serializes a root signature version 1.0 that can be passed to ID3D12Device::CreateRootSignature
 	ComPtr<ID3DBlob> serializedRootSig = nullptr;
 	ComPtr<ID3DBlob> errorBlob         = nullptr;
-	HRESULT          hr                = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
-	                                                                 serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+	HRESULT          hr                = D3D12SerializeRootSignature(&rootSigDesc,
+	                                                                 D3D_ROOT_SIGNATURE_VERSION_1,
+	                                                                 serializedRootSig.GetAddressOf(),
+	                                                                 errorBlob.GetAddressOf());
 
 	if (errorBlob != nullptr)
 	{
@@ -505,9 +521,9 @@ void ShapesApp::BuildRootSignature()
 	ThrowIfFailed(hr);
 
 	ThrowIfFailed(md3dDevice->CreateRootSignature(
-		              0,
-		              serializedRootSig->GetBufferPointer(),
-		              serializedRootSig->GetBufferSize(),
+		              0,                                     // For single GPU operation, set this to zero
+		              serializedRootSig->GetBufferPointer(), // A pointer to the source data for the serialized signature
+		              serializedRootSig->GetBufferSize(),    // its size
 		              IID_PPV_ARGS(mRootSignature.GetAddressOf())));
 }
 
@@ -667,7 +683,7 @@ void ShapesApp::BuildPSOs()
 		mShaders["opaquePS"]->GetBufferSize()
 	};
 	opaquePsoDesc.RasterizerState          = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_WIREFRAME;
+	opaquePsoDesc.RasterizerState.FillMode = D3D12_FILL_MODE_SOLID;
 	opaquePsoDesc.BlendState               = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	opaquePsoDesc.DepthStencilState        = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	opaquePsoDesc.SampleMask               = UINT_MAX;
@@ -694,7 +710,8 @@ void ShapesApp::BuildFrameResources()
 	for (int i = 0; i < gNumFrameResources; ++i)
 	{
 		mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(),
-		                                                          1, (UINT)mAllRitems.size()));
+		                                                          1,
+		                                                          (UINT)mAllRitems.size()));
 	}
 }
 

@@ -121,6 +121,7 @@ class D3DApp
 		D3D12_VIEWPORT mScreenViewport;
 		D3D12_RECT     mScissorRect;
 
+		// working with descriptors requires us to now their size, but their sizes vary aross GPUs so we need to query this information
 		// cache the descriptor sizes so that it is available when we need it for various descriptor types
 		UINT mRtvDescriptorSize       = 0;
 		UINT mDsvDescriptorSize       = 0;
