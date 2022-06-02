@@ -33,7 +33,11 @@ class UploadBuffer
 				              nullptr,
 				              IID_PPV_ARGS(&mUploadBuffer)));
 
-			ThrowIfFailed(mUploadBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mMappedData)));
+			// obtain a pointer to the resource data
+			ThrowIfFailed(mUploadBuffer->Map(
+				              0,                                        // a subresource index identifying the subresource to map. For a buffer, the only subresource is the buffer itself, so we just set this to 0
+				              nullptr,                                  // an optional pointer to a D3D12_RANGE structure that describes the range of memory to map; specifying null maps the entire resource
+				              reinterpret_cast<void**>(&mMappedData))); // a pointer to the mapped data
 
 			// We do not need to unmap until we are done with the resource.  However, we must not write to
 			// the resource while it is in use by the GPU (so we must use synchronization techniques).
