@@ -3,7 +3,7 @@
 //***************************************************************************************
 
 #include "Waves.h"
-#include <ppl.h>
+#include <ppl.h> // concurrency::parallel_for
 #include <algorithm>
 #include <vector>
 #include <cassert>
@@ -15,7 +15,7 @@ using namespace DirectX;
  * \param m Number of vertices in a row
  * \param n Number of vertices in a column
  * \param dx Size of the individual quad/cell
- * \param dt Simulation update frequency
+ * \param dt Simulation update frequency (typically 1 / 30th of a second)
  * \param speed 
  * \param damping 
  */
@@ -101,6 +101,7 @@ float Waves::Depth() const
 
 void Waves::Update(float dt)
 {
+	// TODO: blackbox
 	static float t = 0;
 
 	// Accumulate time.
@@ -111,28 +112,27 @@ void Waves::Update(float dt)
 	{
 		// Only update interior points; we use zero boundary conditions.
 		concurrency::parallel_for(1, mNumRows - 1, [this](int i)
-		                          //for(int i = 1; i < mNumRows-1; ++i)
-		                          {
-			                          for (int j = 1; j < mNumCols - 1; ++j)
-			                          {
-				                          // After this update we will be discarding the old previous
-				                          // buffer, so overwrite that buffer with the new update.
-				                          // Note how we can do this inplace (read/write to same element) 
-				                          // because we won't need prev_ij again and the assignment happens last.
+		{
+			for (int j = 1; j < mNumCols - 1; ++j)
+			{
+				// After this update we will be discarding the old previous
+				// buffer, so overwrite that buffer with the new update.
+				// Note how we can do this inplace (read/write to same element) 
+				// because we won't need prev_ij again and the assignment happens last.
 
-				                          // Note j indexes x and i indexes z: h(x_j, z_i, t_k)
-				                          // Moreover, our +z axis goes "down"; this is just to 
-				                          // keep consistent with our row indices going down.
+				// Note j indexes x and i indexes z: h(x_j, z_i, t_k)
+				// Moreover, our +z axis goes "down"; this is just to 
+				// keep consistent with our row indices going down.
 
-				                          mPrevSolution[i * mNumCols + j].y =
-						                          mK1 * mPrevSolution[i * mNumCols + j].y +
-						                          mK2 * mCurrSolution[i * mNumCols + j].y +
-						                          mK3 * (mCurrSolution[(i + 1) * mNumCols + j].y +
-						                                 mCurrSolution[(i - 1) * mNumCols + j].y +
-						                                 mCurrSolution[i * mNumCols + j + 1].y +
-						                                 mCurrSolution[i * mNumCols + j - 1].y);
-			                          }
-		                          });
+				mPrevSolution[i * mNumCols + j].y =
+						mK1 * mPrevSolution[i * mNumCols + j].y +
+						mK2 * mCurrSolution[i * mNumCols + j].y +
+						mK3 * (mCurrSolution[(i + 1) * mNumCols + j].y +
+						       mCurrSolution[(i - 1) * mNumCols + j].y +
+						       mCurrSolution[i * mNumCols + j + 1].y +
+						       mCurrSolution[i * mNumCols + j - 1].y);
+			}
+		});
 
 		// We just overwrote the previous buffer with the new data, so
 		// this data needs to become the current solution and the old
@@ -145,26 +145,25 @@ void Waves::Update(float dt)
 		// Compute normals using finite difference scheme.
 		//
 		concurrency::parallel_for(1, mNumRows - 1, [this](int i)
-		                          //for(int i = 1; i < mNumRows - 1; ++i)
-		                          {
-			                          for (int j = 1; j < mNumCols - 1; ++j)
-			                          {
-				                          float l                      = mCurrSolution[i * mNumCols + j - 1].y;
-				                          float r                      = mCurrSolution[i * mNumCols + j + 1].y;
-				                          float t                      = mCurrSolution[(i - 1) * mNumCols + j].y;
-				                          float b                      = mCurrSolution[(i + 1) * mNumCols + j].y;
-				                          mNormals[i * mNumCols + j].x = -r + l;
-				                          mNormals[i * mNumCols + j].y = 2.0f * mSpatialStep;
-				                          mNormals[i * mNumCols + j].z = b - t;
+		{
+			for (int j = 1; j < mNumCols - 1; ++j)
+			{
+				float l                      = mCurrSolution[i * mNumCols + j - 1].y;
+				float r                      = mCurrSolution[i * mNumCols + j + 1].y;
+				float t                      = mCurrSolution[(i - 1) * mNumCols + j].y;
+				float b                      = mCurrSolution[(i + 1) * mNumCols + j].y;
+				mNormals[i * mNumCols + j].x = -r + l;
+				mNormals[i * mNumCols + j].y = 2.0f * mSpatialStep;
+				mNormals[i * mNumCols + j].z = b - t;
 
-				                          XMVECTOR n = XMVector3Normalize(XMLoadFloat3(&mNormals[i * mNumCols + j]));
-				                          XMStoreFloat3(&mNormals[i * mNumCols + j], n);
+				XMVECTOR n = XMVector3Normalize(XMLoadFloat3(&mNormals[i * mNumCols + j]));
+				XMStoreFloat3(&mNormals[i * mNumCols + j], n);
 
-				                          mTangentX[i * mNumCols + j] = XMFLOAT3(2.0f * mSpatialStep, r - l, 0.0f);
-				                          XMVECTOR T                  = XMVector3Normalize(XMLoadFloat3(&mTangentX[i * mNumCols + j]));
-				                          XMStoreFloat3(&mTangentX[i * mNumCols + j], T);
-			                          }
-		                          });
+				mTangentX[i * mNumCols + j] = XMFLOAT3(2.0f * mSpatialStep, r - l, 0.0f);
+				XMVECTOR T                  = XMVector3Normalize(XMLoadFloat3(&mTangentX[i * mNumCols + j]));
+				XMStoreFloat3(&mTangentX[i * mNumCols + j], T);
+			}
+		});
 	}
 }
 

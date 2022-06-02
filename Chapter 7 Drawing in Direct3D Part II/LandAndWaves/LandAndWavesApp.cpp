@@ -13,7 +13,7 @@
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
-using namespace DirectX::PackedVector;
+using namespace PackedVector;
 
 const int gNumFrameResources = 3;
 
@@ -104,6 +104,7 @@ class LandAndWavesApp : public D3DApp
 
 		std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 
+		// save a reference to the wave render item so that we can set its vertex buffer on the fly
 		RenderItem* mWavesRitem = nullptr;
 
 		// List of all the render items.
@@ -272,7 +273,8 @@ void LandAndWavesApp::Draw(const GameTimer& gt)
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET,
+	                                                                       D3D12_RESOURCE_STATE_PRESENT));
 
 	// Done recording commands.
 	ThrowIfFailed(mCommandList->Close());
@@ -413,6 +415,10 @@ void LandAndWavesApp::UpdateMainPassCB(const GameTimer& gt)
 	currPassCB->CopyData(0, mMainPassCB);
 }
 
+/**
+ * \brief Update dynamic vertex buffer
+ * \param gt Timer
+ */
 void LandAndWavesApp::UpdateWaves(const GameTimer& gt)
 {
 	// Every quarter second, generate a random wave.
@@ -439,7 +445,7 @@ void LandAndWavesApp::UpdateWaves(const GameTimer& gt)
 		Vertex v;
 
 		v.Pos   = mWaves->Position(i);
-		v.Color = XMFLOAT4(DirectX::Colors::Blue);
+		v.Color = XMFLOAT4(Colors::Blue);
 
 		currWavesVB->CopyData(i, v);
 	}
@@ -474,7 +480,7 @@ void LandAndWavesApp::BuildRootSignature()
 
 	if (errorBlob != nullptr)
 	{
-		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+		OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 	}
 	ThrowIfFailed(hr);
 
@@ -703,7 +709,9 @@ void LandAndWavesApp::BuildFrameResources()
 	for (int i = 0; i < gNumFrameResources; ++i)
 	{
 		mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(),
-		                                                          1, (UINT)mAllRitems.size(), mWaves->VertexCount()));
+		                                                          1,
+		                                                          (UINT)mAllRitems.size(),
+		                                                          mWaves->VertexCount()));
 	}
 }
 
