@@ -23,6 +23,7 @@ struct Material
     float Shininess;
 };
 
+// page 340, figure 8.26
 float CalcAttenuation(float d, float falloffStart, float falloffEnd)
 {
     // Linear falloff.
@@ -31,6 +32,7 @@ float CalcAttenuation(float d, float falloffStart, float falloffEnd)
 
 // Schlick gives an approximation to Fresnel reflectance (see pg. 233 "Real-Time Rendering 3rd Ed.").
 // R0 = ( (n-1)/(n+1) )^2, where n is the index of refraction.
+// page 328
 float3 SchlickFresnel(float3 R0, float3 normal, float3 lightVec)
 {
     float cosIncidentAngle = saturate(dot(normal, lightVec));
@@ -41,8 +43,10 @@ float3 SchlickFresnel(float3 R0, float3 normal, float3 lightVec)
     return reflectPercent;
 }
 
+// see Notability
 float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 toEye, Material mat)
 {
+    // derive m from the shininess, whch is derived from the roughness
     const float m = mat.Shininess * 256.0f;
     float3 halfVec = normalize(toEye + lightVec);
 
@@ -53,6 +57,7 @@ float3 BlinnPhong(float3 lightStrength, float3 lightVec, float3 normal, float3 t
 
     // Our spec formula goes outside [0,1] range, but we are 
     // doing LDR rendering.  So scale it down a bit.
+    // TODO: HDR see page 345
     specAlbedo = specAlbedo / (specAlbedo + 1.0f);
 
     return (mat.DiffuseAlbedo.rgb + specAlbedo) * lightStrength;

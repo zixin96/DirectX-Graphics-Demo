@@ -228,6 +228,11 @@ struct MeshGeometry
 	}
 };
 
+/**
+ * \brief A directional, point, or spot light
+ * Matches Light struct in LightingUtil.hlsl
+ * Note: the order of data members follow HLSL packing rules
+ */
 struct Light
 {
 	DirectX::XMFLOAT3 Strength     = {0.5f, 0.5f, 0.5f};
@@ -240,6 +245,11 @@ struct Light
 
 #define MaxLights 16
 
+/**
+ * \brief MaterialConstants contains a subset of Material data.
+ * It just contains the data the shaders need for rendering.
+ * Note: the order of data members follow HLSL packing rules
+ */
 struct MaterialConstants
 {
 	DirectX::XMFLOAT4 DiffuseAlbedo = {1.0f, 1.0f, 1.0f, 1.0f};
@@ -275,7 +285,7 @@ struct Material
 	// Material constant buffer data used for shading.
 	DirectX::XMFLOAT4   DiffuseAlbedo = {1.0f, 1.0f, 1.0f, 1.0f};
 	DirectX::XMFLOAT3   FresnelR0     = {0.01f, 0.01f, 0.01f};
-	float               Roughness     = .25f;
+	float               Roughness     = .25f; // in normalized [0,1] range. 0: perfectly smooth. 1: the roughest surface possible. Used to derive m (Eq. 8.4, page 333) in the shader code. 
 	DirectX::XMFLOAT4X4 MatTransform  = MathHelper::Identity4x4();
 };
 
