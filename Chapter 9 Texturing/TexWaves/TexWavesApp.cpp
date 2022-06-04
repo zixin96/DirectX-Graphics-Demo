@@ -526,7 +526,7 @@ void TexWavesApp::LoadTextures()
 {
 	auto grassTex      = std::make_unique<Texture>();
 	grassTex->Name     = "grassTex";
-	grassTex->Filename = L"../../Textures/grass.dds";
+	grassTex->Filename = L"../../Textures/grasssnow01.dds";
 	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
 		              mCommandList.Get(), grassTex->Filename.c_str(),
 		              grassTex->Resource, grassTex->UploadHeap));
