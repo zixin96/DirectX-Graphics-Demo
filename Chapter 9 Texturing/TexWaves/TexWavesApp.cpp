@@ -236,11 +236,17 @@ void TexWavesApp::Update(const GameTimer& gt)
 
 	// Has the GPU finished processing the commands of the current frame resource?
 	// If not, wait until the GPU has completed commands up to this fence point.
+
+	// when mCurrFrameResource->Fence == 0, the current frame resource is empty, thus can be updated immediately.
+
+	// when mCurrFrameResource->Fence != 0, which means the current frame resource holds data that GPU may still be using.
+	// In this case, we need to make CPU wait for GPU to finish processing all the commands in the queue up to the fence point
+	// before we let CPU to overwrite any data in the current frame resource
 	if (mCurrFrameResource->Fence != 0 && mFence->GetCompletedValue() < mCurrFrameResource->Fence)
 	{
 		HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
-		ThrowIfFailed(mFence->SetEventOnCompletion(mCurrFrameResource->Fence, eventHandle));
-		WaitForSingleObject(eventHandle, INFINITE);
+		ThrowIfFailed(mFence->SetEventOnCompletion(mCurrFrameResource->Fence, eventHandle)); // fire event when GPU hits current fence
+		WaitForSingleObject(eventHandle, INFINITE);                                          // wait until the current fence event is fired 
 		CloseHandle(eventHandle);
 	}
 
@@ -592,6 +598,11 @@ void TexWavesApp::BuildRootSignature()
 
 void TexWavesApp::BuildDescriptorHeaps()
 {
+	/*
+	 * CPUDescriptorHeap implements CPU-only descriptor heap that is used as a storage of resource view descriptor handles
+		GPUDescriptorHeap implements shader-visible descriptor heap that holds descriptor handles used by the GPU commands
+	 */
+
 	//
 	// Create the SRV heap.
 	//
@@ -602,7 +613,7 @@ void TexWavesApp::BuildDescriptorHeaps()
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mSrvDescriptorHeap)));
 
 	//
-	// Fill out the heap with actual descriptors.
+	// Fill out the heap with actual descriptors. 
 	//
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
@@ -616,7 +627,9 @@ void TexWavesApp::BuildDescriptorHeaps()
 	srvDesc.ViewDimension                   = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MostDetailedMip       = 0;
 	srvDesc.Texture2D.MipLevels             = -1;
-	md3dDevice->CreateShaderResourceView(grassTex.Get(), &srvDesc, hDescriptor);
+	md3dDevice->CreateShaderResourceView(grassTex.Get(), //! by passing a pointer to the actual resource data when creating the descriptor, GPU can identify the resource data
+	                                     &srvDesc,       //! by passing a pointer to an info struct when creating the descriptor, GPU will know how to interpret the data
+	                                     hDescriptor);   //! where to put this descriptor in the CPU-only descriptor heap? 
 
 	// next descriptor
 	hDescriptor.Offset(1, mCbvSrvDescriptorSize);

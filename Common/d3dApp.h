@@ -80,7 +80,8 @@ class D3DApp
 		void LogAdapters();
 		void LogAdapterOutputs(IDXGIAdapter* adapter);
 		void LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format);
-
+	private:
+		void Query4XMSAAQualityLevel();
 	protected:
 		static D3DApp* mApp;
 
@@ -93,18 +94,18 @@ class D3DApp
 		bool      mFullscreenState = false;   // fullscreen enabled
 
 		// Set true to use 4X MSAA (§4.1.8).  The default is false.
-		bool m4xMsaaState   = false; // 4X MSAA enabled
-		UINT m4xMsaaQuality = 0;     // quality level of 4X MSAA
+		bool m4xMsaaState   = false; // TODO: MSAA must be set to false. We must create an MSAA render target that we explicitly resolve in D3D 12. https://stackoverflow.com/q/56286975/13795171
+		UINT m4xMsaaQuality = 0;     // quality level of 4X MSAA, range from [0, NumQualityLevels-1]
 
 		// Used to keep track of the “delta-time” and game time (§4.4).
 		GameTimer mTimer;
 
-		Microsoft::WRL::ComPtr<IDXGIFactory4>  mdxgiFactory;
-		Microsoft::WRL::ComPtr<IDXGISwapChain> mSwapChain;
+		Microsoft::WRL::ComPtr<IDXGIFactory4>  mdxgiFactory; // IDXGIFactory4 is used to create our swap chain and a WARP adapter if necessary
+		Microsoft::WRL::ComPtr<IDXGISwapChain> mSwapChain;   // swap chain in D3D is represented by IDXGISwapChain. It stores the front and back buffer textures, and provides methods for resizing and presenting. 
 		Microsoft::WRL::ComPtr<ID3D12Device>   md3dDevice;
 
-		Microsoft::WRL::ComPtr<ID3D12Fence> mFence;
-		UINT64                              mCurrentFence = 0;
+		Microsoft::WRL::ComPtr<ID3D12Fence> mFence;            // fence is used to sync GPU and CPU
+		UINT64                              mCurrentFence = 0; // a fence object maintains a UINT64 value, which is an integer to identify a fence point in time. Every time we need to mark a new fence point, we increment the integer. 
 
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue>        mCommandQueue;
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator>    mDirectCmdListAlloc;
@@ -121,8 +122,8 @@ class D3DApp
 		D3D12_VIEWPORT mScreenViewport;
 		D3D12_RECT     mScissorRect;
 
-		// working with descriptors requires us to now their size, but their sizes vary aross GPUs so we need to query this information
-		// cache the descriptor sizes so that it is available when we need it for various descriptor types
+		// working with descriptors requires us to now their size, but their sizes vary across GPUs so we need to query this information
+		// and cache them so that it is available when we need it for various descriptor types
 		UINT mRtvDescriptorSize       = 0;
 		UINT mDsvDescriptorSize       = 0;
 		UINT mCbvSrvUavDescriptorSize = 0;

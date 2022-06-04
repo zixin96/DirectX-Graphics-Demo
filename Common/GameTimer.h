@@ -5,6 +5,10 @@
 #ifndef GAMETIMER_H
 #define GAMETIMER_H
 
+/**
+ * \brief This class uses the performance timer (counter) for accurate time measurements
+ * e.g., it's used to measure the amount of time that elapses between frames of animation
+ */
 class GameTimer
 {
 	public:

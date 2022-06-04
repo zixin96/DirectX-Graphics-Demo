@@ -183,6 +183,8 @@ void D3DApp::OnResize()
 	mCurrBackBuffer = 0;
 
 	// create an RTV to each buffer in the swap chain
+
+
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
 	for (UINT i = 0; i < SwapChainBufferCount; i++)
 	{
@@ -190,7 +192,7 @@ void D3DApp::OnResize()
 		ThrowIfFailed(mSwapChain->GetBuffer(i, IID_PPV_ARGS(&mSwapChainBuffer[i])));
 		// create an RTV to it 
 		md3dDevice->CreateRenderTargetView(mSwapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
-		// next entry in heap
+		// next entry in heap (will change rtvHeapHandle)
 		rtvHeapHandle.Offset(1,                   // The number of descriptors by which to increment.
 		                     mRtvDescriptorSize); // The amount by which to increment for each descriptor, including padding.
 	}
@@ -211,8 +213,8 @@ void D3DApp::OnResize()
 	// we need to create the depth buffer resource with a typeless format.  
 	depthStencilDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
 
-	depthStencilDesc.SampleDesc.Count   = m4xMsaaState ? 4 : 1;
-	depthStencilDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	depthStencilDesc.SampleDesc.Count   = m4xMsaaState ? 4 : 1;                    // both the back buffer and depth buffer must be created with the same multisampling settings
+	depthStencilDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0; // both the back buffer and depth buffer must be created with the same multisampling settings
 	depthStencilDesc.Layout             = D3D12_TEXTURE_LAYOUT_UNKNOWN;            // let driver to choose the most efficient layout
 	depthStencilDesc.Flags              = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL; // flags for depth/stencil buffer
 
@@ -468,6 +470,22 @@ bool D3DApp::InitMainWindow()
 	return true;
 }
 
+void D3DApp::Query4XMSAAQualityLevel()
+{
+	// Query the number of quality levels for a given texture format and sample count
+	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels;
+	msQualityLevels.Format           = mBackBufferFormat;
+	msQualityLevels.SampleCount      = 4;
+	msQualityLevels.Flags            = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+	msQualityLevels.NumQualityLevels = 0;
+	ThrowIfFailed(md3dDevice->CheckFeatureSupport(
+		              D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+		              &msQualityLevels, // this parameter is both an input (format, sample count, flags) and output (NumQualityLevels)
+		              sizeof(msQualityLevels)));
+	m4xMsaaQuality = msQualityLevels.NumQualityLevels; //! Note: the valid quality levels range from [0, NumQualityLevels-1]
+	assert(m4xMsaaQuality > 0 && "Unexpected MSAA quality level.");
+}
+
 bool D3DApp::InitDirect3D()
 {
 	#if defined(DEBUG) || defined(_DEBUG)
@@ -483,8 +501,8 @@ bool D3DApp::InitDirect3D()
 
 	// Try to create hardware device.
 	HRESULT hardwareResult = D3D12CreateDevice(
-	                                           nullptr, // default adapter
-	                                           D3D_FEATURE_LEVEL_11_0,
+	                                           nullptr,                // use the default adapter
+	                                           D3D_FEATURE_LEVEL_11_0, // minimum D3D_FEATURE_LEVEL
 	                                           IID_PPV_ARGS(&md3dDevice));
 
 	// Fallback to WARP device.
@@ -499,31 +517,21 @@ bool D3DApp::InitDirect3D()
 			              IID_PPV_ARGS(&md3dDevice)));
 	}
 
+	// create CPU/GPU synchronization object 
 	ThrowIfFailed(md3dDevice->CreateFence(
-		              0, // The initial value for the fence
+		              0, // a fence point in time starts at value 0 
 		              D3D12_FENCE_FLAG_NONE,
 		              IID_PPV_ARGS(&mFence)));
 
-	mRtvDescriptorSize       = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	mDsvDescriptorSize       = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	// query descriptors' size
+	mRtvDescriptorSize       = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV); // GetDescriptorHandleIncrementSize() above allows applications to manually offset handles into a heap (producing handles into anywhere in a descriptor heap).
+	mDsvDescriptorSize       = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV); // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html
 	mCbvSrvUavDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 
 	// Check 4X MSAA quality support for our back buffer format.
 	// All Direct3D 11 capable devices support 4X MSAA for all render 
 	// target formats, so we only need to check quality support.
-
-	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels;
-	msQualityLevels.Format           = mBackBufferFormat;
-	msQualityLevels.SampleCount      = 4;
-	msQualityLevels.Flags            = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
-	msQualityLevels.NumQualityLevels = 0;
-	ThrowIfFailed(md3dDevice->CheckFeatureSupport(
-		              D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
-		              &msQualityLevels,
-		              sizeof(msQualityLevels)));
-
-	m4xMsaaQuality = msQualityLevels.NumQualityLevels;
-	assert(m4xMsaaQuality > 0 && "Unexpected MSAA quality level.");
+	Query4XMSAAQualityLevel();
 
 	#ifdef _DEBUG
 	LogAdapters();
@@ -545,17 +553,17 @@ void D3DApp::CreateCommandObjects()
 
 	ThrowIfFailed(md3dDevice->CreateCommandAllocator(
 		              D3D12_COMMAND_LIST_TYPE_DIRECT,
-		              IID_PPV_ARGS(mDirectCmdListAlloc.GetAddressOf()))); //? Why use GetAddressOf()? use & as shown here: https://docs.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12device-createcommandallocator
+		              IID_PPV_ARGS(&mDirectCmdListAlloc)));
 
 	ThrowIfFailed(md3dDevice->CreateCommandList(
 		              0, // For single-GPU operation, set this to zero
 		              D3D12_COMMAND_LIST_TYPE_DIRECT,
-		              mDirectCmdListAlloc.Get(), // Associated command allocator
-		              nullptr,                   // Initial PipelineStateObject
-		              IID_PPV_ARGS(mCommandList.GetAddressOf())));
+		              mDirectCmdListAlloc.Get(), // initially, we associate the command list with mDirectCmdListAlloc
+		              nullptr,                   // mCommandList is not used to submit draw commands (the one in frame resource does), thus we specify nullptr here
+		              IID_PPV_ARGS(&mCommandList)));
 
 	// Start off in a closed state.  This is because the first time we refer 
-	// to the command list we will Reset it, and it needs to be closed before
+	// to the command list we will Reset it (in D3DApp::OnResize), and it needs to be closed before
 	// calling Reset.
 	mCommandList->Close();
 }
@@ -569,7 +577,9 @@ void D3DApp::CreateSwapChain()
 	// Release the previous swapchain we will be recreating.
 	mSwapChain.Reset();
 
+	// describe the swap chain first
 	DXGI_SWAP_CHAIN_DESC sd;
+	// filling DXGI_MODE_DESC: description of back buffer
 	sd.BufferDesc.Width                   = mClientWidth;
 	sd.BufferDesc.Height                  = mClientHeight;
 	sd.BufferDesc.RefreshRate.Numerator   = 60; // TODO: Changing this value doesn't affect refresh rate, investigate 
@@ -577,21 +587,29 @@ void D3DApp::CreateSwapChain()
 	sd.BufferDesc.Format                  = mBackBufferFormat;
 	sd.BufferDesc.ScanlineOrdering        = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
 	sd.BufferDesc.Scaling                 = DXGI_MODE_SCALING_UNSPECIFIED;
-	sd.SampleDesc.Count                   = m4xMsaaState ? 4 : 1;
-	sd.SampleDesc.Quality                 = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
-	sd.BufferUsage                        = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	sd.BufferCount                        = SwapChainBufferCount;
-	sd.OutputWindow                       = mhMainWnd;
-	sd.Windowed                           = true;
-	sd.SwapEffect                         = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-	sd.Flags                              = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	// filling DXGI_SAMPLE_DESC: Multisampling
+	sd.SampleDesc.Count   = m4xMsaaState ? 4 : 1;                    // # of samples to take per pixel 
+	sd.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0; // specify the desired quality level (what "quality level" means can vary across hardware manufacturers)
+	// back buffer usage
+	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT; // we're going to render to the back buffer (use it as a render target)
+	// back buffer count
+	sd.BufferCount  = SwapChainBufferCount; // two for double buffering
+	sd.OutputWindow = mhMainWnd;
+	sd.Windowed     = true;
+	sd.SwapEffect   = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	sd.Flags        = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
+	// then, create the swap chain
 	ThrowIfFailed(mdxgiFactory->CreateSwapChain(
 		              mCommandQueue.Get(), // we pass a pointer to the command queue b/c swap chain need to submit to the queue the actual commands to display a buffer to the screen
 		              &sd,
 		              mSwapChain.GetAddressOf()));
 }
 
+/**
+ * \brief Force the CPU to wait until the GPU has finished processing all the commands in the queue up to a specified fence point
+ * Page 114, Figure 4.8 is the key to understand this function
+ */
 void D3DApp::FlushCommandQueue()
 {
 	// Advance the fence value to mark commands up to this fence point.
@@ -624,8 +642,7 @@ ID3D12Resource* D3DApp::CurrentBackBuffer() const
 D3D12_CPU_DESCRIPTOR_HANDLE D3DApp::CurrentBackBufferView() const
 {
 	// CD3DX12 constructor to offset to the RTV of the current back buffer
-	return CD3DX12_CPU_DESCRIPTOR_HANDLE(
-	                                     mRtvHeap->GetCPUDescriptorHandleForHeapStart(), // handle start
+	return CD3DX12_CPU_DESCRIPTOR_HANDLE(mRtvHeap->GetCPUDescriptorHandleForHeapStart(), // retrieve the heap start location’s handle 
 	                                     mCurrBackBuffer,                                // index to offset
 	                                     mRtvDescriptorSize);                            // byte size of descriptor
 }
@@ -676,13 +693,13 @@ void D3DApp::CalculateFrameStats()
  */
 void D3DApp::LogAdapters()
 {
-	UINT                       i       = 0;
+	UINT                       i       = 0; // The index of the adapter to enumerate
 	IDXGIAdapter*              adapter = nullptr;
 	std::vector<IDXGIAdapter*> adapterList;
-	while (mdxgiFactory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND)
+	while (mdxgiFactory->EnumAdapters(i, &adapter) != DXGI_ERROR_NOT_FOUND) // Enumerates the adapters (video cards).
 	{
 		DXGI_ADAPTER_DESC desc;
-		adapter->GetDesc(&desc);
+		adapter->GetDesc(&desc); // Gets a DXGI 1.0 description of an adapter (or video card).
 
 		std::wstring text = L"***Adapter: ";
 		text += desc.Description;
@@ -703,7 +720,7 @@ void D3DApp::LogAdapters()
 }
 
 /**
- * \brief Enumerate all the outputs associated with this adapter
+ * \brief Enumerate all the outputs (monitor) associated with this adapter
  * \param adapter Display adapter
  */
 void D3DApp::LogAdapterOutputs(IDXGIAdapter* adapter)
@@ -732,6 +749,8 @@ void D3DApp::LogAdapterOutputs(IDXGIAdapter* adapter)
  * \brief Fixing a display mode format, print out a list of all supported display modes an output supports in that format
  * \param output Display output
  * \param format Display mode format
+ * TODO: Enumerated display modes will become important when we implement full-screen support.
+ * The specified full-screen display mode must match exactly one of the enumerated ones here to get optimal performance. 
  */
 void D3DApp::LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format)
 {

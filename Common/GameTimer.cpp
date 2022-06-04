@@ -6,12 +6,17 @@
 #include "GameTimer.h"
 
 GameTimer::GameTimer()
-	: mSecondsPerCount(0.0), mDeltaTime(-1.0), mBaseTime(0),
-	  mPausedTime(0), mPrevTime(0), mCurrTime(0), mStopped(false)
+	: mSecondsPerCount(0.0),
+	  mDeltaTime(-1.0),
+	  mBaseTime(0),
+	  mPausedTime(0),
+	  mPrevTime(0),
+	  mCurrTime(0),
+	  mStopped(false)
 {
 	__int64 countsPerSec;
-	QueryPerformanceFrequency((LARGE_INTEGER*)&countsPerSec);
-	mSecondsPerCount = 1.0 / (double)countsPerSec;
+	QueryPerformanceFrequency((LARGE_INTEGER*)&countsPerSec); // get the frequency (counts per second) of the performance timer, which is a fixed value at system boot
+	mSecondsPerCount = 1.0 / (double)countsPerSec;            // seconds per count is used to compute the actual time in seconds given the counts
 }
 
 // Returns the total time elapsed since Reset() was called, NOT counting any
@@ -56,7 +61,7 @@ float GameTimer::DeltaTime() const
 void GameTimer::Reset()
 {
 	__int64 currTime;
-	QueryPerformanceCounter((LARGE_INTEGER*)&currTime);
+	QueryPerformanceCounter((LARGE_INTEGER*)&currTime); // retrieve the current time value in counts
 
 	//! initialize mBaseTime to the current time, which is considered as the time when the application started
 	mBaseTime = currTime;
@@ -69,7 +74,7 @@ void GameTimer::Reset()
 void GameTimer::Start()
 {
 	__int64 startTime;
-	QueryPerformanceCounter((LARGE_INTEGER*)&startTime);
+	QueryPerformanceCounter((LARGE_INTEGER*)&startTime); // retrieve the current time value in counts
 
 
 	// Accumulate the time elapsed between stop and start pairs.
@@ -101,7 +106,7 @@ void GameTimer::Stop()
 	if (!mStopped)
 	{
 		__int64 currTime;
-		QueryPerformanceCounter((LARGE_INTEGER*)&currTime);
+		QueryPerformanceCounter((LARGE_INTEGER*)&currTime); // retrieve the current time value in counts
 
 		// otherwise, save the time we stopped at, and
 		// set the bool flag indicating the timer is stopped
@@ -120,7 +125,7 @@ void GameTimer::Tick()
 
 	// get the time this frame
 	__int64 currTime;
-	QueryPerformanceCounter((LARGE_INTEGER*)&currTime);
+	QueryPerformanceCounter((LARGE_INTEGER*)&currTime); // retrieve the current time value in counts
 	mCurrTime = currTime;
 
 	// Time difference between this frame and the previous.

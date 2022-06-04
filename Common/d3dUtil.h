@@ -271,10 +271,10 @@ struct Material
 	int MatCBIndex = -1;
 
 	// Index into SRV heap for diffuse texture.
-	int DiffuseSrvHeapIndex = -1;
+	int DiffuseSrvHeapIndex = -1; //! where to find the diffuse texture descriptor for this material in the SRV heap? 
 
 	// Index into SRV heap for normal texture.
-	int NormalSrvHeapIndex = -1;
+	int NormalSrvHeapIndex = -1; //! where to find the normal texture descriptor for this material in the SRV heap? 
 
 	// Dirty flag indicating the material has changed and we need to update the constant buffer.
 	// Because we have a material constant buffer for each FrameResource, we have to apply the
