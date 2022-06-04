@@ -20,7 +20,6 @@
 
 Texture2D    gDiffuseMap : register(t0);
 
-
 SamplerState gsamPointWrap        : register(s0);
 SamplerState gsamPointClamp       : register(s1);
 SamplerState gsamLinearWrap       : register(s2);
@@ -32,7 +31,7 @@ SamplerState gsamAnisotropicClamp : register(s5);
 cbuffer cbPerObject : register(b0)
 {
     float4x4 gWorld;
-	float4x4 gTexTransform;
+    float4x4 gTexTransform; //! used for transforming the input texture coordinates. Sometimes it makes more sense for the texture transform to be a property of the object. 
 };
 
 // Constant data that varies per material.
@@ -66,7 +65,7 @@ cbuffer cbMaterial : register(b2)
 	float4   gDiffuseAlbedo;
     float3   gFresnelR0;
     float    gRoughness;
-	float4x4 gMatTransform;
+    float4x4 gMatTransform; //! used for transforming the input texture coordinates. Sometimes it makes more sense for the material to transform the textures (for animated materials like water)
 };
 
 struct VertexIn
@@ -98,16 +97,16 @@ VertexOut VS(VertexIn vin)
     // Transform to homogeneous clip space.
     vout.PosH = mul(posW, gViewProj);
 	
-	// Output vertex attributes for interpolation across triangle.
-	float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
-	vout.TexC = mul(texC, gMatTransform).xy;
+	// Output texture coordinates for interpolation across triangle.
+	float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform); //! to transform the 2D texture coordinates by a 4x4 matrix, we augment it to a 4D vector
+	vout.TexC = mul(texC, gMatTransform).xy; //! after the nultiplication is done, the resulting 4D vector is cast back to a 2D vector by throwing away the z and w components. 
 	
     return vout;
 }
 
 float4 PS(VertexOut pin) : SV_Target
 {
-    float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) * gDiffuseAlbedo;
+    float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) * gDiffuseAlbedo; //! choose wrap mode to repeat/tile the texture over the mesh to get more resolution
 	
     // Interpolating normal can unnormalize it, so renormalize it.
     pin.NormalW = normalize(pin.NormalW);

@@ -19,10 +19,11 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{3F4D6E80-3635-4577-B6AC-CE8B90068BDD}</ProjectGuid>
+    <ProjectGuid>{012062D0-D0C4-47F2-A733-119911F7C25B}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>Shapes</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>ShapesEx1</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
