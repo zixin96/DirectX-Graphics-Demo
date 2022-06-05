@@ -64,18 +64,18 @@ class TexWavesApp : public D3DApp
 		TexWavesApp(HINSTANCE hInstance);
 		TexWavesApp(const TexWavesApp& rhs)            = delete;
 		TexWavesApp& operator=(const TexWavesApp& rhs) = delete;
-		~TexWavesApp();
+		~TexWavesApp() override;
 
-		virtual bool Initialize() override;
+		bool Initialize() override;
 
 	private:
-		virtual void OnResize() override;
-		virtual void Update(const GameTimer& gt) override;
-		virtual void Draw(const GameTimer& gt) override;
+		void OnResize() override;
+		void Update(const GameTimer& gt) override;
+		void Draw(const GameTimer& gt) override;
 
-		virtual void OnMouseDown(WPARAM btnState, int x, int y) override;
-		virtual void OnMouseUp(WPARAM btnState, int x, int y) override;
-		virtual void OnMouseMove(WPARAM btnState, int x, int y) override;
+		void OnMouseDown(WPARAM btnState, int x, int y) override;
+		void OnMouseUp(WPARAM btnState, int x, int y) override;
+		void OnMouseMove(WPARAM btnState, int x, int y) override;
 
 		void OnKeyboardInput(const GameTimer& gt);
 		void UpdateCamera(const GameTimer& gt);
@@ -221,7 +221,7 @@ void TexWavesApp::OnResize()
 	D3DApp::OnResize();
 
 	// The window resized, so update the aspect ratio and recompute the projection matrix.
-	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
+	XMMATRIX P = XMMatrixPerspectiveFovLH(0.5f * MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
 	XMStoreFloat4x4(&mProj, P);
 }
 

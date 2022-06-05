@@ -136,23 +136,23 @@ bool D3DApp::Initialize()
  */
 void D3DApp::CreateRtvAndDsvDescriptorHeaps()
 {
-	// we need a heap to store SwapChainBufferCount RTVs
+	// RTV heap 
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
-	rtvHeapDesc.NumDescriptors = SwapChainBufferCount;
+	rtvHeapDesc.NumDescriptors = SwapChainBufferCount; // we need to store 2 render target descriptors in this heap to describe the buffer resources in the swap chain 
 	rtvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	rtvHeapDesc.NodeMask       = 0;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
-		              &rtvHeapDesc, IID_PPV_ARGS(mRtvHeap.GetAddressOf())));
+		              &rtvHeapDesc, IID_PPV_ARGS(&mRtvHeap)));
 
-	// we need a heap to store 1 DSV
+	// DSV heap
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
-	dsvHeapDesc.NumDescriptors = 1;
+	dsvHeapDesc.NumDescriptors = 1; // we need to store 1 depth/stencil descriptor in this heap to describe the depth/stencil buffer resource for depth testing
 	dsvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	dsvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	dsvHeapDesc.NodeMask       = 0;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
-		              &dsvHeapDesc, IID_PPV_ARGS(mDsvHeap.GetAddressOf())));
+		              &dsvHeapDesc, IID_PPV_ARGS(&mDsvHeap)));
 }
 
 void D3DApp::OnResize()
@@ -167,7 +167,7 @@ void D3DApp::OnResize()
 	// reset the command list to prep for recreation commands
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
-	// Release the previous resources we will be recreating.
+	// Release the previous resources we will be recreating. (You must release the swap chain resources before calling IDXGISwapChain::ResizeBuffers)
 	for (int i = 0; i < SwapChainBufferCount; ++i)
 		mSwapChainBuffer[i].Reset();
 	mDepthStencilBuffer.Reset();
@@ -183,19 +183,23 @@ void D3DApp::OnResize()
 	mCurrBackBuffer = 0;
 
 	// create an RTV to each buffer in the swap chain
-
-
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
 	for (UINT i = 0; i < SwapChainBufferCount; i++)
 	{
 		// get the ith buffer in the swap chain
-		ThrowIfFailed(mSwapChain->GetBuffer(i, IID_PPV_ARGS(&mSwapChainBuffer[i])));
+		ThrowIfFailed(mSwapChain->GetBuffer(i, IID_PPV_ARGS(mSwapChainBuffer[i].GetAddressOf()))); // use GetBuffer to retrieve buffer resources that are stored in the swap chain
+
 		// create an RTV to it 
-		md3dDevice->CreateRenderTargetView(mSwapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
+		md3dDevice->CreateRenderTargetView(mSwapChainBuffer[i].Get(),
+		                                   nullptr, // because we've specified our back buffer format when creating the swap chain (and resize), we can pass nullptr here
+		                                   rtvHeapHandle);
+
 		// next entry in heap (will change rtvHeapHandle)
 		rtvHeapHandle.Offset(1,                   // The number of descriptors by which to increment.
 		                     mRtvDescriptorSize); // The amount by which to increment for each descriptor, including padding.
 	}
+
+	// We need to manually create depth/stencil buffer resource because swap chain doesn't provide it
 
 	// Create the depth/stencil buffer resource.
 	D3D12_RESOURCE_DESC depthStencilDesc;
@@ -224,11 +228,11 @@ void D3DApp::OnResize()
 	optClear.DepthStencil.Stencil = 0;
 
 	ThrowIfFailed(md3dDevice->CreateCommittedResource(
-		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), // resources that are solely accessed by GPU
 		              D3D12_HEAP_FLAG_NONE,
-		              &depthStencilDesc,
-		              D3D12_RESOURCE_STATE_COMMON,
-		              &optClear,
+		              &depthStencilDesc,           //  describes the resource 
+		              D3D12_RESOURCE_STATE_COMMON, // initial state 
+		              &optClear,                   // optimal clear values (if your clear value matches this, it's optimal)
 		              IID_PPV_ARGS(mDepthStencilBuffer.GetAddressOf())));
 
 	// before using the depth/stencil buffer, we must create an associated
@@ -240,7 +244,9 @@ void D3DApp::OnResize()
 	dsvDesc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
 	dsvDesc.Format             = mDepthStencilFormat;
 	dsvDesc.Texture2D.MipSlice = 0;
-	md3dDevice->CreateDepthStencilView(mDepthStencilBuffer.Get(), &dsvDesc, DepthStencilView());
+	md3dDevice->CreateDepthStencilView(mDepthStencilBuffer.Get(),
+	                                   &dsvDesc, // since our depth buffer resource is typeless, we must provide a D3D12_DEPTH_STENCIL_VIEW_DESC. 
+	                                   DepthStencilView());
 
 	// Transition the resource from its initial state to be used as a depth buffer.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mDepthStencilBuffer.Get(),
@@ -256,6 +262,7 @@ void D3DApp::OnResize()
 	FlushCommandQueue();
 
 	// Update the viewport transform to cover the client area.
+	// this specifies how we do viewport transform page 193
 	mScreenViewport.TopLeftX = 0;
 	mScreenViewport.TopLeftY = 0;
 	mScreenViewport.Width    = static_cast<float>(mClientWidth);
@@ -365,7 +372,7 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			mAppPaused = false;
 			mResizing = false;
 			mTimer.Start();
-			OnResize();
+			OnResize(); // resize after the user has released the resize bar
 			return 0;
 
 		// WM_DESTROY is sent when the window is being destroyed.
@@ -534,7 +541,7 @@ bool D3DApp::InitDirect3D()
 	Query4XMSAAQualityLevel();
 
 	#ifdef _DEBUG
-	LogAdapters();
+	// LogAdapters();
 	#endif
 
 	CreateCommandObjects();
@@ -574,9 +581,6 @@ void D3DApp::CreateCommandObjects()
  */
 void D3DApp::CreateSwapChain()
 {
-	// Release the previous swapchain we will be recreating.
-	mSwapChain.Reset();
-
 	// describe the swap chain first
 	DXGI_SWAP_CHAIN_DESC sd;
 	// filling DXGI_MODE_DESC: description of back buffer
@@ -603,7 +607,7 @@ void D3DApp::CreateSwapChain()
 	ThrowIfFailed(mdxgiFactory->CreateSwapChain(
 		              mCommandQueue.Get(), // we pass a pointer to the command queue b/c swap chain need to submit to the queue the actual commands to display a buffer to the screen
 		              &sd,
-		              mSwapChain.GetAddressOf()));
+		              &mSwapChain)); // will release the previous swap chain
 }
 
 /**

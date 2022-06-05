@@ -196,7 +196,7 @@ void CrateApp::OnResize()
 	D3DApp::OnResize();
 
 	// The window resized, so update the aspect ratio and recompute the projection matrix.
-	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
+	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, AspectRatio(), 0.1f, 1000.0f);
 	XMStoreFloat4x4(&mProj, P);
 }
 
@@ -323,7 +323,7 @@ void CrateApp::OnMouseMove(WPARAM btnState, int x, int y)
 		mRadius += dx - dy;
 
 		// Restrict the radius.
-		mRadius = MathHelper::Clamp(mRadius, 5.0f, 150.0f);
+		mRadius = MathHelper::Clamp(mRadius, 1.0f, 150.0f);
 	}
 
 	mLastMousePos.x = x;
