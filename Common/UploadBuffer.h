@@ -26,7 +26,7 @@ class UploadBuffer
 				mElementByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(T));
 
 			ThrowIfFailed(device->CreateCommittedResource(
-				              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+				              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD), // Upload heap. This is where we commit resources where we need to upload data from the CPU to the GPU resource
 				              D3D12_HEAP_FLAG_NONE,
 				              &CD3DX12_RESOURCE_DESC::Buffer(mElementByteSize*elementCount),
 				              D3D12_RESOURCE_STATE_GENERIC_READ,
@@ -49,7 +49,8 @@ class UploadBuffer
 		~UploadBuffer()
 		{
 			if (mUploadBuffer != nullptr)
-				mUploadBuffer->Unmap(0, nullptr);
+				mUploadBuffer->Unmap(0,        // 0 for buffer
+				                     nullptr); // unmap the entire resource
 
 			mMappedData = nullptr;
 		}
@@ -60,7 +61,8 @@ class UploadBuffer
 		}
 
 		/**
-		 * \brief Update a particular element in the buffer
+		 * \brief Upload buffer may contains data for multiple elements. Update a particular element in the buffer.
+		 * Use it when we need to change the contents of an upload buffer from the CPU
 		 * \param elementIndex The index of the element to update
 		 * \param data Update data
 		 */

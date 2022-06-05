@@ -154,10 +154,10 @@ class DxException
 		int          LineNumber = -1;
 };
 
-// Defines a subrange of geometry in a MeshGeometry.  This is for when multiple
+// Defines a sub-range of geometry in a MeshGeometry.  This is for when multiple
 // geometries are stored in one vertex and index buffer.  It provides the offsets
 // and data needed to draw a subset of geometry stores in the vertex and index 
-// buffers so that we can implement the technique described by Figure 6.3.
+// buffers so that we can implement the technique described by Figure 6.3, page 215
 struct SubmeshGeometry
 {
 	UINT IndexCount         = 0;
@@ -170,16 +170,17 @@ struct SubmeshGeometry
 };
 
 /**
- * \brief Groups a vertex and index buffer together to define a group of geometry
+ * \brief A structure that groups a vertex and index buffer together to define a group of geometry
+ * We say "a group" because one vertex/index buffer can contain multiple geometry. See page 215
  */
 struct MeshGeometry
 {
 	// Give it a name so we can look it up by name.
 	std::string Name;
 
-	// System memory copies of geometry.
+	// keep a system memory backing of the vertex and index data so that it can be read by the CPU
+	// The CPU needs access to the geometry data for things like picking and collision detection. 
 	// Use Blobs because the vertex/index format can be generic. It is up to the client to cast appropriately.
-	//! It is common to store system memory copies of geometry for things like picking and collision detection
 	Microsoft::WRL::ComPtr<ID3DBlob> VertexBufferCPU = nullptr;
 	Microsoft::WRL::ComPtr<ID3DBlob> IndexBufferCPU  = nullptr;
 
@@ -189,16 +190,17 @@ struct MeshGeometry
 	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferUploader = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferUploader  = nullptr;
 
-	// Data about the buffers.
+	// caches the important properties of the vertex and index buffers: 
 	UINT        VertexByteStride     = 0;
 	UINT        VertexBufferByteSize = 0;
 	DXGI_FORMAT IndexFormat          = DXGI_FORMAT_R16_UINT;
 	UINT        IndexBufferByteSize  = 0;
 
 	// A MeshGeometry may store multiple geometries in one vertex/index buffer.
-	// Use this container to define the Submesh geometries so we can draw
-	// the Submeshes individually.
+	// Use this container to define the Submesh geometries so we can draw the Submeshes individually.
 	std::unordered_map<std::string, SubmeshGeometry> DrawArgs;
+
+	// Also, provide functions that return view to the buffers:
 
 	D3D12_VERTEX_BUFFER_VIEW VertexBufferView() const
 	{

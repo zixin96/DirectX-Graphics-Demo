@@ -11,12 +11,14 @@ cbuffer cbPerObject : register(b0)
 
 struct VertexIn
 {
-	float3 PosL  : POSITION;
-    float4 Color : COLOR;
+	// L: local space
+	float3 PosL  : POSITION; // this is the same as "float3 PosL  : POSITION0;"
+    float4 Color : COLOR; // this is the same as "float4 Color  : COLOR0;"
 };
 
 struct VertexOut
 {
+	// H: homogenenous clip space
 	float4 PosH  : SV_POSITION;
     float4 Color : COLOR;
 };

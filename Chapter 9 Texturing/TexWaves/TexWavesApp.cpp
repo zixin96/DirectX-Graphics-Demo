@@ -533,23 +533,32 @@ void TexWavesApp::LoadTextures()
 	auto grassTex      = std::make_unique<Texture>();
 	grassTex->Name     = "grassTex";
 	grassTex->Filename = L"../../Textures/grasssnow01.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), grassTex->Filename.c_str(),
-		              grassTex->Resource, grassTex->UploadHeap));
+	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
+		              md3dDevice.Get(),
+		              mCommandList.Get(),
+		              grassTex->Filename.c_str(),
+		              grassTex->Resource,
+		              grassTex->UploadHeap));
 
 	auto waterTex      = std::make_unique<Texture>();
 	waterTex->Name     = "waterTex";
 	waterTex->Filename = L"../../Textures/water1.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), waterTex->Filename.c_str(),
-		              waterTex->Resource, waterTex->UploadHeap));
+	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
+		              md3dDevice.Get(),
+		              mCommandList.Get(),
+		              waterTex->Filename.c_str(),
+		              waterTex->Resource,
+		              waterTex->UploadHeap));
 
 	auto fenceTex      = std::make_unique<Texture>();
 	fenceTex->Name     = "fenceTex";
 	fenceTex->Filename = L"../../Textures/WoodCrate01.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), fenceTex->Filename.c_str(),
-		              fenceTex->Resource, fenceTex->UploadHeap));
+	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
+		              md3dDevice.Get(),
+		              mCommandList.Get(),
+		              fenceTex->Filename.c_str(),
+		              fenceTex->Resource,
+		              fenceTex->UploadHeap));
 
 	mTextures[grassTex->Name] = std::move(grassTex);
 	mTextures[waterTex->Name] = std::move(waterTex);
@@ -752,7 +761,10 @@ void TexWavesApp::BuildWavesGeometry()
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                   mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+	                                                   mCommandList.Get(),
+	                                                   indices.data(),
+	                                                   ibByteSize,
+	                                                   geo->IndexBufferUploader);
 
 	geo->VertexByteStride     = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
@@ -856,7 +868,10 @@ void TexWavesApp::BuildFrameResources()
 	for (int i = 0; i < gNumFrameResources; ++i)
 	{
 		mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(),
-		                                                          1, (UINT)mAllRitems.size(), (UINT)mMaterials.size(), mWaves->VertexCount()));
+		                                                          1,
+		                                                          (UINT)mAllRitems.size(),
+		                                                          (UINT)mMaterials.size(),
+		                                                          mWaves->VertexCount()));
 	}
 }
 

@@ -16,6 +16,11 @@ using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace DirectX::PackedVector;
 
+/**
+ * \brief Define our custom vertex format
+ * We inform D3D about this structure of our Vertex using a vector of D3D12_INPUT_ELEMENT_DESC.
+ * Each element in our structure corresponds to one element in this vector. 
+ */
 struct Vertex
 {
 	XMFLOAT3 Pos;
@@ -69,7 +74,7 @@ class BoxApp : public D3DApp
 		ComPtr<ID3DBlob> mvsByteCode = nullptr;
 		ComPtr<ID3DBlob> mpsByteCode = nullptr;
 
-		std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
+		std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout; // a description of our custom vertex structure
 
 		std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> mPSOs;
 
@@ -202,7 +207,8 @@ void BoxApp::Draw(const GameTimer& gt)
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	                                                                       D3D12_RESOURCE_STATE_PRESENT,
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	// Clear the back buffer and depth buffer.
 	mCommandList->ClearRenderTargetView(CurrentBackBufferView(), Colors::LightSteelBlue, 0, nullptr);
@@ -212,23 +218,30 @@ void BoxApp::Draw(const GameTimer& gt)
 	mCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = {mCbvHeap.Get()};
-	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps); // bind the descriptor heap to the pipeline
 
-	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
+	mCommandList->SetGraphicsRootSignature(mRootSignature.Get()); // bind root signature to the pipeline
 
-	mCommandList->IASetVertexBuffers(0, 1, &mBoxGeo->VertexBufferView());
+	D3D12_VERTEX_BUFFER_VIEW vertexBuffers[] = {mBoxGeo->VertexBufferView()};
+	mCommandList->IASetVertexBuffers(0, 1, // we are binding buffers to input slot 0
+	                                 vertexBuffers);
+
 	mCommandList->IASetIndexBuffer(&mBoxGeo->IndexBufferView());
 	mCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	mCommandList->SetGraphicsRootDescriptorTable(0, mCbvHeap->GetGPUDescriptorHandleForHeapStart());
+	// bind the descriptor table to the pipeline
+	mCommandList->SetGraphicsRootDescriptorTable(0,                                               // index of the root parameter we are setting
+	                                             mCbvHeap->GetGPUDescriptorHandleForHeapStart()); // handle to a descriptor in the heap that specifies the first descriptor in the table being set
 
-	mCommandList->DrawIndexedInstanced(
-	                                   mBoxGeo->DrawArgs["box"].IndexCount,
-	                                   1, 0, 0, 0);
+	mCommandList->DrawIndexedInstanced(mBoxGeo->DrawArgs["box"].IndexCount, // # of indices to draw
+	                                   1,                                   // advanced ONLY
+	                                   0, 0,                                // one geometry to draw
+	                                   0);                                  // advanced ONLY
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET,
+	                                                                       D3D12_RESOURCE_STATE_PRESENT));
 
 	// Done recording commands.
 	ThrowIfFailed(mCommandList->Close());
@@ -304,8 +317,8 @@ void BoxApp::BuildDescriptorHeaps()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
 	cbvHeapDesc.NumDescriptors = 1;
-	cbvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	cbvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	cbvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;    // heap types for CBV, SRV, and UAV
+	cbvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE; // descriptors from this heap will be accessed by shader programs
 	cbvHeapDesc.NodeMask       = 0;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&cbvHeapDesc,
 		              IID_PPV_ARGS(&mCbvHeap)));
@@ -329,8 +342,7 @@ void BoxApp::BuildConstantBuffers()
 	cbvDesc.BufferLocation = cbAddress;
 	cbvDesc.SizeInBytes    = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants)); // must be a multiple of 256
 
-	md3dDevice->CreateConstantBufferView(
-	                                     &cbvDesc,
+	md3dDevice->CreateConstantBufferView(&cbvDesc,
 	                                     mCbvHeap->GetCPUDescriptorHandleForHeapStart());
 }
 
@@ -342,13 +354,17 @@ void BoxApp::BuildRootSignature()
 	// the input resources as function parameters, then the root signature can be
 	// thought of as defining the function signature.  
 
-	// Root parameter can be a table, root descriptor or root constants.
-	CD3DX12_ROOT_PARAMETER slotRootParameter[1];
-
 	// Create a single descriptor table of CBVs.
+	// a descriptor table specifies a contiguous range of descriptors in a descriptor heap
 	CD3DX12_DESCRIPTOR_RANGE cbvTable;
-	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 0);
-	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable);
+	cbvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, // table type
+	              1,                               // number of descriptors in the table
+	              0);                              // base shader register arguments are bound to for this root parameter
+
+	// Create a root parameter that expects a descriptor table of 1 CBV that gets bound to constant buffer register 0 
+	CD3DX12_ROOT_PARAMETER slotRootParameter[1];
+	slotRootParameter[0].InitAsDescriptorTable(1,          // number of ranges
+	                                           &cbvTable); // pointer to array of ranges
 
 	// A root signature is an array of root parameters.
 	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(1,
@@ -385,14 +401,36 @@ void BoxApp::BuildShadersAndInputLayout()
 	mvsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_0");
 	mpsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
 
-	// Offline:
+	// Offline .cso shader loading:
 	// mvsByteCode = d3dUtil::LoadBinary(L"Shaders\\color2.cso");
 	// mpsByteCode = d3dUtil::LoadBinary(L"Shaders\\color2.cso");
 
+
+	// struct Vertex
+	// {
+	// 	XMFLOAT3 Pos; // 0-byte offset
+	// 	XMFLOAT4 Color; // 12-byte offset
+	// };
+
+	// Each element in mInputLayout corresponds to one element in our Vertex struct
 	mInputLayout =
 	{
-		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+		{
+			"POSITION", 0,                              // semanticName + semanticIndex: corresponds to "float3 PosL  : POSITION0;" in shader. 
+			DXGI_FORMAT_R32G32B32_FLOAT,                // data type: float3
+			0,                                          // input slot: this element comes from the input slot 0
+			0,                                          // 0-byte offset from the start of the C++ Vertex struct of the input slot 0 to the start of the vertex component. could use D3D12_APPEND_ALIGNED_ELEMENT instead of manually specifying the offset
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, // Input data is per-vertex data
+			0                                           // This value must be 0 for an element that contains per-vertex data
+		},
+		{
+			"COLOR", 0,                                 // semanticName + semanticIndex: corresponds to "float4 Color : COLOR0;" in shader
+			DXGI_FORMAT_R32G32B32A32_FLOAT,             // data type: float4
+			0,                                          // input slot: this element comes from the input slot 0
+			12,                                         // 12-byte offset from the start of the C++ Vertex struct of the input slot 0 to the start of the vertex component. could use D3D12_APPEND_ALIGNED_ELEMENT instead of manually specifying the offset
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, // Input data is per-vertex data
+			0                                           // This value must be 0 for an element that contains per-vertex data
+		}
 	};
 }
 
@@ -478,7 +516,7 @@ void BoxApp::BuildPSO()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 	ZeroMemory(&opaquePsoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-	opaquePsoDesc.InputLayout    = {mInputLayout.data(), (UINT)mInputLayout.size()}; // fill in D3D12_INPUT_LAYOUT_DESC
+	opaquePsoDesc.InputLayout    = {mInputLayout.data(), (UINT)mInputLayout.size()}; // fill in D3D12_INPUT_LAYOUT_DESC: {an array of D3D12_INPUT_ELEMENT_DESC, # of elements}
 	opaquePsoDesc.pRootSignature = mRootSignature.Get();
 	opaquePsoDesc.VS             =
 	{
