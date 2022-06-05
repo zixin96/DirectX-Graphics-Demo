@@ -278,7 +278,7 @@ void BoxApp::Draw(const GameTimer& gt)
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
 	D3D12_VERTEX_BUFFER_VIEW vertexBuffers[] = {mBoxGeo->VertexPosBufferView(), mBoxGeo->VertexColorBufferView()};
-	mCommandList->IASetVertexBuffers(0, 2, // we are binding buffers to input slot 0, 1
+	mCommandList->IASetVertexBuffers(0, _countof(vertexBuffers), // we are binding buffers to input slot 0, 1
 	                                 vertexBuffers);
 	mCommandList->IASetIndexBuffer(&mBoxGeo->IndexBufferView());
 	mCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

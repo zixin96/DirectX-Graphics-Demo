@@ -165,7 +165,8 @@ void D3DApp::OnResize()
 	FlushCommandQueue();
 
 	// reset the command list to prep for recreation commands
-	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
+	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(),
+		              nullptr)); // we are not using this command list for drawing in D3DApp::OnResize, so specify pipeline init state is nullptr here
 
 	// Release the previous resources we will be recreating. (You must release the swap chain resources before calling IDXGISwapChain::ResizeBuffers)
 	for (int i = 0; i < SwapChainBufferCount; ++i)
@@ -191,8 +192,8 @@ void D3DApp::OnResize()
 
 		// create an RTV to it 
 		md3dDevice->CreateRenderTargetView(mSwapChainBuffer[i].Get(),
-		                                   nullptr, // because we've specified our back buffer format when creating the swap chain (and resize), we can pass nullptr here
-		                                   rtvHeapHandle);
+		                                   nullptr,        // because we've specified our back buffer format when creating the swap chain (and resize), we can pass nullptr here
+		                                   rtvHeapHandle); // Describes the CPU descriptor handle that represents the destination where the newly-created render target view will reside
 
 		// next entry in heap (will change rtvHeapHandle)
 		rtvHeapHandle.Offset(1,                   // The number of descriptors by which to increment.
@@ -245,8 +246,8 @@ void D3DApp::OnResize()
 	dsvDesc.Format             = mDepthStencilFormat;
 	dsvDesc.Texture2D.MipSlice = 0;
 	md3dDevice->CreateDepthStencilView(mDepthStencilBuffer.Get(),
-	                                   &dsvDesc, // since our depth buffer resource is typeless, we must provide a D3D12_DEPTH_STENCIL_VIEW_DESC. 
-	                                   DepthStencilView());
+	                                   &dsvDesc,            // since our depth buffer resource is typeless, we must provide a D3D12_DEPTH_STENCIL_VIEW_DESC. 
+	                                   DepthStencilView()); // Describes the CPU descriptor handle that represents the destination where the newly-created depth/stencil view will reside
 
 	// Transition the resource from its initial state to be used as a depth buffer.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mDepthStencilBuffer.Get(),

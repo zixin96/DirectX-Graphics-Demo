@@ -84,15 +84,17 @@ class BoxApp : public D3DApp
 		XMFLOAT4X4 mView  = MathHelper::Identity4x4();
 		XMFLOAT4X4 mProj  = MathHelper::Identity4x4();
 
-		float mTheta  = 1.5f * XM_PI;
-		float mPhi    = XM_PIDIV4;
+		float mTheta  = 1.5f * XM_PI; // 3 * pi / 2
+		float mPhi    = XM_PIDIV4;    // pi / 4
 		float mRadius = 5.0f;
 
 		POINT mLastMousePos;
 };
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
-                   PSTR      cmdLine, int         showCmd)
+int WINAPI WinMain(HINSTANCE hInstance,
+                   HINSTANCE prevInstance,
+                   PSTR      cmdLine,
+                   int       showCmd)
 {
 	// Enable run-time memory check for debug builds.
 	#if defined(DEBUG) | defined(_DEBUG)
@@ -129,7 +131,8 @@ bool BoxApp::Initialize()
 		return false;
 
 	// Reset the command list to prep for initialization commands.
-	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
+	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(),
+		              nullptr)); // we are not drawing, pipeline state could be nullptr
 
 	BuildDescriptorHeaps();
 	BuildConstantBuffers();
@@ -313,10 +316,13 @@ void BoxApp::OnKeyboardInput(const GameTimer& gt)
 		mIsWireframe = false;
 }
 
+/**
+ * \brief Descriptor heap for constant buffer descriptor
+ */
 void BoxApp::BuildDescriptorHeaps()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
-	cbvHeapDesc.NumDescriptors = 1;
+	cbvHeapDesc.NumDescriptors = 1;                                         // we only have a single object, thus we only need a single descriptor to describe a single constant buffer
 	cbvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;    // heap types for CBV, SRV, and UAV
 	cbvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE; // descriptors from this heap will be accessed by shader programs
 	cbvHeapDesc.NodeMask       = 0;
@@ -343,7 +349,7 @@ void BoxApp::BuildConstantBuffers()
 	cbvDesc.SizeInBytes    = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants)); // must be a multiple of 256
 
 	md3dDevice->CreateConstantBufferView(&cbvDesc,
-	                                     mCbvHeap->GetCPUDescriptorHandleForHeapStart());
+	                                     mCbvHeap->GetCPUDescriptorHandleForHeapStart()); // Describes the CPU descriptor handle that represents the destination where the newly-created constant buffer view will reside
 }
 
 void BoxApp::BuildRootSignature()
@@ -396,8 +402,6 @@ void BoxApp::BuildRootSignature()
 
 void BoxApp::BuildShadersAndInputLayout()
 {
-	HRESULT hr = S_OK;
-
 	mvsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_0");
 	mpsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
 
