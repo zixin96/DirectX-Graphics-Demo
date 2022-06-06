@@ -88,7 +88,7 @@ class ShapesApp : public D3DApp
 
 		ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 
-		ComPtr<ID3D12DescriptorHeap> mCbvHeap       = nullptr;
+		ComPtr<ID3D12DescriptorHeap> mCbvHeap = nullptr;
 
 		std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 		std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
@@ -405,6 +405,7 @@ void ShapesApp::UpdateMainPassCB(const GameTimer& gt)
 // See Notability
 void ShapesApp::BuildDescriptorHeaps()
 {
+	//!? look here: 
 	// only need one pass descriptor heap per frame resource
 	UINT numDescriptors = gNumFrameResources;
 
@@ -420,6 +421,7 @@ void ShapesApp::BuildDescriptorHeaps()
 // see notability
 void ShapesApp::BuildConstantBufferViews()
 {
+	//!? look here: 
 	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
 
 	// three descriptors are the pass CBVs for each frame resource.
@@ -447,13 +449,11 @@ void ShapesApp::BuildRootSignature()
 	CD3DX12_ROOT_PARAMETER slotRootParameter[2];
 
 	// Create root CBVs.
+	//!? look here: 
 	slotRootParameter[0].InitAsConstants(16, 0); // use 16 root constants to set the per-object world matrix
 
 	CD3DX12_DESCRIPTOR_RANGE cbvTable1;
-	cbvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
-		1,
-		1);
-
+	cbvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1);
 	slotRootParameter[1].InitAsDescriptorTable(1, &cbvTable1); // per-pass CBV
 
 	// A root signature is an array of root parameters.
@@ -768,6 +768,7 @@ void ShapesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::v
 		cmdList->IASetIndexBuffer(&ri->Geo->IndexBufferView());
 		cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 
+		//!? look here: 
 		cmdList->SetGraphicsRoot32BitConstants(0, 16, ri->World.m, 0);
 
 		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
