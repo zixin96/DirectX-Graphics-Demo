@@ -423,11 +423,14 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(float bottomRadius
 	// Compute vertices for each stack ring starting at the bottom and moving up.
 	for (uint32 i = 0; i < ringCount; ++i)
 	{
-		float y = -0.5f * height + i * stackHeight;
-		float r = bottomRadius + i * radiusStep;
+		float y = -0.5f * height + i * stackHeight; // height of ith ring
+		float r = bottomRadius + i * radiusStep;    // radius of ith ring
 
-		// vertices of ring
+
 		float dTheta = 2.0f * XM_PI / sliceCount;
+		// vertices of ring: each ring has sliceCount unique vertices.
+		//! However, we need to create sliceCount + 1 vertices because the first and last vertex of each ring is duplicated in position, but the tex coord is different
+		//! we have to do this so that we can apply textures to cylinders correctly
 		for (uint32 j = 0; j <= sliceCount; ++j)
 		{
 			Vertex vertex;
@@ -435,8 +438,10 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(float bottomRadius
 			float c = cosf(j * dTheta);
 			float s = sinf(j * dTheta);
 
+			// position on the ring can be presented by coordinates on a circle with radius r
 			vertex.Position = XMFLOAT3(r * c, y, r * s);
 
+			// TODO: Blackbox: how do we generate tex coordinates, tangent and normal? 
 			vertex.TexC.x = (float)j / sliceCount;
 			vertex.TexC.y = 1.0f - (float)i / stackCount;
 
@@ -483,6 +488,9 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(float bottomRadius
 	{
 		for (uint32 j = 0; j < sliceCount; ++j)
 		{
+			// each quad has 2 triangles:
+			// see page 277
+
 			meshData.Indices32.push_back(i * ringVertexCount + j);
 			meshData.Indices32.push_back((i + 1) * ringVertexCount + j);
 			meshData.Indices32.push_back((i + 1) * ringVertexCount + j + 1);
