@@ -261,7 +261,7 @@ void ShapesApp::Draw(const GameTimer& gt)
 	int  passCbvIndex  = mPassCbvOffset + mCurrFrameResourceIndex;
 	auto passCbvHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(mCbvHeap->GetGPUDescriptorHandleForHeapStart());
 	passCbvHandle.Offset(passCbvIndex, mCbvSrvUavDescriptorSize);
-	mCommandList->SetGraphicsRootDescriptorTable(1, passCbvHandle);
+	mCommandList->SetGraphicsRootDescriptorTable(1, passCbvHandle); // bind a single descriptor in the descriptor table starting from passCbvHandle
 
 	DrawRenderItems(mCommandList.Get(), mOpaqueRitems);
 
@@ -492,11 +492,13 @@ void ShapesApp::BuildRootSignature()
 	// Describes a descriptor range: https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#using-descriptor-tables
 	CD3DX12_DESCRIPTOR_RANGE cbvTable0;
 	cbvTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
-	               1,  // there is a single descriptor in this table. When you bind the descriptor table, only BaseDescriptor will be bind.
+	               1,  // each object draw call requires a single descriptor to be bound that describes a per-object constant buffer 
 	               0); // register(b0)
 
 	CD3DX12_DESCRIPTOR_RANGE cbvTable1;
-	cbvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1, 1); // register(b1)
+	cbvTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_CBV,
+	               1,  // each render pass requires a single descriptor to be bound that describes a per-pass constant buffer
+	               1); // register(b1)
 
 	// Create root CBVs. (we need two tables because the CBVs will be set at different frequencies)
 	slotRootParameter[0].InitAsDescriptorTable(1, &cbvTable0); // per-object CBV
@@ -823,7 +825,7 @@ void ShapesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::v
 		auto cbvHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(mCbvHeap->GetGPUDescriptorHandleForHeapStart());
 		cbvHandle.Offset(cbvIndex, mCbvSrvUavDescriptorSize);
 
-		cmdList->SetGraphicsRootDescriptorTable(0, cbvHandle);
+		cmdList->SetGraphicsRootDescriptorTable(0, cbvHandle); // bind a single descriptor in the descriptor table starting from cbvHandle
 
 		// using instancing, we only draw a subset of the vertex and index buffers by using information stored in the RenderItem
 		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);

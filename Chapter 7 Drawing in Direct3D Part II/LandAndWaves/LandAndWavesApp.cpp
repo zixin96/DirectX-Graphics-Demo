@@ -105,6 +105,7 @@ class LandAndWavesApp : public D3DApp
 		std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 
 		// save a reference to the wave render item so that we can set its vertex buffer on the fly
+		// we need to do this because its vertex buffer is a dynamic buffer and changes every frame
 		RenderItem*            mWavesRitem = nullptr;
 		std::unique_ptr<Waves> mWaves;
 
@@ -122,9 +123,6 @@ class LandAndWavesApp : public D3DApp
 		float mTheta  = 1.5f * XM_PI;
 		float mPhi    = XM_PIDIV2 - 0.1f;
 		float mRadius = 50.0f;
-
-		float mSunTheta = 1.25f * XM_PI;
-		float mSunPhi   = XM_PIDIV4;
 
 		POINT mLastMousePos;
 };
@@ -443,7 +441,8 @@ void LandAndWavesApp::UpdateWaves(const GameTimer& gt)
 		currWavesVB->CopyData(i, v);
 	}
 
-	// Set the dynamic VB of the wave renderitem to the current frame VB.
+	// Set the dynamic VB of the wave renderitem to the current frame VB,
+	// which will be referenced by VertexBufferView() when we bind the vertex buffer
 	mWavesRitem->Geo->VertexBufferGPU = currWavesVB->Resource();
 }
 
@@ -529,13 +528,6 @@ void LandAndWavesApp::BuildLandGeometry()
 	// each vertex.  In addition, color the vertices based on their height so we have
 	// sandy looking beaches, grassy low hills, and snow mountain peaks.
 	//
-
-	// Note: this "Vertex" is the one below (in FrameResource), not the one in GeometryGenerator
-	// struct Vertex
-	// {
-	// 	DirectX::XMFLOAT3 Pos;
-	// 	DirectX::XMFLOAT4 Color;
-	// };
 
 	std::vector<Vertex> vertices(grid.Vertices.size());
 	for (size_t i = 0; i < grid.Vertices.size(); ++i)
@@ -722,7 +714,7 @@ void LandAndWavesApp::BuildFrameResources()
 
 void LandAndWavesApp::BuildRenderItems()
 {
-	auto wavesRitem                = std::make_unique<RenderItem>();
+	auto wavesRitem = std::make_unique<RenderItem>();
 	XMStoreFloat4x4(&wavesRitem->World, XMMatrixScaling(2.f, 1.f, 2.0f));
 	wavesRitem->ObjCBIndex         = 0;
 	wavesRitem->Geo                = mGeometries["waterGeo"].get();
@@ -737,7 +729,6 @@ void LandAndWavesApp::BuildRenderItems()
 
 	auto gridRitem = std::make_unique<RenderItem>();
 	XMStoreFloat4x4(&gridRitem->World, XMMatrixTranslation(0.f, 12.f, 0.0f));
-
 	gridRitem->ObjCBIndex         = 1;
 	gridRitem->Geo                = mGeometries["landGeo"].get();
 	gridRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
