@@ -239,7 +239,7 @@ struct Light
 {
 	DirectX::XMFLOAT3 Strength     = {0.5f, 0.5f, 0.5f};
 	float             FalloffStart = 1.0f;                // point/spot light only
-	DirectX::XMFLOAT3 Direction    = {0.0f, -1.0f, 0.0f}; // directional/spot light only
+	DirectX::XMFLOAT3 Direction    = {0.0f, -1.0f, 0.0f}; // directional/spot light only. Direction the light ray travels
 	float             FalloffEnd   = 10.0f;               // point/spot light only
 	DirectX::XMFLOAT3 Position     = {0.0f, 0.0f, 0.0f};  // point/spot light only
 	float             SpotPower    = 64.0f;               // spot light only
@@ -269,7 +269,7 @@ struct Material
 	// Unique material name for lookup.
 	std::string Name;
 
-	// Index into constant buffer corresponding to this material.
+	// each material object has an index that specifies where its constant data is in the material constant buffer
 	int MatCBIndex = -1;
 
 	// Index into SRV heap for diffuse texture.
