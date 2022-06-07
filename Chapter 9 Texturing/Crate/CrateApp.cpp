@@ -28,8 +28,6 @@ struct RenderItem
 	// and scale of the object in the world.
 	XMFLOAT4X4 World = MathHelper::Identity4x4();
 
-	XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
-
 	// Dirty flag indicating the object data has changed and we need to update the constant buffer.
 	// Because we have an object cbuffer for each FrameResource, we have to apply the
 	// update to each FrameResource.  Thus, when we modify obect data we should set 
@@ -70,14 +68,12 @@ class CrateApp : public D3DApp
 		void OnMouseUp(WPARAM btnState, int x, int y) override;
 		void OnMouseMove(WPARAM btnState, int x, int y) override;
 
-		void OnKeyboardInput(const GameTimer& gt);
 		void UpdateCamera(const GameTimer& gt);
-		void AnimateMaterials(const GameTimer& gt);
 		void UpdateObjectCBs(const GameTimer& gt);
 		void UpdateMaterialCBs(const GameTimer& gt);
 		void UpdateMainPassCB(const GameTimer& gt);
 
-		void LoadTextures();
+		void BuildTextures();
 		void BuildRootSignature();
 		void BuildDescriptorHeaps();
 		void BuildShadersAndInputLayout();
@@ -170,7 +166,7 @@ bool CrateApp::Initialize()
 	// Reset the command list to prep for initialization commands.
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
-	LoadTextures();
+	BuildTextures();
 	BuildRootSignature();
 	BuildDescriptorHeaps();
 	BuildShadersAndInputLayout();
@@ -202,7 +198,6 @@ void CrateApp::OnResize()
 
 void CrateApp::Update(const GameTimer& gt)
 {
-	OnKeyboardInput(gt);
 	UpdateCamera(gt);
 
 	// Cycle through the circular frame resource array.
@@ -219,7 +214,6 @@ void CrateApp::Update(const GameTimer& gt)
 		CloseHandle(eventHandle);
 	}
 
-	AnimateMaterials(gt);
 	UpdateObjectCBs(gt);
 	UpdateMaterialCBs(gt);
 	UpdateMainPassCB(gt);
@@ -330,10 +324,6 @@ void CrateApp::OnMouseMove(WPARAM btnState, int x, int y)
 	mLastMousePos.y = y;
 }
 
-void CrateApp::OnKeyboardInput(const GameTimer& gt)
-{
-}
-
 void CrateApp::UpdateCamera(const GameTimer& gt)
 {
 	// Convert Spherical to Cartesian coordinates.
@@ -350,10 +340,6 @@ void CrateApp::UpdateCamera(const GameTimer& gt)
 	XMStoreFloat4x4(&mView, view);
 }
 
-void CrateApp::AnimateMaterials(const GameTimer& gt)
-{
-}
-
 void CrateApp::UpdateObjectCBs(const GameTimer& gt)
 {
 	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
@@ -363,12 +349,9 @@ void CrateApp::UpdateObjectCBs(const GameTimer& gt)
 		// This needs to be tracked per frame resource.
 		if (e->NumFramesDirty > 0)
 		{
-			XMMATRIX world        = XMLoadFloat4x4(&e->World);
-			XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
-
+			XMMATRIX        world = XMLoadFloat4x4(&e->World);
 			ObjectConstants objConstants;
 			XMStoreFloat4x4(&objConstants.World, XMMatrixTranspose(world));
-			XMStoreFloat4x4(&objConstants.TexTransform, XMMatrixTranspose(texTransform));
 
 			currObjectCB->CopyData(e->ObjCBIndex, objConstants);
 
@@ -388,14 +371,10 @@ void CrateApp::UpdateMaterialCBs(const GameTimer& gt)
 		Material* mat = e.second.get();
 		if (mat->NumFramesDirty > 0)
 		{
-			XMMATRIX matTransform = XMLoadFloat4x4(&mat->MatTransform);
-
 			MaterialConstants matConstants;
 			matConstants.DiffuseAlbedo = mat->DiffuseAlbedo;
 			matConstants.FresnelR0     = mat->FresnelR0;
 			matConstants.Roughness     = mat->Roughness;
-			XMStoreFloat4x4(&matConstants.MatTransform, XMMatrixTranspose(matTransform));
-
 			currMaterialCB->CopyData(mat->MatCBIndex, matConstants);
 
 			// Next FrameResource need to be updated too.
@@ -439,11 +418,11 @@ void CrateApp::UpdateMainPassCB(const GameTimer& gt)
 	currPassCB->CopyData(0, mMainPassCB);
 }
 
-void CrateApp::LoadTextures()
+void CrateApp::BuildTextures()
 {
 	auto woodCrateTex      = std::make_unique<Texture>();
 	woodCrateTex->Name     = "woodCrateTex";
-	woodCrateTex->Filename = L"../../Textures/ruinschest01snow.dds";
+	woodCrateTex->Filename = L"../../Textures/WoodCrate02.dds";
 	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
 		              md3dDevice.Get(),               // Pointer to the D3D device to create the texture resources
 		              mCommandList.Get(),             // Command list to submit GPU commands (e.g., copying texture data from an upload heap to a default heap)
@@ -456,11 +435,11 @@ void CrateApp::LoadTextures()
 
 void CrateApp::BuildRootSignature()
 {
-	CD3DX12_DESCRIPTOR_RANGE texTable;
-	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
-
 	// Root parameter can be a table, root descriptor or root constants.
 	CD3DX12_ROOT_PARAMETER slotRootParameter[4];
+
+	CD3DX12_DESCRIPTOR_RANGE texTable;
+	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
 	// Perfomance TIP: Order from most frequent to least frequent.
 	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
@@ -512,19 +491,20 @@ void CrateApp::BuildDescriptorHeaps()
 	//
 	// Fill out the heap with actual descriptors.
 	//
-	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+	CD3DX12_CPU_DESCRIPTOR_HANDLE srvHeapHandle(mSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
 	auto woodCrateTex = mTextures["woodCrateTex"]->Resource;
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; // no post-process mapping
 	srvDesc.Format                          = woodCrateTex->GetDesc().Format;
 	srvDesc.ViewDimension                   = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MostDetailedMip       = 0;
-	srvDesc.Texture2D.MipLevels             = woodCrateTex->GetDesc().MipLevels;
-	srvDesc.Texture2D.ResourceMinLODClamp   = 0.0f;
+	srvDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; // do not reorder rgba components 
+	// filling in D3D12_TEX2D_SRV for 2D textures:
+	srvDesc.Texture2D.MostDetailedMip     = 0;                                 // index of the most detailed mipmap level to view
+	srvDesc.Texture2D.MipLevels           = woodCrateTex->GetDesc().MipLevels; // # of mipmap levels to view
+	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;                              // all the mipmap levels can be accessed: [0, MipCount - 1] can be accessed
 
-	md3dDevice->CreateShaderResourceView(woodCrateTex.Get(), &srvDesc, hDescriptor);
+	md3dDevice->CreateShaderResourceView(woodCrateTex.Get(), &srvDesc, srvHeapHandle);
 }
 
 void CrateApp::BuildShadersAndInputLayout()
@@ -628,7 +608,9 @@ void CrateApp::BuildFrameResources()
 	for (int i = 0; i < gNumFrameResources; ++i)
 	{
 		mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(),
-		                                                          1, (UINT)mAllRitems.size(), (UINT)mMaterials.size()));
+		                                                          1,
+		                                                          (UINT)mAllRitems.size(),
+		                                                          (UINT)mMaterials.size()));
 	}
 }
 
@@ -685,7 +667,7 @@ void CrateApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::ve
 		D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress() + ri->ObjCBIndex * objCBByteSize;
 		D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress() + ri->Mat->MatCBIndex * matCBByteSize;
 
-		cmdList->SetGraphicsRootDescriptorTable(0, tex);
+		cmdList->SetGraphicsRootDescriptorTable(0, tex); // bind to root parameter 0. The root parameter description specifies which shader register slot this corresponds to .
 		cmdList->SetGraphicsRootConstantBufferView(1, objCBAddress);
 		cmdList->SetGraphicsRootConstantBufferView(3, matCBAddress);
 

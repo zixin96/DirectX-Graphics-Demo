@@ -74,7 +74,6 @@ class ShapesApp : public D3DApp
 		void UpdateMainPassCB(const GameTimer& gt);
 
 		void BuildDescriptorHeaps();
-		void BuildConstantBufferViews();
 		void BuildRootSignature();
 		void BuildShadersAndInputLayout();
 		void BuildShapeGeometry();
@@ -170,7 +169,6 @@ bool ShapesApp::Initialize()
 	BuildRenderItems();
 	BuildFrameResources();
 	BuildDescriptorHeaps();
-	BuildConstantBufferViews();
 	BuildPSOs();
 
 	// Execute the initialization commands.
@@ -416,6 +414,9 @@ void ShapesApp::UpdateMainPassCB(const GameTimer& gt)
 // See Notability
 void ShapesApp::BuildDescriptorHeaps()
 {
+	//
+	// Create the CBV heap.
+	//
 	UINT objCount = (UINT)mOpaqueRitems.size();
 
 	// Each frame needs (n + 1) CBVs and we have gNumFrameResources (3) frame resources
@@ -432,14 +433,11 @@ void ShapesApp::BuildDescriptorHeaps()
 	cbvHeapDesc.NodeMask       = 0;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&cbvHeapDesc,
 		              IID_PPV_ARGS(&mCbvHeap)));
-}
 
-// see notability
-void ShapesApp::BuildConstantBufferViews()
-{
+	//
+	// Fill out the heap with actual descriptors.
+	//
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-
-	UINT objCount = (UINT)mOpaqueRitems.size();
 
 	// Need a CBV descriptor for each object for each frame resource.
 	for (int frameIndex = 0; frameIndex < gNumFrameResources; ++frameIndex)
