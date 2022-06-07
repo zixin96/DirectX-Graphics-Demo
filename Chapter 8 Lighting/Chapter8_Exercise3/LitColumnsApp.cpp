@@ -39,7 +39,9 @@ struct RenderItem
 	// Index into GPU constant buffer corresponding to the ObjectCB for this render item.
 	UINT ObjCBIndex = -1;
 
+	//!? look here: 
 	Material*     Mat = nullptr;
+
 	MeshGeometry* Geo = nullptr;
 
 	// Primitive topology.
@@ -418,11 +420,17 @@ void LitColumnsApp::UpdateMainPassCB(const GameTimer& gt)
 	mMainPassCB.TotalTime           = gt.TotalTime();
 	mMainPassCB.DeltaTime           = gt.DeltaTime();
 	mMainPassCB.AmbientLight        = {0.25f, 0.25f, 0.35f, 1.0f};
+
 	mMainPassCB.Lights[0].Direction = {0.57735f, -0.57735f, 0.57735f};
+	//mMainPassCB.Lights[0].Position = {0.57735f, 10.57735f, 0.57735f};
 	mMainPassCB.Lights[0].Strength  = {0.6f, 0.6f, 0.6f};
+
 	mMainPassCB.Lights[1].Direction = {-0.57735f, -0.57735f, 0.57735f};
+	//mMainPassCB.Lights[1].Position = {-0.57735f, 10.57735f, 0.57735f};
 	mMainPassCB.Lights[1].Strength  = {0.3f, 0.3f, 0.3f};
+
 	mMainPassCB.Lights[2].Direction = {0.0f, -0.707f, -0.707f};
+	//mMainPassCB.Lights[2].Position = {0.0f, 10.707f, -0.707f};
 	mMainPassCB.Lights[2].Strength  = {0.15f, 0.15f, 0.15f};
 
 	auto currPassCB = mCurrFrameResource->PassCB.get();
@@ -736,7 +744,7 @@ void LitColumnsApp::BuildMaterials()
 	auto skullMat           = std::make_unique<Material>();
 	skullMat->Name          = "skullMat";
 	skullMat->MatCBIndex    = 3;
-	skullMat->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	skullMat->DiffuseAlbedo = XMFLOAT4(Colors::Gold);
 	skullMat->FresnelR0     = XMFLOAT3(0.05f, 0.05f, 0.05f);
 	skullMat->Roughness     = 0.3f;
 
