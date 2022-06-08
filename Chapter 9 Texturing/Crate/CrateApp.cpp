@@ -422,7 +422,7 @@ void CrateApp::BuildTextures()
 {
 	auto woodCrateTex      = std::make_unique<Texture>();
 	woodCrateTex->Name     = "woodCrateTex";
-	woodCrateTex->Filename = L"../../Textures/WoodCrate02.dds";
+	woodCrateTex->Filename = L"../../Textures/mipmaps.dds";
 	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
 		              md3dDevice.Get(),               // Pointer to the D3D device to create the texture resources
 		              mCommandList.Get(),             // Command list to submit GPU commands (e.g., copying texture data from an upload heap to a default heap)

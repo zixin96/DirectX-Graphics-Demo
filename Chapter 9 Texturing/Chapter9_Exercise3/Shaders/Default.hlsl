@@ -1,5 +1,7 @@
 //***************************************************************************************
 // Default.hlsl by Frank Luna (C) 2015 All Rights Reserved.
+//
+// Default shader, currently supports lighting.
 //***************************************************************************************
 
 // Defaults for number of lights.
@@ -19,6 +21,7 @@
 #include "LightingUtil.hlsl"
 
 Texture2D gDiffuseMap : register(t0);
+Texture2D gDiffuseMap2 : register(t1);
 
 SamplerState gsamPointWrap : register(s0);
 SamplerState gsamPointClamp : register(s1);
@@ -26,6 +29,8 @@ SamplerState gsamLinearWrap : register(s2);
 SamplerState gsamLinearClamp : register(s3);
 SamplerState gsamAnisotropicWrap : register(s4);
 SamplerState gsamAnisotropicClamp : register(s5);
+SamplerState gsamAnisotropicBorder : register(s6);
+SamplerState gsamAnisotropicMirror : register(s7);
 
 // Constant data that varies per frame.
 cbuffer cbPerObject : register(b0)
@@ -62,10 +67,9 @@ Light gLights[MaxLights];
 
 cbuffer cbMaterial : register(b2)
 {
-float4   gDiffuseAlbedo;
-float3   gFresnelR0;
-float    gRoughness;
-float4x4 gMatTransform;
+float4 gDiffuseAlbedo;
+float3 gFresnelR0;
+float  gRoughness;
 };
 
 struct VertexIn
@@ -97,16 +101,28 @@ VertexOut VS(VertexIn vin)
 	// Transform to homogeneous clip space.
 	vout.PosH = mul(posW, gViewProj);
 
-	// Output vertex attributes for interpolation across triangle.
-	float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), gTexTransform);
-	vout.TexC   = mul(texC, gMatTransform).xy;
+	float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), //! to transform the 2D texture coordinates by a 4x4 matrix, we augment it to a 4D vector
+	                  gTexTransform);
+	vout.TexC = texC.xy;
 
 	return vout;
 }
 
+float2 rotateUV(float2 uv, float rotation)
+{
+    float mid = 0.5f;
+    return float2(
+        cos(rotation) * (uv.x - mid) + sin(rotation) * (uv.y - mid) + mid,
+        cos(rotation) * (uv.y - mid) - sin(rotation) * (uv.x - mid) + mid
+    );
+}
+
 float4 PS(VertexOut pin) : SV_Target
 {
-	float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) * gDiffuseAlbedo;
+    float2 rotatedUV = rotateUV(pin.TexC, gTotalTime);
+	//!? look here: 
+    float4 diffuseAlbedo = gDiffuseMap2.Sample(gsamAnisotropicMirror, pin.TexC)
+	                       * gDiffuseMap.Sample(gsamAnisotropicMirror, rotatedUV) * gDiffuseAlbedo;
 
 	// Interpolating normal can unnormalize it, so renormalize it.
 	pin.NormalW = normalize(pin.NormalW);
@@ -120,12 +136,16 @@ float4 PS(VertexOut pin) : SV_Target
 	const float shininess    = 1.0f - gRoughness;
 	Material    mat          = {diffuseAlbedo, gFresnelR0, shininess};
 	float3      shadowFactor = 1.0f;
-	float4      directLight  = ComputeLighting(gLights, mat, pin.PosW,
-	                                           pin.NormalW, toEyeW, shadowFactor);
+	float4      directLight  = ComputeLighting(gLights,
+	                                           mat,
+	                                           pin.PosW,
+	                                           pin.NormalW,
+	                                           toEyeW,
+	                                           shadowFactor);
 
 	float4 litColor = ambient + directLight;
 
-	// Common convention to take alpha from diffuse albedo.
+	// Common convention to take alpha from diffuse material.
 	litColor.a = diffuseAlbedo.a;
 
 	return litColor;

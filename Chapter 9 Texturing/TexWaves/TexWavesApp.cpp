@@ -77,7 +77,6 @@ class TexWavesApp : public D3DApp
 		void OnMouseUp(WPARAM btnState, int x, int y) override;
 		void OnMouseMove(WPARAM btnState, int x, int y) override;
 
-		void OnKeyboardInput(const GameTimer& gt);
 		void UpdateCamera(const GameTimer& gt);
 		void AnimateMaterials(const GameTimer& gt);
 		void UpdateObjectCBs(const GameTimer& gt);
@@ -107,8 +106,6 @@ class TexWavesApp : public D3DApp
 		std::vector<std::unique_ptr<FrameResource>> mFrameResources;
 		FrameResource*                              mCurrFrameResource      = nullptr;
 		int                                         mCurrFrameResourceIndex = 0;
-
-		UINT mCbvSrvDescriptorSize = 0;
 
 		ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 
@@ -187,10 +184,6 @@ bool TexWavesApp::Initialize()
 	// Reset the command list to prep for initialization commands.
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
-	// Get the increment size of a descriptor in this heap type.  This is hardware specific, 
-	// so we have to query this information.
-	mCbvSrvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
 	mWaves = std::make_unique<Waves>(128, 128, 1.0f, 0.03f, 4.0f, 0.2f);
 
 	LoadTextures();
@@ -227,7 +220,6 @@ void TexWavesApp::OnResize()
 
 void TexWavesApp::Update(const GameTimer& gt)
 {
-	OnKeyboardInput(gt);
 	UpdateCamera(gt);
 
 	// Cycle through the circular frame resource array.
@@ -360,10 +352,6 @@ void TexWavesApp::OnMouseMove(WPARAM btnState, int x, int y)
 
 	mLastMousePos.x = x;
 	mLastMousePos.y = y;
-}
-
-void TexWavesApp::OnKeyboardInput(const GameTimer& gt)
-{
 }
 
 void TexWavesApp::UpdateCamera(const GameTimer& gt)
@@ -607,10 +595,8 @@ void TexWavesApp::BuildRootSignature()
 
 void TexWavesApp::BuildDescriptorHeaps()
 {
-	/*
-	 * CPUDescriptorHeap implements CPU-only descriptor heap that is used as a storage of resource view descriptor handles
-		GPUDescriptorHeap implements shader-visible descriptor heap that holds descriptor handles used by the GPU commands
-	 */
+	// CPUDescriptorHeap implements CPU-only descriptor heap that is used as a storage of resource view descriptor handles
+	// GPUDescriptorHeap implements shader-visible descriptor heap that holds descriptor handles used by the GPU commands
 
 	//
 	// Create the SRV heap.
@@ -641,13 +627,13 @@ void TexWavesApp::BuildDescriptorHeaps()
 	                                     hDescriptor);   //! where to put this descriptor in the CPU-only descriptor heap? 
 
 	// next descriptor
-	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
+	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 
 	srvDesc.Format = waterTex->GetDesc().Format;
 	md3dDevice->CreateShaderResourceView(waterTex.Get(), &srvDesc, hDescriptor);
 
 	// next descriptor
-	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
+	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
 
 	srvDesc.Format = fenceTex->GetDesc().Format;
 	md3dDevice->CreateShaderResourceView(fenceTex.Get(), &srvDesc, hDescriptor);
@@ -880,7 +866,7 @@ void TexWavesApp::BuildMaterials()
 	auto grass                 = std::make_unique<Material>();
 	grass->Name                = "grass";
 	grass->MatCBIndex          = 0;
-	grass->DiffuseSrvHeapIndex = 0;
+	grass->DiffuseSrvHeapIndex = 0; // note: this index must point to the right descriptor in the heap. We initialize the descriptors in BuildDescriptorHeap function.
 	grass->DiffuseAlbedo       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	grass->FresnelR0           = XMFLOAT3(0.01f, 0.01f, 0.01f);
 	grass->Roughness           = 0.125f;
@@ -912,7 +898,7 @@ void TexWavesApp::BuildRenderItems()
 {
 	auto wavesRitem   = std::make_unique<RenderItem>();
 	wavesRitem->World = MathHelper::Identity4x4();
-	XMStoreFloat4x4(&wavesRitem->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
+	XMStoreFloat4x4(&wavesRitem->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f)); //! to scroll a water texture over the water geometry, we also need to tile the texture by scaling the texture coordinates by 5
 	wavesRitem->ObjCBIndex         = 0;
 	wavesRitem->Mat                = mMaterials["water"].get();
 	wavesRitem->Geo                = mGeometries["waterGeo"].get();
@@ -973,7 +959,7 @@ void TexWavesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std:
 		cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 
 		CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-		tex.Offset(ri->Mat->DiffuseSrvHeapIndex, mCbvSrvDescriptorSize);
+		tex.Offset(ri->Mat->DiffuseSrvHeapIndex, mCbvSrvUavDescriptorSize);
 
 		D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress() + ri->ObjCBIndex * objCBByteSize;
 		D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress() + ri->Mat->MatCBIndex * matCBByteSize;

@@ -257,6 +257,8 @@ struct MaterialConstants
 	DirectX::XMFLOAT4 DiffuseAlbedo = {1.0f, 1.0f, 1.0f, 1.0f};
 	DirectX::XMFLOAT3 FresnelR0     = {0.01f, 0.01f, 0.01f};
 	float             Roughness     = 0.25f;
+	// Used in texture mapping.
+	DirectX::XMFLOAT4X4 MatTransform = MathHelper::Identity4x4();
 };
 
 // Simple struct to represent a material for our demos.  A production 3D engine
@@ -285,6 +287,7 @@ struct Material
 	DirectX::XMFLOAT4   DiffuseAlbedo = {1.0f, 1.0f, 1.0f, 1.0f}; // when we use diffuse map, this value is used to tweak the diffuse texture without having to author a new texture
 	DirectX::XMFLOAT3   FresnelR0     = {0.01f, 0.01f, 0.01f};
 	float               Roughness     = .25f; // in normalized [0,1] range. 0: perfectly smooth. 1: the roughest surface possible. Used to derive m (Eq. 8.4, page 333) in the shader code. 
+	DirectX::XMFLOAT4X4 MatTransform  = MathHelper::Identity4x4();
 };
 
 struct Texture

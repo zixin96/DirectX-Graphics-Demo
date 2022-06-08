@@ -1,5 +1,5 @@
 //***************************************************************************************
-// TexColumnsApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
+// CrateApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
 //***************************************************************************************
 
 #include "../../Common/d3dApp.h"
@@ -21,8 +21,7 @@ const int gNumFrameResources = 3;
 // vary from app-to-app.
 struct RenderItem
 {
-	RenderItem()                      = default;
-	RenderItem(const RenderItem& rhs) = delete;
+	RenderItem() = default;
 
 	// World matrix of the shape that describes the object's local space
 	// relative to the world space, which defines the position, orientation,
@@ -52,13 +51,13 @@ struct RenderItem
 	int  BaseVertexLocation = 0;
 };
 
-class TexColumnsApp : public D3DApp
+class CrateApp : public D3DApp
 {
 	public:
-		TexColumnsApp(HINSTANCE hInstance);
-		TexColumnsApp(const TexColumnsApp& rhs)            = delete;
-		TexColumnsApp& operator=(const TexColumnsApp& rhs) = delete;
-		~TexColumnsApp() override;
+		CrateApp(HINSTANCE hInstance);
+		CrateApp(const CrateApp& rhs)            = delete;
+		CrateApp& operator=(const CrateApp& rhs) = delete;
+		~CrateApp() override;
 
 		bool Initialize() override;
 
@@ -76,7 +75,7 @@ class TexColumnsApp : public D3DApp
 		void UpdateMaterialCBs(const GameTimer& gt);
 		void UpdateMainPassCB(const GameTimer& gt);
 
-		void LoadTextures();
+		void BuildTextures();
 		void BuildRootSignature();
 		void BuildDescriptorHeaps();
 		void BuildShadersAndInputLayout();
@@ -87,12 +86,13 @@ class TexColumnsApp : public D3DApp
 		void BuildRenderItems();
 		void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
 
-		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
+		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 8> GetStaticSamplers();
 
 	private:
 		std::vector<std::unique_ptr<FrameResource>> mFrameResources;
 		FrameResource*                              mCurrFrameResource      = nullptr;
 		int                                         mCurrFrameResourceIndex = 0;
+
 
 		ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 
@@ -102,9 +102,10 @@ class TexColumnsApp : public D3DApp
 		std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
 		std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
 		std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
-		std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
 
 		std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
+
+		ComPtr<ID3D12PipelineState> mOpaquePSO = nullptr;
 
 		// List of all the render items.
 		std::vector<std::unique_ptr<RenderItem>> mAllRitems;
@@ -118,9 +119,9 @@ class TexColumnsApp : public D3DApp
 		XMFLOAT4X4 mView   = MathHelper::Identity4x4();
 		XMFLOAT4X4 mProj   = MathHelper::Identity4x4();
 
-		float mTheta  = 1.5f * XM_PI;
-		float mPhi    = 0.2f * XM_PI;
-		float mRadius = 15.0f;
+		float mTheta  = 1.3f * XM_PI;
+		float mPhi    = 0.4f * XM_PI;
+		float mRadius = 2.5f;
 
 		POINT mLastMousePos;
 };
@@ -135,7 +136,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 
 	try
 	{
-		TexColumnsApp theApp(hInstance);
+		CrateApp theApp(hInstance);
 		if (!theApp.Initialize())
 			return 0;
 
@@ -148,18 +149,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 	}
 }
 
-TexColumnsApp::TexColumnsApp(HINSTANCE hInstance)
+CrateApp::CrateApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
 {
 }
 
-TexColumnsApp::~TexColumnsApp()
+CrateApp::~CrateApp()
 {
 	if (md3dDevice != nullptr)
 		FlushCommandQueue();
 }
 
-bool TexColumnsApp::Initialize()
+bool CrateApp::Initialize()
 {
 	if (!D3DApp::Initialize())
 		return false;
@@ -167,7 +168,7 @@ bool TexColumnsApp::Initialize()
 	// Reset the command list to prep for initialization commands.
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
-	LoadTextures();
+	BuildTextures();
 	BuildRootSignature();
 	BuildDescriptorHeaps();
 	BuildShadersAndInputLayout();
@@ -188,16 +189,16 @@ bool TexColumnsApp::Initialize()
 	return true;
 }
 
-void TexColumnsApp::OnResize()
+void CrateApp::OnResize()
 {
 	D3DApp::OnResize();
 
 	// The window resized, so update the aspect ratio and recompute the projection matrix.
-	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
+	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, AspectRatio(), 0.1f, 1000.0f);
 	XMStoreFloat4x4(&mProj, P);
 }
 
-void TexColumnsApp::Update(const GameTimer& gt)
+void CrateApp::Update(const GameTimer& gt)
 {
 	UpdateCamera(gt);
 
@@ -220,7 +221,7 @@ void TexColumnsApp::Update(const GameTimer& gt)
 	UpdateMainPassCB(gt);
 }
 
-void TexColumnsApp::Draw(const GameTimer& gt)
+void CrateApp::Draw(const GameTimer& gt)
 {
 	auto cmdListAlloc = mCurrFrameResource->CmdListAlloc;
 
@@ -230,7 +231,7 @@ void TexColumnsApp::Draw(const GameTimer& gt)
 
 	// A command list can be reset after it has been added to the command queue via ExecuteCommandList.
 	// Reusing the command list reuses memory.
-	ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mPSOs["opaque"].Get()));
+	ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mOpaquePSO.Get()));
 
 	mCommandList->RSSetViewports(1, &mScreenViewport);
 	mCommandList->RSSetScissorRects(1, &mScissorRect);
@@ -280,7 +281,7 @@ void TexColumnsApp::Draw(const GameTimer& gt)
 	mCommandQueue->Signal(mFence.Get(), mCurrentFence);
 }
 
-void TexColumnsApp::OnMouseDown(WPARAM btnState, int x, int y)
+void CrateApp::OnMouseDown(WPARAM btnState, int x, int y)
 {
 	mLastMousePos.x = x;
 	mLastMousePos.y = y;
@@ -288,12 +289,12 @@ void TexColumnsApp::OnMouseDown(WPARAM btnState, int x, int y)
 	SetCapture(mhMainWnd);
 }
 
-void TexColumnsApp::OnMouseUp(WPARAM btnState, int x, int y)
+void CrateApp::OnMouseUp(WPARAM btnState, int x, int y)
 {
 	ReleaseCapture();
 }
 
-void TexColumnsApp::OnMouseMove(WPARAM btnState, int x, int y)
+void CrateApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
 	if ((btnState & MK_LBUTTON) != 0)
 	{
@@ -318,15 +319,14 @@ void TexColumnsApp::OnMouseMove(WPARAM btnState, int x, int y)
 		mRadius += dx - dy;
 
 		// Restrict the radius.
-		mRadius = MathHelper::Clamp(mRadius, 5.0f, 150.0f);
+		mRadius = MathHelper::Clamp(mRadius, 1.0f, 150.0f);
 	}
 
 	mLastMousePos.x = x;
 	mLastMousePos.y = y;
 }
 
-
-void TexColumnsApp::UpdateCamera(const GameTimer& gt)
+void CrateApp::UpdateCamera(const GameTimer& gt)
 {
 	// Convert Spherical to Cartesian coordinates.
 	mEyePos.x = mRadius * sinf(mPhi) * cosf(mTheta);
@@ -342,7 +342,7 @@ void TexColumnsApp::UpdateCamera(const GameTimer& gt)
 	XMStoreFloat4x4(&mView, view);
 }
 
-void TexColumnsApp::UpdateObjectCBs(const GameTimer& gt)
+void CrateApp::UpdateObjectCBs(const GameTimer& gt)
 {
 	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 	for (auto& e : mAllRitems)
@@ -366,7 +366,7 @@ void TexColumnsApp::UpdateObjectCBs(const GameTimer& gt)
 	}
 }
 
-void TexColumnsApp::UpdateMaterialCBs(const GameTimer& gt)
+void CrateApp::UpdateMaterialCBs(const GameTimer& gt)
 {
 	auto currMaterialCB = mCurrFrameResource->MaterialCB.get();
 	for (auto& e : mMaterials)
@@ -376,14 +376,10 @@ void TexColumnsApp::UpdateMaterialCBs(const GameTimer& gt)
 		Material* mat = e.second.get();
 		if (mat->NumFramesDirty > 0)
 		{
-			XMMATRIX matTransform = XMLoadFloat4x4(&mat->MatTransform);
-
 			MaterialConstants matConstants;
 			matConstants.DiffuseAlbedo = mat->DiffuseAlbedo;
 			matConstants.FresnelR0     = mat->FresnelR0;
 			matConstants.Roughness     = mat->Roughness;
-			XMStoreFloat4x4(&matConstants.MatTransform, XMMatrixTranspose(matTransform));
-
 			currMaterialCB->CopyData(mat->MatCBIndex, matConstants);
 
 			// Next FrameResource need to be updated too.
@@ -392,7 +388,7 @@ void TexColumnsApp::UpdateMaterialCBs(const GameTimer& gt)
 	}
 }
 
-void TexColumnsApp::UpdateMainPassCB(const GameTimer& gt)
+void CrateApp::UpdateMainPassCB(const GameTimer& gt)
 {
 	XMMATRIX view = XMLoadFloat4x4(&mView);
 	XMMATRIX proj = XMLoadFloat4x4(&mProj);
@@ -417,73 +413,72 @@ void TexColumnsApp::UpdateMainPassCB(const GameTimer& gt)
 	mMainPassCB.DeltaTime           = gt.DeltaTime();
 	mMainPassCB.AmbientLight        = {0.25f, 0.25f, 0.35f, 1.0f};
 	mMainPassCB.Lights[0].Direction = {0.57735f, -0.57735f, 0.57735f};
-	mMainPassCB.Lights[0].Strength  = {0.8f, 0.8f, 0.8f};
+	mMainPassCB.Lights[0].Strength  = {0.6f, 0.6f, 0.6f};
 	mMainPassCB.Lights[1].Direction = {-0.57735f, -0.57735f, 0.57735f};
-	mMainPassCB.Lights[1].Strength  = {0.4f, 0.4f, 0.4f};
+	mMainPassCB.Lights[1].Strength  = {0.3f, 0.3f, 0.3f};
 	mMainPassCB.Lights[2].Direction = {0.0f, -0.707f, -0.707f};
-	mMainPassCB.Lights[2].Strength  = {0.2f, 0.2f, 0.2f};
+	mMainPassCB.Lights[2].Strength  = {0.15f, 0.15f, 0.15f};
 
 	auto currPassCB = mCurrFrameResource->PassCB.get();
 	currPassCB->CopyData(0, mMainPassCB);
 }
 
-void TexColumnsApp::LoadTextures()
+void CrateApp::BuildTextures()
 {
-	auto bricksTex      = std::make_unique<Texture>();
-	bricksTex->Name     = "bricksTex";
-	bricksTex->Filename = L"../../Textures/bricks.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), bricksTex->Filename.c_str(),
-		              bricksTex->Resource, bricksTex->UploadHeap));
+	auto flare      = std::make_unique<Texture>();
+	flare->Name     = "flare";
+	flare->Filename = L"../../Textures/flare.dds";
+	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
+		              md3dDevice.Get(),        // Pointer to the D3D device to create the texture resources
+		              mCommandList.Get(),      // Command list to submit GPU commands (e.g., copying texture data from an upload heap to a default heap)
+		              flare->Filename.c_str(), // Filename of the image to load
+		              flare->Resource,         // Returns the texture resource with the loaded image data
+		              flare->UploadHeap));     // Returns the texture resource that was used as an upload heap to copy the image data into the default heap texture resource.This resource cannot be destroyed until the GPU finished the copy command
 
-	auto stoneTex      = std::make_unique<Texture>();
-	stoneTex->Name     = "stoneTex";
-	stoneTex->Filename = L"../../Textures/stone.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), stoneTex->Filename.c_str(),
-		              stoneTex->Resource, stoneTex->UploadHeap));
+	auto flareAlpha      = std::make_unique<Texture>();
+	flareAlpha->Name     = "flareAlpha";
+	flareAlpha->Filename = L"../../Textures/flarealpha.dds";
+	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
+		              md3dDevice.Get(),             // Pointer to the D3D device to create the texture resources
+		              mCommandList.Get(),           // Command list to submit GPU commands (e.g., copying texture data from an upload heap to a default heap)
+		              flareAlpha->Filename.c_str(), // Filename of the image to load
+		              flareAlpha->Resource,         // Returns the texture resource with the loaded image data
+		              flareAlpha->UploadHeap));
 
-	auto tileTex      = std::make_unique<Texture>();
-	tileTex->Name     = "tileTex";
-	tileTex->Filename = L"../../Textures/tile.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), tileTex->Filename.c_str(),
-		              tileTex->Resource, tileTex->UploadHeap));
-
-	mTextures[bricksTex->Name] = std::move(bricksTex);
-	mTextures[stoneTex->Name]  = std::move(stoneTex);
-	mTextures[tileTex->Name]   = std::move(tileTex);
+	mTextures[flare->Name]      = std::move(flare);
+	mTextures[flareAlpha->Name] = std::move(flareAlpha);
 }
 
-void TexColumnsApp::BuildRootSignature()
+void CrateApp::BuildRootSignature()
 {
-	CD3DX12_DESCRIPTOR_RANGE texTable;
-	texTable.Init(
-	              D3D12_DESCRIPTOR_RANGE_TYPE_SRV,
-	              1,  // number of descriptors
-	              0); // register t0
-
 	// Root parameter can be a table, root descriptor or root constants.
 	CD3DX12_ROOT_PARAMETER slotRootParameter[4];
 
+	CD3DX12_DESCRIPTOR_RANGE texTable;
+	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0); // t0, t1
+
 	// Perfomance TIP: Order from most frequent to least frequent.
 	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
-	slotRootParameter[1].InitAsConstantBufferView(0); // register b0
-	slotRootParameter[2].InitAsConstantBufferView(1); // register b1
-	slotRootParameter[3].InitAsConstantBufferView(2); // register b2
+	slotRootParameter[1].InitAsConstantBufferView(0);
+	slotRootParameter[2].InitAsConstantBufferView(1);
+	slotRootParameter[3].InitAsConstantBufferView(2);
 
 	auto staticSamplers = GetStaticSamplers();
 
 	// A root signature is an array of root parameters.
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(4, slotRootParameter,
-	                                        (UINT)staticSamplers.size(), staticSamplers.data(),
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(4,
+	                                        slotRootParameter,
+	                                        (UINT)staticSamplers.size(),
+	                                        staticSamplers.data(),
 	                                        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	// create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
 	ComPtr<ID3DBlob> serializedRootSig = nullptr;
 	ComPtr<ID3DBlob> errorBlob         = nullptr;
-	HRESULT          hr                = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
-	                                                                 serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+	HRESULT          hr                = D3D12SerializeRootSignature(&rootSigDesc,
+	                                                                 D3D_ROOT_SIGNATURE_VERSION_1,
+	                                                                 serializedRootSig.GetAddressOf(),
+	                                                                 errorBlob.GetAddressOf());
 
 	if (errorBlob != nullptr)
 	{
@@ -498,13 +493,13 @@ void TexColumnsApp::BuildRootSignature()
 		              IID_PPV_ARGS(mRootSignature.GetAddressOf())));
 }
 
-void TexColumnsApp::BuildDescriptorHeaps()
+void CrateApp::BuildDescriptorHeaps()
 {
 	//
 	// Create the SRV heap.
 	//
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors             = 3;
+	srvHeapDesc.NumDescriptors             = 2;
 	srvHeapDesc.Type                       = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags                      = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mSrvDescriptorHeap)));
@@ -512,37 +507,34 @@ void TexColumnsApp::BuildDescriptorHeaps()
 	//
 	// Fill out the heap with actual descriptors.
 	//
-	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+	CD3DX12_CPU_DESCRIPTOR_HANDLE srvHeapHandle(mSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
-	auto bricksTex = mTextures["bricksTex"]->Resource;
-	auto stoneTex  = mTextures["stoneTex"]->Resource;
-	auto tileTex   = mTextures["tileTex"]->Resource;
+	auto flareTex = mTextures["flare"]->Resource;
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.Format                          = bricksTex->GetDesc().Format;
+	srvDesc.Format                          = flareTex->GetDesc().Format;
 	srvDesc.ViewDimension                   = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MostDetailedMip       = 0;
-	srvDesc.Texture2D.MipLevels             = bricksTex->GetDesc().MipLevels;
-	srvDesc.Texture2D.ResourceMinLODClamp   = 0.0f;
-	md3dDevice->CreateShaderResourceView(bricksTex.Get(), &srvDesc, hDescriptor);
+	srvDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; // do not reorder rgba components 
+	// filling in D3D12_TEX2D_SRV for 2D textures:
+	srvDesc.Texture2D.MostDetailedMip     = 0;                             // index of the most detailed mipmap level to view
+	srvDesc.Texture2D.MipLevels           = flareTex->GetDesc().MipLevels; // # of mipmap levels to view
+	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;                          // all the mipmap levels can be accessed: [0, MipCount - 1] can be accessed
 
-	// next descriptor
-	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateShaderResourceView(flareTex.Get(), &srvDesc, srvHeapHandle);
 
-	srvDesc.Format              = stoneTex->GetDesc().Format;
-	srvDesc.Texture2D.MipLevels = stoneTex->GetDesc().MipLevels;
-	md3dDevice->CreateShaderResourceView(stoneTex.Get(), &srvDesc, hDescriptor);
+	// --------------------------------------------------------------
 
-	// next descriptor
-	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+	srvHeapHandle.Offset(1, mCbvSrvUavDescriptorSize);
 
-	srvDesc.Format              = tileTex->GetDesc().Format;
-	srvDesc.Texture2D.MipLevels = tileTex->GetDesc().MipLevels;
-	md3dDevice->CreateShaderResourceView(tileTex.Get(), &srvDesc, hDescriptor);
+	// --------------------------------------------------------------
+
+	auto flareAlphaTex          = mTextures["flareAlpha"]->Resource;
+	srvDesc.Format              = flareAlphaTex->GetDesc().Format;
+	srvDesc.Texture2D.MipLevels = flareAlphaTex->GetDesc().MipLevels;
+	md3dDevice->CreateShaderResourceView(flareAlphaTex.Get(), &srvDesc, srvHeapHandle);
 }
 
-void TexColumnsApp::BuildShadersAndInputLayout()
+void CrateApp::BuildShadersAndInputLayout()
 {
 	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_0");
 	mShaders["opaquePS"]   = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "PS", "ps_5_0");
@@ -555,104 +547,33 @@ void TexColumnsApp::BuildShadersAndInputLayout()
 	};
 }
 
-void TexColumnsApp::BuildShapeGeometry()
+void CrateApp::BuildShapeGeometry()
 {
 	GeometryGenerator           geoGen;
-	GeometryGenerator::MeshData box      = geoGen.CreateBox(1.0f, 1.0f, 1.0f, 3);
-	GeometryGenerator::MeshData grid     = geoGen.CreateGrid(20.0f, 30.0f, 60, 40);
-	GeometryGenerator::MeshData sphere   = geoGen.CreateSphere(0.5f, 20, 20);
-	GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(0.5f, 0.3f, 3.0f, 20, 20);
-
-	//
-	// We are concatenating all the geometry into one big vertex/index buffer.  So
-	// define the regions in the buffer each submesh covers.
-	//
-
-	// Cache the vertex offsets to each object in the concatenated vertex buffer.
-	UINT boxVertexOffset      = 0;
-	UINT gridVertexOffset     = (UINT)box.Vertices.size();
-	UINT sphereVertexOffset   = gridVertexOffset + (UINT)grid.Vertices.size();
-	UINT cylinderVertexOffset = sphereVertexOffset + (UINT)sphere.Vertices.size();
-
-	// Cache the starting index for each object in the concatenated index buffer.
-	UINT boxIndexOffset      = 0;
-	UINT gridIndexOffset     = (UINT)box.Indices32.size();
-	UINT sphereIndexOffset   = gridIndexOffset + (UINT)grid.Indices32.size();
-	UINT cylinderIndexOffset = sphereIndexOffset + (UINT)sphere.Indices32.size();
+	GeometryGenerator::MeshData box = geoGen.CreateBox(1.0f, 1.0f, 1.0f, 3);
 
 	SubmeshGeometry boxSubmesh;
 	boxSubmesh.IndexCount         = (UINT)box.Indices32.size();
-	boxSubmesh.StartIndexLocation = boxIndexOffset;
-	boxSubmesh.BaseVertexLocation = boxVertexOffset;
+	boxSubmesh.StartIndexLocation = 0;
+	boxSubmesh.BaseVertexLocation = 0;
 
-	SubmeshGeometry gridSubmesh;
-	gridSubmesh.IndexCount         = (UINT)grid.Indices32.size();
-	gridSubmesh.StartIndexLocation = gridIndexOffset;
-	gridSubmesh.BaseVertexLocation = gridVertexOffset;
 
-	SubmeshGeometry sphereSubmesh;
-	sphereSubmesh.IndexCount         = (UINT)sphere.Indices32.size();
-	sphereSubmesh.StartIndexLocation = sphereIndexOffset;
-	sphereSubmesh.BaseVertexLocation = sphereVertexOffset;
+	std::vector<Vertex> vertices(box.Vertices.size());
 
-	SubmeshGeometry cylinderSubmesh;
-	cylinderSubmesh.IndexCount         = (UINT)cylinder.Indices32.size();
-	cylinderSubmesh.StartIndexLocation = cylinderIndexOffset;
-	cylinderSubmesh.BaseVertexLocation = cylinderVertexOffset;
-
-	//
-	// Extract the vertex elements we are interested in and pack the
-	// vertices of all the meshes into one vertex buffer.
-	//
-
-	auto totalVertexCount =
-			box.Vertices.size() +
-			grid.Vertices.size() +
-			sphere.Vertices.size() +
-			cylinder.Vertices.size();
-
-	std::vector<Vertex> vertices(totalVertexCount);
-
-	UINT k = 0;
-	for (size_t i = 0; i < box.Vertices.size(); ++i, ++k)
+	for (size_t i = 0; i < box.Vertices.size(); ++i)
 	{
-		vertices[k].Pos    = box.Vertices[i].Position;
-		vertices[k].Normal = box.Vertices[i].Normal;
-		vertices[k].TexC   = box.Vertices[i].TexC;
+		vertices[i].Pos    = box.Vertices[i].Position;
+		vertices[i].Normal = box.Vertices[i].Normal;
+		vertices[i].TexC   = box.Vertices[i].TexC;
 	}
 
-	for (size_t i = 0; i < grid.Vertices.size(); ++i, ++k)
-	{
-		vertices[k].Pos    = grid.Vertices[i].Position;
-		vertices[k].Normal = grid.Vertices[i].Normal;
-		vertices[k].TexC   = grid.Vertices[i].TexC;
-	}
-
-	for (size_t i = 0; i < sphere.Vertices.size(); ++i, ++k)
-	{
-		vertices[k].Pos    = sphere.Vertices[i].Position;
-		vertices[k].Normal = sphere.Vertices[i].Normal;
-		vertices[k].TexC   = sphere.Vertices[i].TexC;
-	}
-
-	for (size_t i = 0; i < cylinder.Vertices.size(); ++i, ++k)
-	{
-		vertices[k].Pos    = cylinder.Vertices[i].Position;
-		vertices[k].Normal = cylinder.Vertices[i].Normal;
-		vertices[k].TexC   = cylinder.Vertices[i].TexC;
-	}
-
-	std::vector<std::uint16_t> indices;
-	indices.insert(indices.end(), std::begin(box.GetIndices16()), std::end(box.GetIndices16()));
-	indices.insert(indices.end(), std::begin(grid.GetIndices16()), std::end(grid.GetIndices16()));
-	indices.insert(indices.end(), std::begin(sphere.GetIndices16()), std::end(sphere.GetIndices16()));
-	indices.insert(indices.end(), std::begin(cylinder.GetIndices16()), std::end(cylinder.GetIndices16()));
+	std::vector<std::uint16_t> indices = box.GetIndices16();
 
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
 	auto geo  = std::make_unique<MeshGeometry>();
-	geo->Name = "shapeGeo";
+	geo->Name = "boxGeo";
 
 	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
 	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
@@ -671,15 +592,12 @@ void TexColumnsApp::BuildShapeGeometry()
 	geo->IndexFormat          = DXGI_FORMAT_R16_UINT;
 	geo->IndexBufferByteSize  = ibByteSize;
 
-	geo->DrawArgs["box"]      = boxSubmesh;
-	geo->DrawArgs["grid"]     = gridSubmesh;
-	geo->DrawArgs["sphere"]   = sphereSubmesh;
-	geo->DrawArgs["cylinder"] = cylinderSubmesh;
+	geo->DrawArgs["box"] = boxSubmesh;
 
 	mGeometries[geo->Name] = std::move(geo);
 }
 
-void TexColumnsApp::BuildPSOs()
+void CrateApp::BuildPSOs()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 
@@ -709,142 +627,51 @@ void TexColumnsApp::BuildPSOs()
 	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
 	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
-	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mOpaquePSO)));
 }
 
-void TexColumnsApp::BuildFrameResources()
+void CrateApp::BuildFrameResources()
 {
 	for (int i = 0; i < gNumFrameResources; ++i)
 	{
 		mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(),
-		                                                          1, (UINT)mAllRitems.size(), (UINT)mMaterials.size()));
+		                                                          1,
+		                                                          (UINT)mAllRitems.size(),
+		                                                          (UINT)mMaterials.size()));
 	}
 }
 
-void TexColumnsApp::BuildMaterials()
+void CrateApp::BuildMaterials()
 {
-	auto bricks0                 = std::make_unique<Material>();
-	bricks0->Name                = "bricks0";
-	bricks0->MatCBIndex          = 0;
-	bricks0->DiffuseSrvHeapIndex = 0;
-	bricks0->DiffuseAlbedo       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	bricks0->FresnelR0           = XMFLOAT3(0.02f, 0.02f, 0.02f);
-	bricks0->Roughness           = 0.1f;
+	auto woodCrate                 = std::make_unique<Material>();
+	woodCrate->Name                = "woodCrate";
+	woodCrate->MatCBIndex          = 0;
+	woodCrate->DiffuseSrvHeapIndex = 0;
+	woodCrate->DiffuseAlbedo       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	woodCrate->FresnelR0           = XMFLOAT3(0.05f, 0.05f, 0.05f);
+	woodCrate->Roughness           = 0.2f;
 
-	auto stone0                 = std::make_unique<Material>();
-	stone0->Name                = "stone0";
-	stone0->MatCBIndex          = 1;
-	stone0->DiffuseSrvHeapIndex = 1;
-	stone0->DiffuseAlbedo       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	stone0->FresnelR0           = XMFLOAT3(0.05f, 0.05f, 0.05f);
-	stone0->Roughness           = 0.3f;
-
-	auto tile0                 = std::make_unique<Material>();
-	tile0->Name                = "tile0";
-	tile0->MatCBIndex          = 2;
-	tile0->DiffuseSrvHeapIndex = 2;
-	tile0->DiffuseAlbedo       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	tile0->FresnelR0           = XMFLOAT3(0.02f, 0.02f, 0.02f);
-	tile0->Roughness           = 0.3f;
-
-	mMaterials["bricks0"] = std::move(bricks0);
-	mMaterials["stone0"]  = std::move(stone0);
-	mMaterials["tile0"]   = std::move(tile0);
+	mMaterials["woodCrate"] = std::move(woodCrate);
 }
 
-void TexColumnsApp::BuildRenderItems()
+void CrateApp::BuildRenderItems()
 {
 	auto boxRitem = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 2.0f, 2.0f) * XMMatrixTranslation(0.0f, 1.0f, 0.0f));
-	XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(1.0f, 1.0f, 1.0f));
 	boxRitem->ObjCBIndex         = 0;
-	boxRitem->Mat                = mMaterials["stone0"].get();
-	boxRitem->Geo                = mGeometries["shapeGeo"].get();
+	boxRitem->Mat                = mMaterials["woodCrate"].get();
+	boxRitem->Geo                = mGeometries["boxGeo"].get();
 	boxRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	boxRitem->IndexCount         = boxRitem->Geo->DrawArgs["box"].IndexCount;
 	boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["box"].StartIndexLocation;
 	boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["box"].BaseVertexLocation;
 	mAllRitems.push_back(std::move(boxRitem));
 
-	auto gridRitem   = std::make_unique<RenderItem>();
-	gridRitem->World = MathHelper::Identity4x4();
-	XMStoreFloat4x4(&gridRitem->TexTransform, XMMatrixScaling(8.0f, 8.0f, 1.0f));
-	gridRitem->ObjCBIndex         = 1;
-	gridRitem->Mat                = mMaterials["tile0"].get();
-	gridRitem->Geo                = mGeometries["shapeGeo"].get();
-	gridRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	gridRitem->IndexCount         = gridRitem->Geo->DrawArgs["grid"].IndexCount;
-	gridRitem->StartIndexLocation = gridRitem->Geo->DrawArgs["grid"].StartIndexLocation;
-	gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
-	mAllRitems.push_back(std::move(gridRitem));
-
-	XMMATRIX brickTexTransform = XMMatrixScaling(1.0f, 1.0f, 1.0f);
-	UINT     objCBIndex        = 2;
-	for (int i = 0; i < 5; ++i)
-	{
-		auto leftCylRitem     = std::make_unique<RenderItem>();
-		auto rightCylRitem    = std::make_unique<RenderItem>();
-		auto leftSphereRitem  = std::make_unique<RenderItem>();
-		auto rightSphereRitem = std::make_unique<RenderItem>();
-
-		XMMATRIX leftCylWorld  = XMMatrixTranslation(-5.0f, 1.5f, -10.0f + i * 5.0f);
-		XMMATRIX rightCylWorld = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + i * 5.0f);
-
-		XMMATRIX leftSphereWorld  = XMMatrixTranslation(-5.0f, 3.5f, -10.0f + i * 5.0f);
-		XMMATRIX rightSphereWorld = XMMatrixTranslation(+5.0f, 3.5f, -10.0f + i * 5.0f);
-
-		XMStoreFloat4x4(&leftCylRitem->World, rightCylWorld);
-		XMStoreFloat4x4(&leftCylRitem->TexTransform, brickTexTransform);
-		leftCylRitem->ObjCBIndex         = objCBIndex++;
-		leftCylRitem->Mat                = mMaterials["bricks0"].get();
-		leftCylRitem->Geo                = mGeometries["shapeGeo"].get();
-		leftCylRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		leftCylRitem->IndexCount         = leftCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
-		leftCylRitem->StartIndexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
-		leftCylRitem->BaseVertexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
-
-		XMStoreFloat4x4(&rightCylRitem->World, leftCylWorld);
-		XMStoreFloat4x4(&rightCylRitem->TexTransform, brickTexTransform);
-		rightCylRitem->ObjCBIndex         = objCBIndex++;
-		rightCylRitem->Mat                = mMaterials["bricks0"].get();
-		rightCylRitem->Geo                = mGeometries["shapeGeo"].get();
-		rightCylRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		rightCylRitem->IndexCount         = rightCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
-		rightCylRitem->StartIndexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
-		rightCylRitem->BaseVertexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
-
-		XMStoreFloat4x4(&leftSphereRitem->World, leftSphereWorld);
-		leftSphereRitem->TexTransform       = MathHelper::Identity4x4();
-		leftSphereRitem->ObjCBIndex         = objCBIndex++;
-		leftSphereRitem->Mat                = mMaterials["stone0"].get();
-		leftSphereRitem->Geo                = mGeometries["shapeGeo"].get();
-		leftSphereRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		leftSphereRitem->IndexCount         = leftSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
-		leftSphereRitem->StartIndexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
-		leftSphereRitem->BaseVertexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
-
-		XMStoreFloat4x4(&rightSphereRitem->World, rightSphereWorld);
-		rightSphereRitem->TexTransform       = MathHelper::Identity4x4();
-		rightSphereRitem->ObjCBIndex         = objCBIndex++;
-		rightSphereRitem->Mat                = mMaterials["stone0"].get();
-		rightSphereRitem->Geo                = mGeometries["shapeGeo"].get();
-		rightSphereRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		rightSphereRitem->IndexCount         = rightSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
-		rightSphereRitem->StartIndexLocation = rightSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
-		rightSphereRitem->BaseVertexLocation = rightSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
-
-		mAllRitems.push_back(std::move(leftCylRitem));
-		mAllRitems.push_back(std::move(rightCylRitem));
-		mAllRitems.push_back(std::move(leftSphereRitem));
-		mAllRitems.push_back(std::move(rightSphereRitem));
-	}
-
 	// All the render items are opaque.
 	for (auto& e : mAllRitems)
 		mOpaqueRitems.push_back(e.get());
 }
 
-void TexColumnsApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
+void CrateApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 {
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 	UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
@@ -867,7 +694,7 @@ void TexColumnsApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const st
 		D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress() + ri->ObjCBIndex * objCBByteSize;
 		D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress() + ri->Mat->MatCBIndex * matCBByteSize;
 
-		cmdList->SetGraphicsRootDescriptorTable(0, tex);
+		cmdList->SetGraphicsRootDescriptorTable(0, tex); // bind to root parameter 0. The root parameter description specifies which shader register slot this corresponds to .
 		cmdList->SetGraphicsRootConstantBufferView(1, objCBAddress);
 		cmdList->SetGraphicsRootConstantBufferView(3, matCBAddress);
 
@@ -875,7 +702,7 @@ void TexColumnsApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const st
 	}
 }
 
-std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> TexColumnsApp::GetStaticSamplers()
+std::array<const CD3DX12_STATIC_SAMPLER_DESC, 8> CrateApp::GetStaticSamplers()
 {
 	// Applications usually only need a handful of samplers.  So just define them all up front
 	// and keep them available as part of the root signature.  
@@ -926,9 +753,27 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> TexColumnsApp::GetStaticSampler
 	                                                   0.0f,                             // mipLODBias
 	                                                   8);                               // maxAnisotropy
 
+	const CD3DX12_STATIC_SAMPLER_DESC anisotropicBorder(
+	                                                    6,                                 // shaderRegister
+	                                                    D3D12_FILTER_ANISOTROPIC,          // filter
+	                                                    D3D12_TEXTURE_ADDRESS_MODE_BORDER, // addressU
+	                                                    D3D12_TEXTURE_ADDRESS_MODE_BORDER, // addressV
+	                                                    D3D12_TEXTURE_ADDRESS_MODE_BORDER, // addressW
+	                                                    0.0f,                              // mipLODBias
+	                                                    8);                                // maxAnisotropy
+
+	const CD3DX12_STATIC_SAMPLER_DESC anisotropicMirror(
+	                                                    7,                                 // shaderRegister
+	                                                    D3D12_FILTER_ANISOTROPIC,          // filter
+	                                                    D3D12_TEXTURE_ADDRESS_MODE_MIRROR, // addressU
+	                                                    D3D12_TEXTURE_ADDRESS_MODE_MIRROR, // addressV
+	                                                    D3D12_TEXTURE_ADDRESS_MODE_MIRROR, // addressW
+	                                                    0.0f,                              // mipLODBias
+	                                                    8);                                // maxAnisotropy
+
 	return {
 		pointWrap, pointClamp,
 		linearWrap, linearClamp,
-		anisotropicWrap, anisotropicClamp
+		anisotropicWrap, anisotropicClamp, anisotropicBorder, anisotropicMirror
 	};
 }
