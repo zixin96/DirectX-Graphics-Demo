@@ -56,6 +56,7 @@ enum class RenderLayer : int
 {
 	Opaque = 0,
 	Transparent,
+	// alpha tested layer contains objects with texels that are either completely opaque or completely transparent (like wire fence texture)
 	AlphaTested,
 	Count
 };
@@ -281,11 +282,14 @@ void BlendApp::Draw(const GameTimer& gt)
 	auto passCB = mCurrFrameResource->PassCB->Resource();
 	mCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
 
+	// draw opaque objects first (using the default PSO)
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
 
+	// for alpha tested objects, draw order doesn't matter (using alphaTested PSO)
 	mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::AlphaTested]);
 
+	// draw transparent objects back to front (may also need to disable depth writing while doing so) (use transparent PSO)
 	mCommandList->SetPipelineState(mPSOs["transparent"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Transparent]);
 
@@ -641,8 +645,8 @@ void BlendApp::BuildShadersAndInputLayout()
 {
 	const D3D_SHADER_MACRO defines[] =
 	{
-		"FOG", "1",
-		NULL, NULL
+		"FOG", "1", // some scenes may not want to use FOG; therefore we make fog optional by requiring FOG to be defined when compiling the shader
+		NULL, NULL  // The last structure in the array serves as a terminator and must have all members set to NULL.
 	};
 
 	const D3D_SHADER_MACRO alphaTestDefines[] =
@@ -654,7 +658,7 @@ void BlendApp::BuildShadersAndInputLayout()
 
 	mShaders["standardVS"]    = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_0");
 	mShaders["opaquePS"]      = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", defines, "PS", "ps_5_0");
-	mShaders["alphaTestedPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_0");
+	mShaders["alphaTestedPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_0"); // alpha tested shaders are used when drawing objects where pixels are either completely opaque or completely transparent
 
 	mInputLayout =
 	{
@@ -846,7 +850,7 @@ void BlendApp::BuildPSOs()
 		mShaders["opaquePS"]->GetBufferSize()
 	};
 	opaquePsoDesc.RasterizerState       = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT); // default: AlphaToCoverageEnable = false, IndependentBlendEnable = false
 	opaquePsoDesc.DepthStencilState     = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	opaquePsoDesc.SampleMask            = UINT_MAX;
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -861,11 +865,13 @@ void BlendApp::BuildPSOs()
 	// PSO for transparent objects
 	//
 
+	// start from non-blended pso
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC transparentPsoDesc = opaquePsoDesc;
 
+	// specify how blending is done for a render target 
 	D3D12_RENDER_TARGET_BLEND_DESC transparencyBlendDesc;
-	transparencyBlendDesc.BlendEnable           = true;
-	transparencyBlendDesc.LogicOpEnable         = false;
+	transparencyBlendDesc.BlendEnable           = true;  // either use blend or logic op. Cannot use both
+	transparencyBlendDesc.LogicOpEnable         = false; // either use blend or logic op. Cannot use both
 	transparencyBlendDesc.SrcBlend              = D3D12_BLEND_SRC_ALPHA;
 	transparencyBlendDesc.DestBlend             = D3D12_BLEND_INV_SRC_ALPHA;
 	transparencyBlendDesc.BlendOp               = D3D12_BLEND_OP_ADD;
@@ -875,7 +881,7 @@ void BlendApp::BuildPSOs()
 	transparencyBlendDesc.LogicOp               = D3D12_LOGIC_OP_NOOP;
 	transparencyBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
-	transparentPsoDesc.BlendState.RenderTarget[0] = transparencyBlendDesc;
+	transparentPsoDesc.BlendState.RenderTarget[0] = transparencyBlendDesc; // since IndependentBlendEnable = false, all the render targets use RenderTarget[0] for blending
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&transparentPsoDesc, IID_PPV_ARGS(&mPSOs["transparent"])));
 
 	//
@@ -888,7 +894,7 @@ void BlendApp::BuildPSOs()
 		reinterpret_cast<BYTE*>(mShaders["alphaTestedPS"]->GetBufferPointer()),
 		mShaders["alphaTestedPS"]->GetBufferSize()
 	};
-	alphaTestedPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	alphaTestedPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE; // disable back face culling for alpha tested objects (because we can now see through the objects with alpha-enabled textures)
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&alphaTestedPsoDesc, IID_PPV_ARGS(&mPSOs["alphaTested"])));
 }
 
@@ -897,7 +903,10 @@ void BlendApp::BuildFrameResources()
 	for (int i = 0; i < gNumFrameResources; ++i)
 	{
 		mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(),
-		                                                          1, (UINT)mAllRitems.size(), (UINT)mMaterials.size(), mWaves->VertexCount()));
+		                                                          1,
+		                                                          (UINT)mAllRitems.size(),
+		                                                          (UINT)mMaterials.size(),
+		                                                          mWaves->VertexCount()));
 	}
 }
 
@@ -917,7 +926,7 @@ void BlendApp::BuildMaterials()
 	water->Name                = "water";
 	water->MatCBIndex          = 1;
 	water->DiffuseSrvHeapIndex = 1;
-	water->DiffuseAlbedo       = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.5f);
+	water->DiffuseAlbedo       = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.5f); //! Note: our texture has alpha = 1, so we modulate the alpha value of water texture by providing a diffuseAlbedo with alpha = 0.5 (to make it transparent)
 	water->FresnelR0           = XMFLOAT3(0.1f, 0.1f, 0.1f);
 	water->Roughness           = 0.0f;
 
