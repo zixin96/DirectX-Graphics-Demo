@@ -2,6 +2,8 @@
 // StencilApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
 //***************************************************************************************
 
+// TODO: notice that the shadow in the mirror is darker and doesn't blend with the floor because when we draw reflected object, there is no blending
+
 #include "../../Common/d3dApp.h"
 #include "../../Common/MathHelper.h"
 #include "../../Common/UploadBuffer.h"
@@ -439,8 +441,8 @@ void StencilApp::OnKeyboardInput(const GameTimer& gt)
 	XMVECTOR shadowPlane   = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f); // xz plane
 	XMVECTOR toMainLight   = -XMLoadFloat3(&mMainPassCB.Lights[0].Direction);
 	XMMATRIX S             = XMMatrixShadow(shadowPlane, toMainLight);
-	//XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, 0.001f, 0.0f); // offset the projected shadow mesh along the y-axis by a small amount to prevent z-fighting
-	XMStoreFloat4x4(&mShadowedSkullRitem->World, skullWorld * S );
+	XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, 0.001f, 0.0f); // offset the projected shadow mesh along the y-axis by a small amount to prevent z-fighting
+	XMStoreFloat4x4(&mShadowedSkullRitem->World, skullWorld * S * shadowOffsetY);
 
 	// Update reflection world matrix for the skull shadow.
 	XMStoreFloat4x4(&mShadowedSkullReflectedRitem->World, XMLoadFloat4x4(&mShadowedSkullRitem->World) * R);
@@ -1051,38 +1053,6 @@ void StencilApp::BuildPSOs()
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&markMirrorsPsoDesc, IID_PPV_ARGS(&mPSOs["markStencilMirrors"])));
 
 	//
-	// PSO for stencil reflections.
-	// Note: When we use this PSO, mirror has not been drawn yet. 
-	//
-
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC drawReflectionsPsoDesc = opaquePsoDesc;
-
-	D3D12_DEPTH_STENCIL_DESC reflectionsDSS;
-	reflectionsDSS.DepthEnable    = true;                       // enable the depth buffering 
-	reflectionsDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL; // enable writes to the depth buffer. New depth will be written provided the depth and stencil test both pass
-	reflectionsDSS.DepthFunc      = D3D12_COMPARISON_FUNC_LESS; // a pixel fragment is accepted provided its depth value is LESS than the depth of the previous pixel written to the back buffer
-
-	reflectionsDSS.StencilEnable    = true; // enable stencil test
-	reflectionsDSS.StencilReadMask  = 0xff;
-	reflectionsDSS.StencilWriteMask = 0xff;
-
-	reflectionsDSS.FrontFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.FrontFace.StencilPassOp      = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.FrontFace.StencilFunc        = D3D12_COMPARISON_FUNC_EQUAL;
-
-	// We are not rendering backfacing polygons, so these settings do not matter.
-	reflectionsDSS.BackFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.BackFace.StencilPassOp      = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.BackFace.StencilFunc        = D3D12_COMPARISON_FUNC_EQUAL;
-
-	drawReflectionsPsoDesc.DepthStencilState                     = reflectionsDSS;
-	drawReflectionsPsoDesc.RasterizerState.CullMode              = D3D12_CULL_MODE_BACK;
-	drawReflectionsPsoDesc.RasterizerState.FrontCounterClockwise = true; // we need to reverse the winding order convention. When the object is reflected, outward facing normals become inward facing ones. To correct this, we reverse the winding order convention. Page 431
-	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&drawReflectionsPsoDesc, IID_PPV_ARGS(&mPSOs["drawStencilReflections"])));
-
-	//
 	// PSO for shadow objects
 	//
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC shadowPsoDesc = transparentPsoDesc; // We are going to draw shadows with transparency, so base it off the transparency description.
@@ -1109,6 +1079,63 @@ void StencilApp::BuildPSOs()
 
 	shadowPsoDesc.DepthStencilState = shadowDSS;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&shadowPsoDesc, IID_PPV_ARGS(&mPSOs["shadow"])));
+
+	//
+	// PSO for stencil reflections.
+	// Note: When we use this PSO, mirror has not been drawn yet. 
+	//
+
+	/*D3D12_GRAPHICS_PIPELINE_STATE_DESC drawReflectionsPsoDesc = transparentPsoDesc;
+
+	D3D12_DEPTH_STENCIL_DESC testDSS;
+	testDSS.DepthEnable    = true;                       // enable the depth buffering 
+	testDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL; // enable writes to the depth buffer. New depth will be written provided the depth and stencil test both pass
+	testDSS.DepthFunc      = D3D12_COMPARISON_FUNC_LESS; // a pixel fragment is accepted provided its depth value is LESS than the depth of the previous pixel written to the back buffer
+
+	testDSS.StencilEnable    = true; // enable stencil test
+	testDSS.StencilReadMask  = 0xff;
+	testDSS.StencilWriteMask = 0xff;
+
+	testDSS.FrontFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
+	testDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	testDSS.FrontFace.StencilPassOp      = D3D12_STENCIL_OP_INCR; // increment the stencil buffer entry 
+	testDSS.FrontFace.StencilFunc        = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+
+	// We are not rendering backfacing polygons, so these settings do not matter.
+	testDSS.BackFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
+	testDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	testDSS.BackFace.StencilPassOp      = D3D12_STENCIL_OP_INCR;
+	testDSS.BackFace.StencilFunc        = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+
+	drawReflectionsPsoDesc.DepthStencilState                     = testDSS;*/
+
+	//TODO: attempt at implementing shadows in the mirror (right now, there are artifacts caused by double blending)
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC drawReflectionsPsoDesc = transparentPsoDesc;
+
+	D3D12_DEPTH_STENCIL_DESC reflectionsDSS;
+	reflectionsDSS.DepthEnable = true;                       // enable the depth buffering 
+	reflectionsDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL; // enable writes to the depth buffer. New depth will be written provided the depth and stencil test both pass
+	reflectionsDSS.DepthFunc = D3D12_COMPARISON_FUNC_LESS; // a pixel fragment is accepted provided its depth value is LESS than the depth of the previous pixel written to the back buffer
+
+	reflectionsDSS.StencilEnable = true; // enable stencil test
+	reflectionsDSS.StencilReadMask = 0xff;
+	reflectionsDSS.StencilWriteMask = 0xff;
+
+	reflectionsDSS.FrontFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+
+	// We are not rendering backfacing polygons, so these settings do not matter.
+	reflectionsDSS.BackFace.StencilFailOp = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.BackFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.BackFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
+
+	drawReflectionsPsoDesc.DepthStencilState = reflectionsDSS;
+	drawReflectionsPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_BACK;
+	drawReflectionsPsoDesc.RasterizerState.FrontCounterClockwise = true; // we need to reverse the winding order convention. When the object is reflected, outward facing normals become inward facing ones. To correct this, we reverse the winding order convention. Page 431
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&drawReflectionsPsoDesc, IID_PPV_ARGS(&mPSOs["drawStencilReflections"])));
 }
 
 void StencilApp::BuildFrameResources()
