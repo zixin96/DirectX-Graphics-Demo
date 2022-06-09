@@ -114,6 +114,7 @@ class GeometryGenerator
 		// cylinders.  The slices and stacks parameters control the degree of tessellation.
 		///</summary>
 		MeshData CreateCylinder(float bottomRadius, float topRadius, float height, uint32 sliceCount, uint32 stackCount);
+		MeshData CreateCylinderNoCap(float bottomRadius, float topRadius, float height, uint32 sliceCount, uint32 stackCount);
 
 		///<summary>
 		/// Creates an mxn grid in the xz-plane with m rows and n columns, centered

@@ -121,9 +121,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 }
 
 BlendApp::BlendApp(HINSTANCE hInstance)
-	: D3DApp(hInstance), mLandVB(0), mLandIB(0), mWavesVB(0), mWavesIB(0), mBoltCylinderVB(0), mBoltCylinderIB(0), mGrassMapSRV(0), mWavesMapSRV(0),
-	  mWaterTexOffset(0.0f, 0.0f), mEyePosW(0.0f, 0.0f, 0.0f), mLandIndexCount(0), mBoltIndexCount(0), mBoltFrameIndex(0),
-	  mRenderOptions(RenderOptions::TexturesAndFog), mTheta(1.65f * MathHelper::Pi), mPhi(0.3f * MathHelper::Pi), mRadius(60.0f)
+	: D3DApp(hInstance),
+	  mLandVB(0),
+	  mLandIB(0),
+	  mWavesVB(0),
+	  mWavesIB(0),
+	  mBoltCylinderVB(0),
+	  mBoltCylinderIB(0),
+	  mGrassMapSRV(0),
+	  mWavesMapSRV(0),
+	  mWaterTexOffset(0.0f, 0.0f),
+	  mEyePosW(0.0f, 0.0f, 0.0f),
+	  mLandIndexCount(0),
+	  mBoltIndexCount(0),
+	  mBoltFrameIndex(0),
+	  mRenderOptions(RenderOptions::TexturesAndFog),
+	  mTheta(1.65f * MathHelper::Pi),
+	  mPhi(0.3f * MathHelper::Pi),
+	  mRadius(60.0f)
 {
 	mMainWndCaption = L"Bolt Demo";
 	mEnable4xMsaa   = false;

@@ -94,7 +94,7 @@ class BlendApp : public D3DApp
 		void BuildShadersAndInputLayout();
 		void BuildLandGeometry();
 		void BuildWavesGeometry();
-		void BuildCylinderGeometry();
+		void BuildBoxGeometry();
 		void BuildPSOs();
 		void BuildFrameResources();
 		void BuildMaterials();
@@ -196,7 +196,7 @@ bool BlendApp::Initialize()
 	BuildShadersAndInputLayout();
 	BuildLandGeometry();
 	BuildWavesGeometry();
-	BuildCylinderGeometry();
+	BuildBoxGeometry();
 	BuildMaterials();
 	BuildRenderItems();
 	BuildFrameResources();
@@ -780,38 +780,27 @@ void BlendApp::BuildWavesGeometry()
 	mGeometries["waterGeo"] = std::move(geo);
 }
 
-void BlendApp::BuildCylinderGeometry()
+void BlendApp::BuildBoxGeometry()
 {
 	GeometryGenerator           geoGen;
-	GeometryGenerator::MeshData cylinder = geoGen.CreateCylinderNoCap(5.0f, 5.0f, 10.f, 20, 20);
+	GeometryGenerator::MeshData box = geoGen.CreateBox(8.0f, 8.0f, 8.0f, 3);
 
-	UINT cyVertexOffset = 0;
-	UINT cyIndexOffset  = 0;
-
-	SubmeshGeometry cySubmesh;
-	cySubmesh.IndexCount         = (UINT)cylinder.Indices32.size();
-	cySubmesh.StartIndexLocation = cyIndexOffset;
-	cySubmesh.BaseVertexLocation = cyVertexOffset;
-	auto totalVertexCount        = cylinder.Vertices.size();
-
-	std::vector<Vertex> vertices(totalVertexCount);
-
-	UINT k = 0;
-	for (size_t i = 0; i < cylinder.Vertices.size(); ++i, ++k)
+	std::vector<Vertex> vertices(box.Vertices.size());
+	for (size_t i = 0; i < box.Vertices.size(); ++i)
 	{
-		vertices[k].Pos    = cylinder.Vertices[i].Position;
-		vertices[k].Normal = cylinder.Vertices[i].Normal;
-		vertices[k].TexC   = cylinder.Vertices[i].TexC;
+		auto& p            = box.Vertices[i].Position;
+		vertices[i].Pos    = p;
+		vertices[i].Normal = box.Vertices[i].Normal;
+		vertices[i].TexC   = box.Vertices[i].TexC;
 	}
 
-	std::vector<std::uint16_t> indices;
-	indices.insert(indices.end(), std::begin(cylinder.GetIndices16()), std::end(cylinder.GetIndices16()));
-
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
-	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+
+	std::vector<std::uint16_t> indices    = box.GetIndices16();
+	const UINT                 ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
 	auto geo  = std::make_unique<MeshGeometry>();
-	geo->Name = "shapeGeo";
+	geo->Name = "boxGeo";
 
 	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
 	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
@@ -820,25 +809,24 @@ void BlendApp::BuildCylinderGeometry()
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                    mCommandList.Get(),
-	                                                    vertices.data(),
-	                                                    vbByteSize,
-	                                                    geo->VertexBufferUploader);
+	                                                    mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
 
 	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                   mCommandList.Get(),
-	                                                   indices.data(),
-	                                                   ibByteSize,
-	                                                   geo->IndexBufferUploader);
+	                                                   mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
 
 	geo->VertexByteStride     = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
 	geo->IndexFormat          = DXGI_FORMAT_R16_UINT;
 	geo->IndexBufferByteSize  = ibByteSize;
 
-	geo->DrawArgs["cylinder"] = cySubmesh;
+	SubmeshGeometry submesh;
+	submesh.IndexCount         = (UINT)indices.size();
+	submesh.StartIndexLocation = 0;
+	submesh.BaseVertexLocation = 0;
 
-	mGeometries[geo->Name] = std::move(geo);
+	geo->DrawArgs["box"] = submesh;
+
+	mGeometries["boxGeo"] = std::move(geo);
 }
 
 void BlendApp::BuildPSOs()
@@ -989,11 +977,11 @@ void BlendApp::BuildRenderItems()
 	XMStoreFloat4x4(&boxRitem->World, XMMatrixTranslation(3.0f, 2.0f, -9.0f));
 	boxRitem->ObjCBIndex         = 2;
 	boxRitem->Mat                = mMaterials["wirefence"].get();
-	boxRitem->Geo                = mGeometries["shapeGeo"].get();
+	boxRitem->Geo                = mGeometries["boxGeo"].get();
 	boxRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	boxRitem->IndexCount         = boxRitem->Geo->DrawArgs["cylinder"].IndexCount;
-	boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
-	boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
+	boxRitem->IndexCount         = boxRitem->Geo->DrawArgs["box"].IndexCount;
+	boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["box"].StartIndexLocation;
+	boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["box"].BaseVertexLocation;
 
 	mRitemLayer[(int)RenderLayer::AlphaTested].push_back(boxRitem.get());
 
