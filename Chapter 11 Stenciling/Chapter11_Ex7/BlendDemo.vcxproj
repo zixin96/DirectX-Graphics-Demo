@@ -149,7 +149,7 @@
     <ClCompile Include="..\..\Common\GameTimer.cpp" />
     <ClCompile Include="..\..\Common\GeometryGenerator.cpp" />
     <ClCompile Include="..\..\Common\MathHelper.cpp" />
-    <ClCompile Include="BlendApp.cpp" />
+    <ClCompile Include="BoltApp.cpp" />
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="Waves.cpp" />
   </ItemGroup>
