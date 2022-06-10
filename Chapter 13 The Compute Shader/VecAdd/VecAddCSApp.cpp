@@ -346,12 +346,13 @@ void VecAddCSApp::DoComputeWork()
 
 	mCommandList->Dispatch(1, 1, 1);
 
-	// Schedule to copy the data to the default buffer to the readback buffer.
+	// Schedule to copy the data from the default buffer to the readback buffer.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
 	                                                                       D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 	                                                                       D3D12_RESOURCE_STATE_COPY_SOURCE));
 
-	mCommandList->CopyResource(mReadBackBuffer.Get(), mOutputBuffer.Get());
+	mCommandList->CopyResource(mReadBackBuffer.Get(), // the destination resource
+	                           mOutputBuffer.Get());  // represents the source resource.
 
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mOutputBuffer.Get(),
 	                                                                       D3D12_RESOURCE_STATE_COPY_SOURCE,
