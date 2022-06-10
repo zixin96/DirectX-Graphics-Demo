@@ -25,10 +25,10 @@ struct RenderItem
 {
 	RenderItem() = default;
 
-    // World matrix of the shape that describes the object's local space
-    // relative to the world space, which defines the position, orientation,
-    // and scale of the object in the world.
-    XMFLOAT4X4 World = MathHelper::Identity4x4();
+	// World matrix of the shape that describes the object's local space
+	// relative to the world space, which defines the position, orientation,
+	// and scale of the object in the world.
+	XMFLOAT4X4 World = MathHelper::Identity4x4();
 
 	XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
 
@@ -41,16 +41,16 @@ struct RenderItem
 	// Index into GPU constant buffer corresponding to the ObjectCB for this render item.
 	UINT ObjCBIndex = -1;
 
-	Material* Mat = nullptr;
+	Material*     Mat = nullptr;
 	MeshGeometry* Geo = nullptr;
 
-    // Primitive topology.
-    D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	// Primitive topology.
+	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
-    // DrawIndexedInstanced parameters.
-    UINT IndexCount = 0;
-    UINT StartIndexLocation = 0;
-    int BaseVertexLocation = 0;
+	// DrawIndexedInstanced parameters.
+	UINT IndexCount         = 0;
+	UINT StartIndexLocation = 0;
+	int  BaseVertexLocation = 0;
 };
 
 enum class RenderLayer : int
@@ -64,71 +64,68 @@ enum class RenderLayer : int
 class BlurApp : public D3DApp
 {
 public:
-    BlurApp(HINSTANCE hInstance);
-    BlurApp(const BlurApp& rhs) = delete;
-    BlurApp& operator=(const BlurApp& rhs) = delete;
-    ~BlurApp();
+	BlurApp(HINSTANCE hInstance);
+	BlurApp(const BlurApp& rhs)            = delete;
+	BlurApp& operator=(const BlurApp& rhs) = delete;
+	~BlurApp() override;
 
-    virtual bool Initialize()override;
+	bool Initialize() override;
 
 private:
-    virtual void OnResize()override;
-    virtual void Update(const GameTimer& gt)override;
-    virtual void Draw(const GameTimer& gt)override;
+	void OnResize() override;
+	void Update(const GameTimer& gt) override;
+	void Draw(const GameTimer& gt) override;
 
-    virtual void OnMouseDown(WPARAM btnState, int x, int y)override;
-    virtual void OnMouseUp(WPARAM btnState, int x, int y)override;
-    virtual void OnMouseMove(WPARAM btnState, int x, int y)override;
+	void OnMouseDown(WPARAM btnState, int x, int y) override;
+	void OnMouseUp(WPARAM btnState, int x, int y) override;
+	void OnMouseMove(WPARAM btnState, int x, int y) override;
 
-    void OnKeyboardInput(const GameTimer& gt);
+	void OnKeyboardInput(const GameTimer& gt);
 	void UpdateCamera(const GameTimer& gt);
 	void AnimateMaterials(const GameTimer& gt);
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMaterialCBs(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
-	void UpdateWaves(const GameTimer& gt); 
+	void UpdateWaves(const GameTimer& gt);
 
 	void LoadTextures();
-    void BuildRootSignature();
+	void BuildRootSignature();
 	void BuildPostProcessRootSignature();
 	void BuildDescriptorHeaps();
-    void BuildShadersAndInputLayout();
-    void BuildLandGeometry();
-    void BuildWavesGeometry();
+	void BuildShadersAndInputLayout();
+	void BuildLandGeometry();
+	void BuildWavesGeometry();
 	void BuildBoxGeometry();
-    void BuildPSOs();
-    void BuildFrameResources();
-    void BuildMaterials();
-    void BuildRenderItems();
-    void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
+	void BuildPSOs();
+	void BuildFrameResources();
+	void BuildMaterials();
+	void BuildRenderItems();
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 
-    float GetHillsHeight(float x, float z)const;
-    XMFLOAT3 GetHillsNormal(float x, float z)const;
+	float    GetHillsHeight(float x, float z) const;
+	XMFLOAT3 GetHillsNormal(float x, float z) const;
 
 private:
+	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
+	FrameResource*                              mCurrFrameResource      = nullptr;
+	int                                         mCurrFrameResourceIndex = 0;
 
-    std::vector<std::unique_ptr<FrameResource>> mFrameResources;
-    FrameResource* mCurrFrameResource = nullptr;
-    int mCurrFrameResourceIndex = 0;
-
-    UINT mCbvSrvUavDescriptorSize = 0;
-
-    ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
+	ComPtr<ID3D12RootSignature> mRootSignature            = nullptr;
 	ComPtr<ID3D12RootSignature> mPostProcessRootSignature = nullptr;
 
 	ComPtr<ID3D12DescriptorHeap> mCbvSrvUavDescriptorHeap = nullptr;
 
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
-	std::unordered_map<std::string, std::unique_ptr<Material>> mMaterials;
-	std::unordered_map<std::string, std::unique_ptr<Texture>> mTextures;
-	std::unordered_map<std::string, ComPtr<ID3DBlob>> mShaders;
-	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> mPSOs;
+	std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
+	std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
+	std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
+	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
 
-    std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
- 
-    RenderItem* mWavesRitem = nullptr;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
+
+	RenderItem* mWavesRitem = nullptr;
 
 	// List of all the render items.
 	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
@@ -140,103 +137,103 @@ private:
 
 	std::unique_ptr<BlurFilter> mBlurFilter;
 
-    PassConstants mMainPassCB;
+	PassConstants mMainPassCB;
 
-	XMFLOAT3 mEyePos = { 0.0f, 0.0f, 0.0f };
-	XMFLOAT4X4 mView = MathHelper::Identity4x4();
-	XMFLOAT4X4 mProj = MathHelper::Identity4x4();
+	XMFLOAT3   mEyePos = {0.0f, 0.0f, 0.0f};
+	XMFLOAT4X4 mView   = MathHelper::Identity4x4();
+	XMFLOAT4X4 mProj   = MathHelper::Identity4x4();
 
-    float mTheta = 1.5f*XM_PI;
-    float mPhi = XM_PIDIV2 - 0.1f;
-    float mRadius = 50.0f;
+	float mTheta  = 1.5f * XM_PI;
+	float mPhi    = XM_PIDIV2 - 0.1f;
+	float mRadius = 50.0f;
 
-    POINT mLastMousePos;
+	POINT mLastMousePos;
 };
 
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
-    PSTR cmdLine, int showCmd)
+int WINAPI WinMain(HINSTANCE hInstance,
+                   HINSTANCE prevInstance,
+                   PSTR      cmdLine,
+                   int       showCmd)
 {
-    // Enable run-time memory check for debug builds.
-#if defined(DEBUG) | defined(_DEBUG)
-    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-#endif
+	// Enable run-time memory check for debug builds.
+	#if defined(DEBUG) | defined(_DEBUG)
+	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+	#endif
 
-    try
-    {
-        BlurApp theApp(hInstance);
-        if(!theApp.Initialize())
-            return 0;
+	try
+	{
+		BlurApp theApp(hInstance);
+		if (!theApp.Initialize())
+			return 0;
 
-        return theApp.Run();
-    }
-    catch(DxException& e)
-    {
-        MessageBox(nullptr, e.ToString().c_str(), L"HR Failed", MB_OK);
-        return 0;
-    }
+		return theApp.Run();
+	}
+	catch (DxException& e)
+	{
+		MessageBox(nullptr, e.ToString().c_str(), L"HR Failed", MB_OK);
+		return 0;
+	}
 }
 
 BlurApp::BlurApp(HINSTANCE hInstance)
-    : D3DApp(hInstance)
+	: D3DApp(hInstance)
 {
 }
 
 BlurApp::~BlurApp()
 {
-    if(md3dDevice != nullptr)
-        FlushCommandQueue();
+	if (md3dDevice != nullptr)
+		FlushCommandQueue();
 }
 
 bool BlurApp::Initialize()
 {
-    if(!D3DApp::Initialize())
-        return false;
+	if (!D3DApp::Initialize())
+		return false;
 
-    // Reset the command list to prep for initialization commands.
-    ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
+	// Reset the command list to prep for initialization commands.
+	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
-    // Get the increment size of a descriptor in this heap type.  This is hardware specific, 
-	// so we have to query this information.
-    mCbvSrvUavDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	mWaves = std::make_unique<Waves>(128, 128, 1.0f, 0.03f, 4.0f, 0.2f);
 
-    mWaves = std::make_unique<Waves>(128, 128, 1.0f, 0.03f, 4.0f, 0.2f);
- 
-	mBlurFilter = std::make_unique<BlurFilter>(md3dDevice.Get(), 
-		mClientWidth, mClientHeight, DXGI_FORMAT_R8G8B8A8_UNORM);
+	mBlurFilter = std::make_unique<BlurFilter>(md3dDevice.Get(),
+	                                           mClientWidth,
+	                                           mClientHeight,
+	                                           DXGI_FORMAT_R8G8B8A8_UNORM);
 
 	LoadTextures();
-    BuildRootSignature();
+	BuildRootSignature();
 	BuildPostProcessRootSignature();
 	BuildDescriptorHeaps();
-    BuildShadersAndInputLayout();
-    BuildLandGeometry();
-    BuildWavesGeometry();
+	BuildShadersAndInputLayout();
+	BuildLandGeometry();
+	BuildWavesGeometry();
 	BuildBoxGeometry();
 	BuildMaterials();
-    BuildRenderItems();
-    BuildFrameResources();
-    BuildPSOs();
+	BuildRenderItems();
+	BuildFrameResources();
+	BuildPSOs();
 
-    // Execute the initialization commands.
-    ThrowIfFailed(mCommandList->Close());
-    ID3D12CommandList* cmdsLists[] = { mCommandList.Get() };
-    mCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+	// Execute the initialization commands.
+	ThrowIfFailed(mCommandList->Close());
+	ID3D12CommandList* cmdsLists[] = {mCommandList.Get()};
+	mCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 
-    // Wait until initialization is complete.
-    FlushCommandQueue();
+	// Wait until initialization is complete.
+	FlushCommandQueue();
 
-    return true;
+	return true;
 }
- 
+
 void BlurApp::OnResize()
 {
-    D3DApp::OnResize();
+	D3DApp::OnResize();
 
-    // The window resized, so update the aspect ratio and recompute the projection matrix.
-    XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f*MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
-    XMStoreFloat4x4(&mProj, P);
+	// The window resized, so update the aspect ratio and recompute the projection matrix.
+	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
+	XMStoreFloat4x4(&mProj, P);
 
-	if(mBlurFilter != nullptr)
+	if (mBlurFilter != nullptr)
 	{
 		mBlurFilter->OnResize(mClientWidth, mClientHeight);
 	}
@@ -244,57 +241,58 @@ void BlurApp::OnResize()
 
 void BlurApp::Update(const GameTimer& gt)
 {
-    OnKeyboardInput(gt);
+	OnKeyboardInput(gt);
 	UpdateCamera(gt);
 
-    // Cycle through the circular frame resource array.
-    mCurrFrameResourceIndex = (mCurrFrameResourceIndex + 1) % gNumFrameResources;
-    mCurrFrameResource = mFrameResources[mCurrFrameResourceIndex].get();
+	// Cycle through the circular frame resource array.
+	mCurrFrameResourceIndex = (mCurrFrameResourceIndex + 1) % gNumFrameResources;
+	mCurrFrameResource      = mFrameResources[mCurrFrameResourceIndex].get();
 
-    // Has the GPU finished processing the commands of the current frame resource?
-    // If not, wait until the GPU has completed commands up to this fence point.
-    if(mCurrFrameResource->Fence != 0 && mFence->GetCompletedValue() < mCurrFrameResource->Fence)
-    {
-        HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
-        ThrowIfFailed(mFence->SetEventOnCompletion(mCurrFrameResource->Fence, eventHandle));
-        WaitForSingleObject(eventHandle, INFINITE);
-        CloseHandle(eventHandle);
-    }
+	// Has the GPU finished processing the commands of the current frame resource?
+	// If not, wait until the GPU has completed commands up to this fence point.
+	if (mCurrFrameResource->Fence != 0 && mFence->GetCompletedValue() < mCurrFrameResource->Fence)
+	{
+		HANDLE eventHandle = CreateEventEx(nullptr, false, false, EVENT_ALL_ACCESS);
+		ThrowIfFailed(mFence->SetEventOnCompletion(mCurrFrameResource->Fence, eventHandle));
+		WaitForSingleObject(eventHandle, INFINITE);
+		CloseHandle(eventHandle);
+	}
 
 	AnimateMaterials(gt);
 	UpdateObjectCBs(gt);
 	UpdateMaterialCBs(gt);
 	UpdateMainPassCB(gt);
-    UpdateWaves(gt);
+	UpdateWaves(gt);
 }
 
 void BlurApp::Draw(const GameTimer& gt)
 {
-    auto cmdListAlloc = mCurrFrameResource->CmdListAlloc;
+	auto cmdListAlloc = mCurrFrameResource->CmdListAlloc;
 
-    // Reuse the memory associated with command recording.
-    // We can only reset when the associated command lists have finished execution on the GPU.
-    ThrowIfFailed(cmdListAlloc->Reset());
+	// Reuse the memory associated with command recording.
+	// We can only reset when the associated command lists have finished execution on the GPU.
+	ThrowIfFailed(cmdListAlloc->Reset());
 
-    // A command list can be reset after it has been added to the command queue via ExecuteCommandList.
-    // Reusing the command list reuses memory.
-    ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mPSOs["opaque"].Get()));
+	// A command list can be reset after it has been added to the command queue via ExecuteCommandList.
+	// Reusing the command list reuses memory.
+	ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mPSOs["opaque"].Get()));
 
-    mCommandList->RSSetViewports(1, &mScreenViewport);
-    mCommandList->RSSetScissorRects(1, &mScissorRect);
+	mCommandList->RSSetViewports(1, &mScreenViewport);
+	mCommandList->RSSetScissorRects(1, &mScissorRect);
 
-    // Indicate a state transition on the resource usage.
+	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-		D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	                                                                       D3D12_RESOURCE_STATE_PRESENT,
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET));
 
-    // Clear the back buffer and depth buffer.
-    mCommandList->ClearRenderTargetView(CurrentBackBufferView(), (float*)&mMainPassCB.FogColor, 0, nullptr);
-    mCommandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+	// Clear the back buffer and depth buffer.
+	mCommandList->ClearRenderTargetView(CurrentBackBufferView(), (float*)&mMainPassCB.FogColor, 0, nullptr);
+	mCommandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
-    // Specify the buffers we are going to render to.
-    mCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
+	// Specify the buffers we are going to render to.
+	mCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
 
-	ID3D12DescriptorHeap* descriptorHeaps[] = { mCbvSrvUavDescriptorHeap.Get() };
+	ID3D12DescriptorHeap* descriptorHeaps[] = {mCbvSrvUavDescriptorHeap.Get()};
 	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
 
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
@@ -302,7 +300,7 @@ void BlurApp::Draw(const GameTimer& gt)
 	auto passCB = mCurrFrameResource->PassCB->Resource();
 	mCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
 
-    DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
+	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
 
 	mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::AlphaTested]);
@@ -310,99 +308,101 @@ void BlurApp::Draw(const GameTimer& gt)
 	mCommandList->SetPipelineState(mPSOs["transparent"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Transparent]);
 
-	mBlurFilter->Execute(mCommandList.Get(), mPostProcessRootSignature.Get(), 
-		mPSOs["horzBlur"].Get(), mPSOs["vertBlur"].Get(), CurrentBackBuffer(), 4);
+	mBlurFilter->Execute(mCommandList.Get(), mPostProcessRootSignature.Get(),
+	                     mPSOs["horzBlur"].Get(), mPSOs["vertBlur"].Get(), CurrentBackBuffer(), 4);
 
 	// Prepare to copy blurred output to the back buffer.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-		D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_COPY_DEST));
+	                                                                       D3D12_RESOURCE_STATE_COPY_SOURCE,
+	                                                                       D3D12_RESOURCE_STATE_COPY_DEST));
 
 	mCommandList->CopyResource(CurrentBackBuffer(), mBlurFilter->Output());
 
-    // Transition to PRESENT state.
+	// Transition to PRESENT state.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-		D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PRESENT));
+	                                                                       D3D12_RESOURCE_STATE_COPY_DEST,
+	                                                                       D3D12_RESOURCE_STATE_PRESENT));
 
-    // Done recording commands.
-    ThrowIfFailed(mCommandList->Close());
+	// Done recording commands.
+	ThrowIfFailed(mCommandList->Close());
 
-    // Add the command list to the queue for execution.
-    ID3D12CommandList* cmdsLists[] = { mCommandList.Get() };
-    mCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+	// Add the command list to the queue for execution.
+	ID3D12CommandList* cmdsLists[] = {mCommandList.Get()};
+	mCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 
-    // Swap the back and front buffers
-    ThrowIfFailed(mSwapChain->Present(0, 0));
+	// Swap the back and front buffers
+	ThrowIfFailed(mSwapChain->Present(0, 0));
 	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
 
-    // Advance the fence value to mark commands up to this fence point.
-    mCurrFrameResource->Fence = ++mCurrentFence;
+	// Advance the fence value to mark commands up to this fence point.
+	mCurrFrameResource->Fence = ++mCurrentFence;
 
-    // Add an instruction to the command queue to set a new fence point. 
-    // Because we are on the GPU timeline, the new fence point won't be 
-    // set until the GPU finishes processing all the commands prior to this Signal().
-    mCommandQueue->Signal(mFence.Get(), mCurrentFence);
+	// Add an instruction to the command queue to set a new fence point. 
+	// Because we are on the GPU timeline, the new fence point won't be 
+	// set until the GPU finishes processing all the commands prior to this Signal().
+	mCommandQueue->Signal(mFence.Get(), mCurrentFence);
 }
 
 void BlurApp::OnMouseDown(WPARAM btnState, int x, int y)
 {
-    mLastMousePos.x = x;
-    mLastMousePos.y = y;
+	mLastMousePos.x = x;
+	mLastMousePos.y = y;
 
-    SetCapture(mhMainWnd);
+	SetCapture(mhMainWnd);
 }
 
 void BlurApp::OnMouseUp(WPARAM btnState, int x, int y)
 {
-    ReleaseCapture();
+	ReleaseCapture();
 }
 
 void BlurApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
-    if((btnState & MK_LBUTTON) != 0)
-    {
-        // Make each pixel correspond to a quarter of a degree.
-        float dx = XMConvertToRadians(0.25f*static_cast<float>(x - mLastMousePos.x));
-        float dy = XMConvertToRadians(0.25f*static_cast<float>(y - mLastMousePos.y));
+	if ((btnState & MK_LBUTTON) != 0)
+	{
+		// Make each pixel correspond to a quarter of a degree.
+		float dx = XMConvertToRadians(0.25f * static_cast<float>(x - mLastMousePos.x));
+		float dy = XMConvertToRadians(0.25f * static_cast<float>(y - mLastMousePos.y));
 
-        // Update angles based on input to orbit camera around box.
-        mTheta += dx;
-        mPhi += dy;
+		// Update angles based on input to orbit camera around box.
+		mTheta += dx;
+		mPhi += dy;
 
-        // Restrict the angle mPhi.
-        mPhi = MathHelper::Clamp(mPhi, 0.1f, MathHelper::Pi - 0.1f);
-    }
-    else if((btnState & MK_RBUTTON) != 0)
-    {
-        // Make each pixel correspond to 0.2 unit in the scene.
-        float dx = 0.2f*static_cast<float>(x - mLastMousePos.x);
-        float dy = 0.2f*static_cast<float>(y - mLastMousePos.y);
+		// Restrict the angle mPhi.
+		mPhi = MathHelper::Clamp(mPhi, 0.1f, MathHelper::Pi - 0.1f);
+	}
+	else if ((btnState & MK_RBUTTON) != 0)
+	{
+		// Make each pixel correspond to 0.2 unit in the scene.
+		float dx = 0.2f * static_cast<float>(x - mLastMousePos.x);
+		float dy = 0.2f * static_cast<float>(y - mLastMousePos.y);
 
-        // Update the camera radius based on input.
-        mRadius += dx - dy;
+		// Update the camera radius based on input.
+		mRadius += dx - dy;
 
-        // Restrict the radius.
-        mRadius = MathHelper::Clamp(mRadius, 5.0f, 150.0f);
-    }
+		// Restrict the radius.
+		mRadius = MathHelper::Clamp(mRadius, 5.0f, 150.0f);
+	}
 
-    mLastMousePos.x = x;
-    mLastMousePos.y = y;
+	mLastMousePos.x = x;
+	mLastMousePos.y = y;
 }
- 
+
 void BlurApp::OnKeyboardInput(const GameTimer& gt)
 {
 }
- 
+
 void BlurApp::UpdateCamera(const GameTimer& gt)
 {
 	// Convert Spherical to Cartesian coordinates.
-	mEyePos.x = mRadius*sinf(mPhi)*cosf(mTheta);
-	mEyePos.z = mRadius*sinf(mPhi)*sinf(mTheta);
-	mEyePos.y = mRadius*cosf(mPhi);
+	mEyePos.x = mRadius * sinf(mPhi) * cosf(mTheta);
+	mEyePos.z = mRadius * sinf(mPhi) * sinf(mTheta);
+	mEyePos.y = mRadius * cosf(mPhi);
 
 	// Build the view matrix.
-	XMVECTOR pos = XMVectorSet(mEyePos.x, mEyePos.y, mEyePos.z, 1.0f);
+	XMVECTOR pos    = XMVectorSet(mEyePos.x, mEyePos.y, mEyePos.z, 1.0f);
 	XMVECTOR target = XMVectorZero();
-	XMVECTOR up = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
+	XMVECTOR up     = XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f);
 
 	XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
 	XMStoreFloat4x4(&mView, view);
@@ -419,10 +419,10 @@ void BlurApp::AnimateMaterials(const GameTimer& gt)
 	tu += 0.1f * gt.DeltaTime();
 	tv += 0.02f * gt.DeltaTime();
 
-	if(tu >= 1.0f)
+	if (tu >= 1.0f)
 		tu -= 1.0f;
 
-	if(tv >= 1.0f)
+	if (tv >= 1.0f)
 		tv -= 1.0f;
 
 	waterMat->MatTransform(3, 0) = tu;
@@ -435,13 +435,13 @@ void BlurApp::AnimateMaterials(const GameTimer& gt)
 void BlurApp::UpdateObjectCBs(const GameTimer& gt)
 {
 	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
-	for(auto& e : mAllRitems)
+	for (auto& e : mAllRitems)
 	{
 		// Only update the cbuffer data if the constants have changed.  
 		// This needs to be tracked per frame resource.
-		if(e->NumFramesDirty > 0)
+		if (e->NumFramesDirty > 0)
 		{
-			XMMATRIX world = XMLoadFloat4x4(&e->World);
+			XMMATRIX world        = XMLoadFloat4x4(&e->World);
 			XMMATRIX texTransform = XMLoadFloat4x4(&e->TexTransform);
 
 			ObjectConstants objConstants;
@@ -459,19 +459,19 @@ void BlurApp::UpdateObjectCBs(const GameTimer& gt)
 void BlurApp::UpdateMaterialCBs(const GameTimer& gt)
 {
 	auto currMaterialCB = mCurrFrameResource->MaterialCB.get();
-	for(auto& e : mMaterials)
+	for (auto& e : mMaterials)
 	{
 		// Only update the cbuffer data if the constants have changed.  If the cbuffer
 		// data changes, it needs to be updated for each FrameResource.
 		Material* mat = e.second.get();
-		if(mat->NumFramesDirty > 0)
+		if (mat->NumFramesDirty > 0)
 		{
 			XMMATRIX matTransform = XMLoadFloat4x4(&mat->MatTransform);
 
 			MaterialConstants matConstants;
 			matConstants.DiffuseAlbedo = mat->DiffuseAlbedo;
-			matConstants.FresnelR0 = mat->FresnelR0;
-			matConstants.Roughness = mat->Roughness;
+			matConstants.FresnelR0     = mat->FresnelR0;
+			matConstants.Roughness     = mat->Roughness;
 			XMStoreFloat4x4(&matConstants.MatTransform, XMMatrixTranspose(matTransform));
 
 			currMaterialCB->CopyData(mat->MatCBIndex, matConstants);
@@ -487,9 +487,9 @@ void BlurApp::UpdateMainPassCB(const GameTimer& gt)
 	XMMATRIX view = XMLoadFloat4x4(&mView);
 	XMMATRIX proj = XMLoadFloat4x4(&mProj);
 
-	XMMATRIX viewProj = XMMatrixMultiply(view, proj);
-	XMMATRIX invView = XMMatrixInverse(&XMMatrixDeterminant(view), view);
-	XMMATRIX invProj = XMMatrixInverse(&XMMatrixDeterminant(proj), proj);
+	XMMATRIX viewProj    = XMMatrixMultiply(view, proj);
+	XMMATRIX invView     = XMMatrixInverse(&XMMatrixDeterminant(view), view);
+	XMMATRIX invProj     = XMMatrixInverse(&XMMatrixDeterminant(proj), proj);
 	XMMATRIX invViewProj = XMMatrixInverse(&XMMatrixDeterminant(viewProj), viewProj);
 
 	XMStoreFloat4x4(&mMainPassCB.View, XMMatrixTranspose(view));
@@ -498,20 +498,20 @@ void BlurApp::UpdateMainPassCB(const GameTimer& gt)
 	XMStoreFloat4x4(&mMainPassCB.InvProj, XMMatrixTranspose(invProj));
 	XMStoreFloat4x4(&mMainPassCB.ViewProj, XMMatrixTranspose(viewProj));
 	XMStoreFloat4x4(&mMainPassCB.InvViewProj, XMMatrixTranspose(invViewProj));
-	mMainPassCB.EyePosW = mEyePos;
-	mMainPassCB.RenderTargetSize = XMFLOAT2((float)mClientWidth, (float)mClientHeight);
+	mMainPassCB.EyePosW             = mEyePos;
+	mMainPassCB.RenderTargetSize    = XMFLOAT2((float)mClientWidth, (float)mClientHeight);
 	mMainPassCB.InvRenderTargetSize = XMFLOAT2(1.0f / mClientWidth, 1.0f / mClientHeight);
-	mMainPassCB.NearZ = 1.0f;
-	mMainPassCB.FarZ = 1000.0f;
-	mMainPassCB.TotalTime = gt.TotalTime();
-	mMainPassCB.DeltaTime = gt.DeltaTime();
-	mMainPassCB.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
-	mMainPassCB.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
-	mMainPassCB.Lights[0].Strength = { 0.6f, 0.6f, 0.6f };
-	mMainPassCB.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
-	mMainPassCB.Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
-	mMainPassCB.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
-	mMainPassCB.Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
+	mMainPassCB.NearZ               = 1.0f;
+	mMainPassCB.FarZ                = 1000.0f;
+	mMainPassCB.TotalTime           = gt.TotalTime();
+	mMainPassCB.DeltaTime           = gt.DeltaTime();
+	mMainPassCB.AmbientLight        = {0.25f, 0.25f, 0.35f, 1.0f};
+	mMainPassCB.Lights[0].Direction = {0.57735f, -0.57735f, 0.57735f};
+	mMainPassCB.Lights[0].Strength  = {0.6f, 0.6f, 0.6f};
+	mMainPassCB.Lights[1].Direction = {-0.57735f, -0.57735f, 0.57735f};
+	mMainPassCB.Lights[1].Strength  = {0.3f, 0.3f, 0.3f};
+	mMainPassCB.Lights[2].Direction = {0.0f, -0.707f, -0.707f};
+	mMainPassCB.Lights[2].Strength  = {0.15f, 0.15f, 0.15f};
 
 	auto currPassCB = mCurrFrameResource->PassCB.get();
 	currPassCB->CopyData(0, mMainPassCB);
@@ -521,7 +521,7 @@ void BlurApp::UpdateWaves(const GameTimer& gt)
 {
 	// Every quarter second, generate a random wave.
 	static float t_base = 0.0f;
-	if((mTimer.TotalTime() - t_base) >= 0.25f)
+	if ((mTimer.TotalTime() - t_base) >= 0.25f)
 	{
 		t_base += 0.25f;
 
@@ -538,13 +538,13 @@ void BlurApp::UpdateWaves(const GameTimer& gt)
 
 	// Update the wave vertex buffer with the new solution.
 	auto currWavesVB = mCurrFrameResource->WavesVB.get();
-	for(int i = 0; i < mWaves->VertexCount(); ++i)
+	for (int i = 0; i < mWaves->VertexCount(); ++i)
 	{
 		Vertex v;
 
-		v.Pos = mWaves->Position(i);
+		v.Pos    = mWaves->Position(i);
 		v.Normal = mWaves->Normal(i);
-		
+
 		// Derive tex-coords from position by 
 		// mapping [-w/2,w/2] --> [0,1]
 		v.TexC.x = 0.5f + v.Pos.x / mWaves->Width();
@@ -559,26 +559,26 @@ void BlurApp::UpdateWaves(const GameTimer& gt)
 
 void BlurApp::LoadTextures()
 {
-	auto grassTex = std::make_unique<Texture>();
-	grassTex->Name = "grassTex";
+	auto grassTex      = std::make_unique<Texture>();
+	grassTex->Name     = "grassTex";
 	grassTex->Filename = L"../../Textures/grass.dds";
 	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		mCommandList.Get(), grassTex->Filename.c_str(),
-		grassTex->Resource, grassTex->UploadHeap));
+		              mCommandList.Get(), grassTex->Filename.c_str(),
+		              grassTex->Resource, grassTex->UploadHeap));
 
-	auto waterTex = std::make_unique<Texture>();
-	waterTex->Name = "waterTex";
+	auto waterTex      = std::make_unique<Texture>();
+	waterTex->Name     = "waterTex";
 	waterTex->Filename = L"../../Textures/water1.dds";
 	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		mCommandList.Get(), waterTex->Filename.c_str(),
-		waterTex->Resource, waterTex->UploadHeap));
+		              mCommandList.Get(), waterTex->Filename.c_str(),
+		              waterTex->Resource, waterTex->UploadHeap));
 
-	auto fenceTex = std::make_unique<Texture>();
-	fenceTex->Name = "fenceTex";
+	auto fenceTex      = std::make_unique<Texture>();
+	fenceTex->Name     = "fenceTex";
 	fenceTex->Filename = L"../../Textures/WireFence.dds";
 	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		mCommandList.Get(), fenceTex->Filename.c_str(),
-		fenceTex->Resource, fenceTex->UploadHeap));
+		              mCommandList.Get(), fenceTex->Filename.c_str(),
+		              fenceTex->Resource, fenceTex->UploadHeap));
 
 	mTextures[grassTex->Name] = std::move(grassTex);
 	mTextures[waterTex->Name] = std::move(waterTex);
@@ -590,39 +590,39 @@ void BlurApp::BuildRootSignature()
 	CD3DX12_DESCRIPTOR_RANGE texTable;
 	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
-    // Root parameter can be a table, root descriptor or root constants.
-    CD3DX12_ROOT_PARAMETER slotRootParameter[4];
+	// Root parameter can be a table, root descriptor or root constants.
+	CD3DX12_ROOT_PARAMETER slotRootParameter[4];
 
 	// Perfomance TIP: Order from most frequent to least frequent.
 	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
-    slotRootParameter[1].InitAsConstantBufferView(0);
-    slotRootParameter[2].InitAsConstantBufferView(1);
-    slotRootParameter[3].InitAsConstantBufferView(2);
+	slotRootParameter[1].InitAsConstantBufferView(0);
+	slotRootParameter[2].InitAsConstantBufferView(1);
+	slotRootParameter[3].InitAsConstantBufferView(2);
 
 	auto staticSamplers = GetStaticSamplers();
 
-    // A root signature is an array of root parameters.
+	// A root signature is an array of root parameters.
 	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(4, slotRootParameter,
-		(UINT)staticSamplers.size(), staticSamplers.data(),
-		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	                                        (UINT)staticSamplers.size(), staticSamplers.data(),
+	                                        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
-    // create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
-    ComPtr<ID3DBlob> serializedRootSig = nullptr;
-    ComPtr<ID3DBlob> errorBlob = nullptr;
-    HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
-        serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+	// create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
+	ComPtr<ID3DBlob> serializedRootSig = nullptr;
+	ComPtr<ID3DBlob> errorBlob         = nullptr;
+	HRESULT          hr                = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+	                                                                 serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
 
-    if(errorBlob != nullptr)
-    {
-        ::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
-    }
-    ThrowIfFailed(hr);
+	if (errorBlob != nullptr)
+	{
+		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+	}
+	ThrowIfFailed(hr);
 
-    ThrowIfFailed(md3dDevice->CreateRootSignature(
-		0,
-        serializedRootSig->GetBufferPointer(),
-        serializedRootSig->GetBufferSize(),
-        IID_PPV_ARGS(mRootSignature.GetAddressOf())));
+	ThrowIfFailed(md3dDevice->CreateRootSignature(
+		              0,
+		              serializedRootSig->GetBufferPointer(),
+		              serializedRootSig->GetBufferSize(),
+		              IID_PPV_ARGS(mRootSignature.GetAddressOf())));
 }
 
 void BlurApp::BuildPostProcessRootSignature()
@@ -643,40 +643,40 @@ void BlurApp::BuildPostProcessRootSignature()
 
 	// A root signature is an array of root parameters.
 	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(3, slotRootParameter,
-		0, nullptr,
-		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	                                        0, nullptr,
+	                                        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	// create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
 	ComPtr<ID3DBlob> serializedRootSig = nullptr;
-	ComPtr<ID3DBlob> errorBlob = nullptr;
-	HRESULT hr = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
-		serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+	ComPtr<ID3DBlob> errorBlob         = nullptr;
+	HRESULT          hr                = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
+	                                                                 serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
 
-	if(errorBlob != nullptr)
+	if (errorBlob != nullptr)
 	{
 		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 	}
 	ThrowIfFailed(hr);
 
 	ThrowIfFailed(md3dDevice->CreateRootSignature(
-		0,
-		serializedRootSig->GetBufferPointer(),
-		serializedRootSig->GetBufferSize(),
-		IID_PPV_ARGS(mPostProcessRootSignature.GetAddressOf())));
+		              0,
+		              serializedRootSig->GetBufferPointer(),
+		              serializedRootSig->GetBufferSize(),
+		              IID_PPV_ARGS(mPostProcessRootSignature.GetAddressOf())));
 }
 
 void BlurApp::BuildDescriptorHeaps()
 {
 	const int textureDescriptorCount = 3;
-	const int blurDescriptorCount = 4;
+	const int blurDescriptorCount    = 4;
 
 	//
 	// Create the SRV heap.
 	//
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors = textureDescriptorCount + 
-		blurDescriptorCount;
-	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	srvHeapDesc.NumDescriptors             = textureDescriptorCount +
+	                                         blurDescriptorCount;
+	srvHeapDesc.Type  = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mCbvSrvUavDescriptorHeap)));
 
@@ -690,11 +690,11 @@ void BlurApp::BuildDescriptorHeaps()
 	auto fenceTex = mTextures["fenceTex"]->Resource;
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.Format = grassTex->GetDesc().Format;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MostDetailedMip = 0;
-	srvDesc.Texture2D.MipLevels = -1;
+	srvDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Format                          = grassTex->GetDesc().Format;
+	srvDesc.ViewDimension                   = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MostDetailedMip       = 0;
+	srvDesc.Texture2D.MipLevels             = -1;
 	md3dDevice->CreateShaderResourceView(grassTex.Get(), &srvDesc, hDescriptor);
 
 	// next descriptor
@@ -714,9 +714,9 @@ void BlurApp::BuildDescriptorHeaps()
 	//
 
 	mBlurFilter->BuildDescriptors(
-		CD3DX12_CPU_DESCRIPTOR_HANDLE(mCbvSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 3, mCbvSrvUavDescriptorSize),
-		CD3DX12_GPU_DESCRIPTOR_HANDLE(mCbvSrvUavDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), 3, mCbvSrvUavDescriptorSize),
-		mCbvSrvUavDescriptorSize);
+	                              CD3DX12_CPU_DESCRIPTOR_HANDLE(mCbvSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 3, mCbvSrvUavDescriptorSize),
+	                              CD3DX12_GPU_DESCRIPTOR_HANDLE(mCbvSrvUavDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), 3, mCbvSrvUavDescriptorSize),
+	                              mCbvSrvUavDescriptorSize);
 }
 
 void BlurApp::BuildShadersAndInputLayout()
@@ -734,47 +734,47 @@ void BlurApp::BuildShadersAndInputLayout()
 		NULL, NULL
 	};
 
-	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_0");
-	mShaders["opaquePS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", defines, "PS", "ps_5_0");
+	mShaders["standardVS"]    = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_0");
+	mShaders["opaquePS"]      = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", defines, "PS", "ps_5_0");
 	mShaders["alphaTestedPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_0");
-	mShaders["horzBlurCS"] = d3dUtil::CompileShader(L"Shaders\\Blur.hlsl", nullptr, "HorzBlurCS", "cs_5_0");
-	mShaders["vertBlurCS"] = d3dUtil::CompileShader(L"Shaders\\Blur.hlsl", nullptr, "VertBlurCS", "cs_5_0");
+	mShaders["horzBlurCS"]    = d3dUtil::CompileShader(L"Shaders\\Blur.hlsl", nullptr, "HorzBlurCS", "cs_5_0");
+	mShaders["vertBlurCS"]    = d3dUtil::CompileShader(L"Shaders\\Blur.hlsl", nullptr, "VertBlurCS", "cs_5_0");
 
-    mInputLayout =
-    {
-        { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-        { "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-    };
+	mInputLayout =
+	{
+		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 24, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+	};
 }
 
 void BlurApp::BuildLandGeometry()
 {
-    GeometryGenerator geoGen;
-    GeometryGenerator::MeshData grid = geoGen.CreateGrid(160.0f, 160.0f, 50, 50);
+	GeometryGenerator           geoGen;
+	GeometryGenerator::MeshData grid = geoGen.CreateGrid(160.0f, 160.0f, 50, 50);
 
-    //
-    // Extract the vertex elements we are interested and apply the height function to
-    // each vertex.  In addition, color the vertices based on their height so we have
-    // sandy looking beaches, grassy low hills, and snow mountain peaks.
-    //
+	//
+	// Extract the vertex elements we are interested and apply the height function to
+	// each vertex.  In addition, color the vertices based on their height so we have
+	// sandy looking beaches, grassy low hills, and snow mountain peaks.
+	//
 
-    std::vector<Vertex> vertices(grid.Vertices.size());
-    for(size_t i = 0; i < grid.Vertices.size(); ++i)
-    {
-        auto& p = grid.Vertices[i].Position;
-        vertices[i].Pos = p;
-        vertices[i].Pos.y = GetHillsHeight(p.x, p.z);
-        vertices[i].Normal = GetHillsNormal(p.x, p.z);
-		vertices[i].TexC = grid.Vertices[i].TexC;
-    }
+	std::vector<Vertex> vertices(grid.Vertices.size());
+	for (size_t i = 0; i < grid.Vertices.size(); ++i)
+	{
+		auto& p            = grid.Vertices[i].Position;
+		vertices[i].Pos    = p;
+		vertices[i].Pos.y  = GetHillsHeight(p.x, p.z);
+		vertices[i].Normal = GetHillsNormal(p.x, p.z);
+		vertices[i].TexC   = grid.Vertices[i].TexC;
+	}
 
-    const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
 
-    std::vector<std::uint16_t> indices = grid.GetIndices16();
-    const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+	std::vector<std::uint16_t> indices    = grid.GetIndices16();
+	const UINT                 ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
-	auto geo = std::make_unique<MeshGeometry>();
+	auto geo  = std::make_unique<MeshGeometry>();
 	geo->Name = "landGeo";
 
 	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
@@ -784,18 +784,18 @@ void BlurApp::BuildLandGeometry()
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-		mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+	                                                    mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
 
 	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-		mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+	                                                   mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
 
-	geo->VertexByteStride = sizeof(Vertex);
+	geo->VertexByteStride     = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
-	geo->IndexFormat = DXGI_FORMAT_R16_UINT;
-	geo->IndexBufferByteSize = ibByteSize;
+	geo->IndexFormat          = DXGI_FORMAT_R16_UINT;
+	geo->IndexBufferByteSize  = ibByteSize;
 
 	SubmeshGeometry submesh;
-	submesh.IndexCount = (UINT)indices.size();
+	submesh.IndexCount         = (UINT)indices.size();
 	submesh.StartIndexLocation = 0;
 	submesh.BaseVertexLocation = 0;
 
@@ -806,33 +806,33 @@ void BlurApp::BuildLandGeometry()
 
 void BlurApp::BuildWavesGeometry()
 {
-    std::vector<std::uint16_t> indices(3 * mWaves->TriangleCount()); // 3 indices per face
+	std::vector<std::uint16_t> indices(3 * mWaves->TriangleCount()); // 3 indices per face
 	assert(mWaves->VertexCount() < 0x0000ffff);
 
-    // Iterate over each quad.
-    int m = mWaves->RowCount();
-    int n = mWaves->ColumnCount();
-    int k = 0;
-    for(int i = 0; i < m - 1; ++i)
-    {
-        for(int j = 0; j < n - 1; ++j)
-        {
-            indices[k] = i*n + j;
-            indices[k + 1] = i*n + j + 1;
-            indices[k + 2] = (i + 1)*n + j;
+	// Iterate over each quad.
+	int m = mWaves->RowCount();
+	int n = mWaves->ColumnCount();
+	int k = 0;
+	for (int i = 0; i < m - 1; ++i)
+	{
+		for (int j = 0; j < n - 1; ++j)
+		{
+			indices[k]     = i * n + j;
+			indices[k + 1] = i * n + j + 1;
+			indices[k + 2] = (i + 1) * n + j;
 
-            indices[k + 3] = (i + 1)*n + j;
-            indices[k + 4] = i*n + j + 1;
-            indices[k + 5] = (i + 1)*n + j + 1;
+			indices[k + 3] = (i + 1) * n + j;
+			indices[k + 4] = i * n + j + 1;
+			indices[k + 5] = (i + 1) * n + j + 1;
 
-            k += 6; // next quad
-        }
-    }
+			k += 6; // next quad
+		}
+	}
 
-	UINT vbByteSize = mWaves->VertexCount()*sizeof(Vertex);
-	UINT ibByteSize = (UINT)indices.size()*sizeof(std::uint16_t);
+	UINT vbByteSize = mWaves->VertexCount() * sizeof(Vertex);
+	UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
-	auto geo = std::make_unique<MeshGeometry>();
+	auto geo  = std::make_unique<MeshGeometry>();
 	geo->Name = "waterGeo";
 
 	// Set dynamically.
@@ -843,15 +843,15 @@ void BlurApp::BuildWavesGeometry()
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-		mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+	                                                   mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
 
-	geo->VertexByteStride = sizeof(Vertex);
+	geo->VertexByteStride     = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
-	geo->IndexFormat = DXGI_FORMAT_R16_UINT;
-	geo->IndexBufferByteSize = ibByteSize;
+	geo->IndexFormat          = DXGI_FORMAT_R16_UINT;
+	geo->IndexBufferByteSize  = ibByteSize;
 
 	SubmeshGeometry submesh;
-	submesh.IndexCount = (UINT)indices.size();
+	submesh.IndexCount         = (UINT)indices.size();
 	submesh.StartIndexLocation = 0;
 	submesh.BaseVertexLocation = 0;
 
@@ -862,24 +862,24 @@ void BlurApp::BuildWavesGeometry()
 
 void BlurApp::BuildBoxGeometry()
 {
-	GeometryGenerator geoGen;
+	GeometryGenerator           geoGen;
 	GeometryGenerator::MeshData box = geoGen.CreateBox(8.0f, 8.0f, 8.0f, 3);
 
 	std::vector<Vertex> vertices(box.Vertices.size());
 	for (size_t i = 0; i < box.Vertices.size(); ++i)
 	{
-		auto& p = box.Vertices[i].Position;
-		vertices[i].Pos = p;
+		auto& p            = box.Vertices[i].Position;
+		vertices[i].Pos    = p;
 		vertices[i].Normal = box.Vertices[i].Normal;
-		vertices[i].TexC = box.Vertices[i].TexC;
+		vertices[i].TexC   = box.Vertices[i].TexC;
 	}
 
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
 
-	std::vector<std::uint16_t> indices = box.GetIndices16();
-	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+	std::vector<std::uint16_t> indices    = box.GetIndices16();
+	const UINT                 ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
-	auto geo = std::make_unique<MeshGeometry>();
+	auto geo  = std::make_unique<MeshGeometry>();
 	geo->Name = "boxGeo";
 
 	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
@@ -889,18 +889,18 @@ void BlurApp::BuildBoxGeometry()
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-		mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+	                                                    mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
 
 	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-		mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+	                                                   mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
 
-	geo->VertexByteStride = sizeof(Vertex);
+	geo->VertexByteStride     = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
-	geo->IndexFormat = DXGI_FORMAT_R16_UINT;
-	geo->IndexBufferByteSize = ibByteSize;
+	geo->IndexFormat          = DXGI_FORMAT_R16_UINT;
+	geo->IndexBufferByteSize  = ibByteSize;
 
 	SubmeshGeometry submesh;
-	submesh.IndexCount = (UINT)indices.size();
+	submesh.IndexCount         = (UINT)indices.size();
 	submesh.StartIndexLocation = 0;
 	submesh.BaseVertexLocation = 0;
 
@@ -911,35 +911,35 @@ void BlurApp::BuildBoxGeometry()
 
 void BlurApp::BuildPSOs()
 {
-    D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 
 	//
 	// PSO for opaque objects.
 	//
-    ZeroMemory(&opaquePsoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-	opaquePsoDesc.InputLayout = { mInputLayout.data(), (UINT)mInputLayout.size() };
+	ZeroMemory(&opaquePsoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
+	opaquePsoDesc.InputLayout    = {mInputLayout.data(), (UINT)mInputLayout.size()};
 	opaquePsoDesc.pRootSignature = mRootSignature.Get();
-	opaquePsoDesc.VS = 
-	{ 
-		reinterpret_cast<BYTE*>(mShaders["standardVS"]->GetBufferPointer()), 
+	opaquePsoDesc.VS             =
+	{
+		reinterpret_cast<BYTE*>(mShaders["standardVS"]->GetBufferPointer()),
 		mShaders["standardVS"]->GetBufferSize()
 	};
-	opaquePsoDesc.PS = 
-	{ 
+	opaquePsoDesc.PS =
+	{
 		reinterpret_cast<BYTE*>(mShaders["opaquePS"]->GetBufferPointer()),
 		mShaders["opaquePS"]->GetBufferSize()
 	};
-	opaquePsoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.SampleMask = UINT_MAX;
+	opaquePsoDesc.RasterizerState       = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.DepthStencilState     = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.SampleMask            = UINT_MAX;
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	opaquePsoDesc.NumRenderTargets = 1;
-	opaquePsoDesc.RTVFormats[0] = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
-	opaquePsoDesc.DSVFormat = mDepthStencilFormat;
-    ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
+	opaquePsoDesc.NumRenderTargets      = 1;
+	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
+	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
+	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 
 	//
 	// PSO for transparent objects
@@ -948,15 +948,15 @@ void BlurApp::BuildPSOs()
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC transparentPsoDesc = opaquePsoDesc;
 
 	D3D12_RENDER_TARGET_BLEND_DESC transparencyBlendDesc;
-	transparencyBlendDesc.BlendEnable = true;
-	transparencyBlendDesc.LogicOpEnable = false;
-	transparencyBlendDesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;
-	transparencyBlendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
-	transparencyBlendDesc.BlendOp = D3D12_BLEND_OP_ADD;
-	transparencyBlendDesc.SrcBlendAlpha = D3D12_BLEND_ONE;
-	transparencyBlendDesc.DestBlendAlpha = D3D12_BLEND_ZERO;
-	transparencyBlendDesc.BlendOpAlpha = D3D12_BLEND_OP_ADD;
-	transparencyBlendDesc.LogicOp = D3D12_LOGIC_OP_NOOP;
+	transparencyBlendDesc.BlendEnable           = true;
+	transparencyBlendDesc.LogicOpEnable         = false;
+	transparencyBlendDesc.SrcBlend              = D3D12_BLEND_SRC_ALPHA;
+	transparencyBlendDesc.DestBlend             = D3D12_BLEND_INV_SRC_ALPHA;
+	transparencyBlendDesc.BlendOp               = D3D12_BLEND_OP_ADD;
+	transparencyBlendDesc.SrcBlendAlpha         = D3D12_BLEND_ONE;
+	transparencyBlendDesc.DestBlendAlpha        = D3D12_BLEND_ZERO;
+	transparencyBlendDesc.BlendOpAlpha          = D3D12_BLEND_OP_ADD;
+	transparencyBlendDesc.LogicOp               = D3D12_LOGIC_OP_NOOP;
 	transparencyBlendDesc.RenderTargetWriteMask = D3D12_COLOR_WRITE_ENABLE_ALL;
 
 	transparentPsoDesc.BlendState.RenderTarget[0] = transparencyBlendDesc;
@@ -967,8 +967,8 @@ void BlurApp::BuildPSOs()
 	//
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC alphaTestedPsoDesc = opaquePsoDesc;
-	alphaTestedPsoDesc.PS = 
-	{ 
+	alphaTestedPsoDesc.PS                                 =
+	{
 		reinterpret_cast<BYTE*>(mShaders["alphaTestedPS"]->GetBufferPointer()),
 		mShaders["alphaTestedPS"]->GetBufferSize()
 	};
@@ -979,8 +979,8 @@ void BlurApp::BuildPSOs()
 	// PSO for horizontal blur
 	//
 	D3D12_COMPUTE_PIPELINE_STATE_DESC horzBlurPSO = {};
-	horzBlurPSO.pRootSignature = mPostProcessRootSignature.Get();
-	horzBlurPSO.CS =
+	horzBlurPSO.pRootSignature                    = mPostProcessRootSignature.Get();
+	horzBlurPSO.CS                                =
 	{
 		reinterpret_cast<BYTE*>(mShaders["horzBlurCS"]->GetBufferPointer()),
 		mShaders["horzBlurCS"]->GetBufferSize()
@@ -992,8 +992,8 @@ void BlurApp::BuildPSOs()
 	// PSO for vertical blur
 	//
 	D3D12_COMPUTE_PIPELINE_STATE_DESC vertBlurPSO = {};
-	vertBlurPSO.pRootSignature = mPostProcessRootSignature.Get();
-	vertBlurPSO.CS =
+	vertBlurPSO.pRootSignature                    = mPostProcessRootSignature.Get();
+	vertBlurPSO.CS                                =
 	{
 		reinterpret_cast<BYTE*>(mShaders["vertBlurCS"]->GetBufferPointer()),
 		mShaders["vertBlurCS"]->GetBufferSize()
@@ -1004,122 +1004,122 @@ void BlurApp::BuildPSOs()
 
 void BlurApp::BuildFrameResources()
 {
-    for(int i = 0; i < gNumFrameResources; ++i)
-    {
-        mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(),
-            1, (UINT)mAllRitems.size(), (UINT)mMaterials.size(), mWaves->VertexCount()));
-    }
+	for (int i = 0; i < gNumFrameResources; ++i)
+	{
+		mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(),
+		                                                          1, (UINT)mAllRitems.size(), (UINT)mMaterials.size(), mWaves->VertexCount()));
+	}
 }
 
 void BlurApp::BuildMaterials()
 {
-	auto grass = std::make_unique<Material>();
-	grass->Name = "grass";
-	grass->MatCBIndex = 0;
+	auto grass                 = std::make_unique<Material>();
+	grass->Name                = "grass";
+	grass->MatCBIndex          = 0;
 	grass->DiffuseSrvHeapIndex = 0;
-	grass->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	grass->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
-	grass->Roughness = .125f;
+	grass->DiffuseAlbedo       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	grass->FresnelR0           = XMFLOAT3(0.01f, 0.01f, 0.01f);
+	grass->Roughness           = .125f;
 
 	// This is not a good water material definition, but we do not have all the rendering
 	// tools we need (transparency, environment reflection), so we fake it for now.
-	auto water = std::make_unique<Material>();
-	water->Name = "water";
-	water->MatCBIndex = 1;
+	auto water                 = std::make_unique<Material>();
+	water->Name                = "water";
+	water->MatCBIndex          = 1;
 	water->DiffuseSrvHeapIndex = 1;
-	water->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.5f);
-	water->FresnelR0 = XMFLOAT3(0.1f, 0.1f, 0.1f);
-	water->Roughness = 0.0f;
+	water->DiffuseAlbedo       = XMFLOAT4(1.0f, 1.0f, 1.0f, 0.5f);
+	water->FresnelR0           = XMFLOAT3(0.1f, 0.1f, 0.1f);
+	water->Roughness           = 0.0f;
 
-	auto wirefence = std::make_unique<Material>();
-	wirefence->Name = "wirefence";
-	wirefence->MatCBIndex = 2;
+	auto wirefence                 = std::make_unique<Material>();
+	wirefence->Name                = "wirefence";
+	wirefence->MatCBIndex          = 2;
 	wirefence->DiffuseSrvHeapIndex = 2;
-	wirefence->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	wirefence->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
-	wirefence->Roughness = 0.2f;
+	wirefence->DiffuseAlbedo       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	wirefence->FresnelR0           = XMFLOAT3(0.02f, 0.02f, 0.02f);
+	wirefence->Roughness           = 0.2f;
 
-	mMaterials["grass"] = std::move(grass);
-	mMaterials["water"] = std::move(water);
+	mMaterials["grass"]     = std::move(grass);
+	mMaterials["water"]     = std::move(water);
 	mMaterials["wirefence"] = std::move(wirefence);
 }
 
 void BlurApp::BuildRenderItems()
 {
-    auto wavesRitem = std::make_unique<RenderItem>();
-    wavesRitem->World = MathHelper::Identity4x4();
+	auto wavesRitem   = std::make_unique<RenderItem>();
+	wavesRitem->World = MathHelper::Identity4x4();
 	XMStoreFloat4x4(&wavesRitem->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
-	wavesRitem->ObjCBIndex = 0;
-	wavesRitem->Mat = mMaterials["water"].get();
-	wavesRitem->Geo = mGeometries["waterGeo"].get();
-	wavesRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	wavesRitem->IndexCount = wavesRitem->Geo->DrawArgs["grid"].IndexCount;
+	wavesRitem->ObjCBIndex         = 0;
+	wavesRitem->Mat                = mMaterials["water"].get();
+	wavesRitem->Geo                = mGeometries["waterGeo"].get();
+	wavesRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	wavesRitem->IndexCount         = wavesRitem->Geo->DrawArgs["grid"].IndexCount;
 	wavesRitem->StartIndexLocation = wavesRitem->Geo->DrawArgs["grid"].StartIndexLocation;
 	wavesRitem->BaseVertexLocation = wavesRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
 
-    mWavesRitem = wavesRitem.get();
+	mWavesRitem = wavesRitem.get();
 
 	mRitemLayer[(int)RenderLayer::Transparent].push_back(wavesRitem.get());
 
-    auto gridRitem = std::make_unique<RenderItem>();
-    gridRitem->World = MathHelper::Identity4x4();
+	auto gridRitem   = std::make_unique<RenderItem>();
+	gridRitem->World = MathHelper::Identity4x4();
 	XMStoreFloat4x4(&gridRitem->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
-	gridRitem->ObjCBIndex = 1;
-	gridRitem->Mat = mMaterials["grass"].get();
-	gridRitem->Geo = mGeometries["landGeo"].get();
-	gridRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-    gridRitem->IndexCount = gridRitem->Geo->DrawArgs["grid"].IndexCount;
-    gridRitem->StartIndexLocation = gridRitem->Geo->DrawArgs["grid"].StartIndexLocation;
-    gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
+	gridRitem->ObjCBIndex         = 1;
+	gridRitem->Mat                = mMaterials["grass"].get();
+	gridRitem->Geo                = mGeometries["landGeo"].get();
+	gridRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	gridRitem->IndexCount         = gridRitem->Geo->DrawArgs["grid"].IndexCount;
+	gridRitem->StartIndexLocation = gridRitem->Geo->DrawArgs["grid"].StartIndexLocation;
+	gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
 
 	mRitemLayer[(int)RenderLayer::Opaque].push_back(gridRitem.get());
 
 	auto boxRitem = std::make_unique<RenderItem>();
 	XMStoreFloat4x4(&boxRitem->World, XMMatrixTranslation(3.0f, 2.0f, -9.0f));
-	boxRitem->ObjCBIndex = 2;
-	boxRitem->Mat = mMaterials["wirefence"].get();
-	boxRitem->Geo = mGeometries["boxGeo"].get();
-	boxRitem->PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	boxRitem->IndexCount = boxRitem->Geo->DrawArgs["box"].IndexCount;
+	boxRitem->ObjCBIndex         = 2;
+	boxRitem->Mat                = mMaterials["wirefence"].get();
+	boxRitem->Geo                = mGeometries["boxGeo"].get();
+	boxRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	boxRitem->IndexCount         = boxRitem->Geo->DrawArgs["box"].IndexCount;
 	boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["box"].StartIndexLocation;
 	boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["box"].BaseVertexLocation;
 
 	mRitemLayer[(int)RenderLayer::AlphaTested].push_back(boxRitem.get());
 
-    mAllRitems.push_back(std::move(wavesRitem));
-    mAllRitems.push_back(std::move(gridRitem));
+	mAllRitems.push_back(std::move(wavesRitem));
+	mAllRitems.push_back(std::move(gridRitem));
 	mAllRitems.push_back(std::move(boxRitem));
 }
 
 void BlurApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 {
-    UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-    UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
+	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+	UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
 
 	auto objectCB = mCurrFrameResource->ObjectCB->Resource();
-	auto matCB = mCurrFrameResource->MaterialCB->Resource();
+	auto matCB    = mCurrFrameResource->MaterialCB->Resource();
 
-    // For each render item...
-    for(size_t i = 0; i < ritems.size(); ++i)
-    {
-        auto ri = ritems[i];
+	// For each render item...
+	for (size_t i = 0; i < ritems.size(); ++i)
+	{
+		auto ri = ritems[i];
 
-        cmdList->IASetVertexBuffers(0, 1, &ri->Geo->VertexBufferView());
-        cmdList->IASetIndexBuffer(&ri->Geo->IndexBufferView());
-        cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
+		cmdList->IASetVertexBuffers(0, 1, &ri->Geo->VertexBufferView());
+		cmdList->IASetIndexBuffer(&ri->Geo->IndexBufferView());
+		cmdList->IASetPrimitiveTopology(ri->PrimitiveType);
 
 		CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mCbvSrvUavDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 		tex.Offset(ri->Mat->DiffuseSrvHeapIndex, mCbvSrvUavDescriptorSize);
 
-        D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress() + ri->ObjCBIndex*objCBByteSize;
-		D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress() + ri->Mat->MatCBIndex*matCBByteSize;
+		D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = objectCB->GetGPUVirtualAddress() + ri->ObjCBIndex * objCBByteSize;
+		D3D12_GPU_VIRTUAL_ADDRESS matCBAddress = matCB->GetGPUVirtualAddress() + ri->Mat->MatCBIndex * matCBByteSize;
 
 		cmdList->SetGraphicsRootDescriptorTable(0, tex);
-        cmdList->SetGraphicsRootConstantBufferView(1, objCBAddress);
-        cmdList->SetGraphicsRootConstantBufferView(3, matCBAddress);
+		cmdList->SetGraphicsRootConstantBufferView(1, objCBAddress);
+		cmdList->SetGraphicsRootConstantBufferView(3, matCBAddress);
 
-        cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
-    }
+		cmdList->DrawIndexedInstanced(ri->IndexCount, 1, ri->StartIndexLocation, ri->BaseVertexLocation, 0);
+	}
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> BlurApp::GetStaticSamplers()
@@ -1128,72 +1128,73 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> BlurApp::GetStaticSamplers()
 	// and keep them available as part of the root signature.  
 
 	const CD3DX12_STATIC_SAMPLER_DESC pointWrap(
-		0, // shaderRegister
-		D3D12_FILTER_MIN_MAG_MIP_POINT, // filter
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+	                                            0,                                // shaderRegister
+	                                            D3D12_FILTER_MIN_MAG_MIP_POINT,   // filter
+	                                            D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+	                                            D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+	                                            D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
 
 	const CD3DX12_STATIC_SAMPLER_DESC pointClamp(
-		1, // shaderRegister
-		D3D12_FILTER_MIN_MAG_MIP_POINT, // filter
-		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
-		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
-		D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+	                                             1,                                 // shaderRegister
+	                                             D3D12_FILTER_MIN_MAG_MIP_POINT,    // filter
+	                                             D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+	                                             D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+	                                             D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
 
 	const CD3DX12_STATIC_SAMPLER_DESC linearWrap(
-		2, // shaderRegister
-		D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
+	                                             2,                                // shaderRegister
+	                                             D3D12_FILTER_MIN_MAG_MIP_LINEAR,  // filter
+	                                             D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
+	                                             D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
+	                                             D3D12_TEXTURE_ADDRESS_MODE_WRAP); // addressW
 
 	const CD3DX12_STATIC_SAMPLER_DESC linearClamp(
-		3, // shaderRegister
-		D3D12_FILTER_MIN_MAG_MIP_LINEAR, // filter
-		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
-		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
-		D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
+	                                              3,                                 // shaderRegister
+	                                              D3D12_FILTER_MIN_MAG_MIP_LINEAR,   // filter
+	                                              D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
+	                                              D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
+	                                              D3D12_TEXTURE_ADDRESS_MODE_CLAMP); // addressW
 
 	const CD3DX12_STATIC_SAMPLER_DESC anisotropicWrap(
-		4, // shaderRegister
-		D3D12_FILTER_ANISOTROPIC, // filter
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressU
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressV
-		D3D12_TEXTURE_ADDRESS_MODE_WRAP,  // addressW
-		0.0f,                             // mipLODBias
-		8);                               // maxAnisotropy
+	                                                  4,                               // shaderRegister
+	                                                  D3D12_FILTER_ANISOTROPIC,        // filter
+	                                                  D3D12_TEXTURE_ADDRESS_MODE_WRAP, // addressU
+	                                                  D3D12_TEXTURE_ADDRESS_MODE_WRAP, // addressV
+	                                                  D3D12_TEXTURE_ADDRESS_MODE_WRAP, // addressW
+	                                                  0.0f,                            // mipLODBias
+	                                                  8);                              // maxAnisotropy
 
 	const CD3DX12_STATIC_SAMPLER_DESC anisotropicClamp(
-		5, // shaderRegister
-		D3D12_FILTER_ANISOTROPIC, // filter
-		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressU
-		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressV
-		D3D12_TEXTURE_ADDRESS_MODE_CLAMP,  // addressW
-		0.0f,                              // mipLODBias
-		8);                                // maxAnisotropy
+	                                                   5,                                // shaderRegister
+	                                                   D3D12_FILTER_ANISOTROPIC,         // filter
+	                                                   D3D12_TEXTURE_ADDRESS_MODE_CLAMP, // addressU
+	                                                   D3D12_TEXTURE_ADDRESS_MODE_CLAMP, // addressV
+	                                                   D3D12_TEXTURE_ADDRESS_MODE_CLAMP, // addressW
+	                                                   0.0f,                             // mipLODBias
+	                                                   8);                               // maxAnisotropy
 
-	return { 
+	return {
 		pointWrap, pointClamp,
-		linearWrap, linearClamp, 
-		anisotropicWrap, anisotropicClamp };
+		linearWrap, linearClamp,
+		anisotropicWrap, anisotropicClamp
+	};
 }
 
-float BlurApp::GetHillsHeight(float x, float z)const
+float BlurApp::GetHillsHeight(float x, float z) const
 {
-    return 0.3f*(z*sinf(0.1f*x) + x*cosf(0.1f*z));
+	return 0.3f * (z * sinf(0.1f * x) + x * cosf(0.1f * z));
 }
 
-XMFLOAT3 BlurApp::GetHillsNormal(float x, float z)const
+XMFLOAT3 BlurApp::GetHillsNormal(float x, float z) const
 {
-    // n = (-df/dx, 1, -df/dz)
-    XMFLOAT3 n(
-        -0.03f*z*cosf(0.1f*x) - 0.3f*cosf(0.1f*z),
-        1.0f,
-        -0.3f*sinf(0.1f*x) + 0.03f*x*sinf(0.1f*z));
+	// n = (-df/dx, 1, -df/dz)
+	XMFLOAT3 n(
+	           -0.03f * z * cosf(0.1f * x) - 0.3f * cosf(0.1f * z),
+	           1.0f,
+	           -0.3f * sinf(0.1f * x) + 0.03f * x * sinf(0.1f * z));
 
-    XMVECTOR unitNormal = XMVector3Normalize(XMLoadFloat3(&n));
-    XMStoreFloat3(&n, unitNormal);
+	XMVECTOR unitNormal = XMVector3Normalize(XMLoadFloat3(&n));
+	XMStoreFloat3(&n, unitNormal);
 
-    return n;
+	return n;
 }
