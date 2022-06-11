@@ -2,7 +2,7 @@
 // Performs a separable Guassian blur with a blur radius up to 5 pixels.
 //=============================================================================
 
-cbuffer cbSettings : register(b0)
+cbuffer cbSettings : register(b0) // compute shader can access values in constant buffers
 {
 // We cannot have an array entry in a constant buffer that gets mapped onto
 // root constants, so list each element.  
@@ -25,14 +25,15 @@ float w10;
 
 static const int gMaxBlurRadius = 5;
 
-Texture2D           gInput : register(t0);
-RWTexture2D<float4> gOutput : register(u0);
+Texture2D           gInput : register(t0);  // texture input
+RWTexture2D<float4> gOutput : register(u0); // texture output
 
 #define N 256
 #define CacheSize (N + 2*gMaxBlurRadius)
 groupshared float4 gCache[CacheSize];
 
-[numthreads(N, 1, 1)]
+// The # of threads in the thread group. The threads in a group can be arranged in a 1D, 2D, or 3D grid layout
+[numthreads(N, 1, 1)] // specify the thread group dimension: N x 1 x 1
 void HorzBlurCS(int3 groupThreadID : SV_GroupThreadID,
                 int3 dispatchThreadID : SV_DispatchThreadID)
 {
@@ -82,7 +83,7 @@ void HorzBlurCS(int3 groupThreadID : SV_GroupThreadID,
 	gOutput[dispatchThreadID.xy] = blurColor;
 }
 
-[numthreads(1, N, 1)]
+[numthreads(1, N, 1)] // specify the thread group dimension: 1 x N x 1
 void VertBlurCS(int3 groupThreadID : SV_GroupThreadID,
                 int3 dispatchThreadID : SV_DispatchThreadID)
 {

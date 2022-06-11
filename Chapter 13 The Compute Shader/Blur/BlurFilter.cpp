@@ -67,8 +67,11 @@ void BlurFilter::Execute(ID3D12GraphicsCommandList* cmdList,
 
 	cmdList->SetComputeRootSignature(rootSig);
 
+	// bind gaussian blur radius and weights as root constants to the shader
 	cmdList->SetComputeRoot32BitConstants(0, 1, &blurRadius, 0);
 	cmdList->SetComputeRoot32BitConstants(0, (UINT)weights.size(), weights.data(), 1);
+
+	// Next, we will copy data from back buffer (COPY_SOURCE) to mBlurMap0 (COPY_DEST)
 
 	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(input,
 	                                                                  D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -78,17 +81,21 @@ void BlurFilter::Execute(ID3D12GraphicsCommandList* cmdList,
 	                                                                  D3D12_RESOURCE_STATE_COMMON,
 	                                                                  D3D12_RESOURCE_STATE_COPY_DEST));
 
-	// Copy the input (back-buffer in this example) to BlurMap0.
 	cmdList->CopyResource(mBlurMap0.Get(), input);
 
+	// The contents of the back buffer is now in mBlurMap0.
+
+	// transition mBlurMap0 to READ state (compute shader input state)
 	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap0.Get(),
 	                                                                  D3D12_RESOURCE_STATE_COPY_DEST,
 	                                                                  D3D12_RESOURCE_STATE_GENERIC_READ));
 
+	// transition mBlurMap1 to unordered access state (compute shader output state)
 	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap1.Get(),
 	                                                                  D3D12_RESOURCE_STATE_COMMON,
 	                                                                  D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 
+	// blur multiple times
 	for (int i = 0; i < blurCount; ++i)
 	{
 		//
@@ -97,21 +104,28 @@ void BlurFilter::Execute(ID3D12GraphicsCommandList* cmdList,
 
 		cmdList->SetPipelineState(horzBlurPSO);
 
-		cmdList->SetComputeRootDescriptorTable(1, mBlur0GpuSrv);
-		cmdList->SetComputeRootDescriptorTable(2, mBlur1GpuUav);
+		cmdList->SetComputeRootDescriptorTable(1, mBlur0GpuSrv); // t0 is mBlurMap0 (as our input source image)
+		cmdList->SetComputeRootDescriptorTable(2, mBlur1GpuUav); // u0 is mBlurMap1 (as our blurred output image)
 
 		// How many groups do we need to dispatch to cover a row of pixels, where each
 		// group covers 256 pixels (the 256 is defined in the ComputeShader).
+		//! See bottom of page 498
 		UINT numGroupsX = (UINT)ceilf(mWidth / 256.0f);
-		cmdList->Dispatch(numGroupsX, mHeight, 1);
+		cmdList->Dispatch(numGroupsX, mHeight, 1); // launch a 2D grids of thread groups
 
-		cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap0.Get(),
-		                                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
-		                                                                  D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+		//
+		// "swap" ping-pong buffer
+		//
 
+		// transition mBlurMap1 to READ state (compute shader input state)
 		cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap1.Get(),
 		                                                                  D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		                                                                  D3D12_RESOURCE_STATE_GENERIC_READ));
+
+		// transition mBlurMap0 to UA state (compute shader output state)
+		cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap0.Get(),
+		                                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
+		                                                                  D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 
 		//
 		// Vertical Blur pass.
@@ -119,26 +133,43 @@ void BlurFilter::Execute(ID3D12GraphicsCommandList* cmdList,
 
 		cmdList->SetPipelineState(vertBlurPSO);
 
-		cmdList->SetComputeRootDescriptorTable(1, mBlur1GpuSrv);
-		cmdList->SetComputeRootDescriptorTable(2, mBlur0GpuUav);
+		cmdList->SetComputeRootDescriptorTable(1, mBlur1GpuSrv); // t0 is mBlurMap1 (as our input source image)
+		cmdList->SetComputeRootDescriptorTable(2, mBlur0GpuUav); // u0 is mBlurMap0 (as our blurred output image)
 
 		// How many groups do we need to dispatch to cover a column of pixels, where each
 		// group covers 256 pixels  (the 256 is defined in the ComputeShader).
+		//! See bottom of page 498
 		UINT numGroupsY = (UINT)ceilf(mHeight / 256.0f);
-		cmdList->Dispatch(mWidth, numGroupsY, 1);
+		cmdList->Dispatch(mWidth, numGroupsY, 1); // launch a 2D grids of thread groups
 
+		//
+		// "swap" ping-pong buffer
+		//
+
+		// transition mBlurMap0 to READ state (compute shader input state)
 		cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap0.Get(),
 		                                                                  D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		                                                                  D3D12_RESOURCE_STATE_GENERIC_READ));
 
+		// transition mBlurMap1 to UA state (compute shader output state)
 		cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap1.Get(),
 		                                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
 		                                                                  D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	}
+
+	//! Added by Zixin to fix D3D errors: restore pingpong buffer states to their original ones (be ready for next frame)
+	// cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap0.Get(),
+	//                                                                   D3D12_RESOURCE_STATE_GENERIC_READ,
+	//                                                                   D3D12_RESOURCE_STATE_COMMON));
+	//
+	// cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap1.Get(),
+	//                                                                   D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+	//                                                                   D3D12_RESOURCE_STATE_COMMON));
 }
 
 std::vector<float> BlurFilter::CalcGaussWeights(float sigma)
 {
+	//d3d2
 	float twoSigma2 = 2.0f * sigma * sigma;
 
 	// Estimate the blur radius based on sigma since sigma controls the "width" of the bell curve.
@@ -194,11 +225,7 @@ void BlurFilter::BuildDescriptors()
 
 void BlurFilter::BuildResources()
 {
-	// Note, compressed formats cannot be used for UAV.  We get error like:
-	// ERROR: ID3D11Device::CreateTexture2D: The format (0x4d, BC3_UNORM) 
-	// cannot be bound as an UnorderedAccessView, or cast to a format that
-	// could be bound as an UnorderedAccessView.  Therefore this format 
-	// does not support D3D11_BIND_UNORDERED_ACCESS.
+	// Create resources for pingpong buffers
 
 	D3D12_RESOURCE_DESC texDesc;
 	ZeroMemory(&texDesc, sizeof(D3D12_RESOURCE_DESC));
@@ -212,7 +239,7 @@ void BlurFilter::BuildResources()
 	texDesc.SampleDesc.Count   = 1;
 	texDesc.SampleDesc.Quality = 0;
 	texDesc.Layout             = D3D12_TEXTURE_LAYOUT_UNKNOWN;
-	texDesc.Flags              = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+	texDesc.Flags              = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS; // UAV will be created to both buffers
 
 	ThrowIfFailed(md3dDevice->CreateCommittedResource(
 		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),

@@ -4,6 +4,7 @@ struct Data
 	float2 v2;
 };
 
+// Data resources and outputs
 StructuredBuffer<Data>   gInputA : register(t0);
 StructuredBuffer<Data>   gInputB : register(t1);
 RWStructuredBuffer<Data> gOutput : register(u0);

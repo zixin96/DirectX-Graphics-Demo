@@ -113,7 +113,7 @@ private:
 	int                                         mCurrFrameResourceIndex = 0;
 
 	ComPtr<ID3D12RootSignature> mRootSignature            = nullptr;
-	ComPtr<ID3D12RootSignature> mPostProcessRootSignature = nullptr;
+	ComPtr<ID3D12RootSignature> mPostProcessRootSignature = nullptr; // this root signature defines what parameters the compute shader expects as input (CBVs, SRVs, etc)
 
 	ComPtr<ID3D12DescriptorHeap> mCbvSrvUavDescriptorHeap = nullptr;
 
@@ -635,16 +635,16 @@ void BlurApp::BuildRootSignature()
 void BlurApp::BuildPostProcessRootSignature()
 {
 	CD3DX12_DESCRIPTOR_RANGE srvTable;
-	srvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+	srvTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0); // SRV to input Texture2D resource
 
 	CD3DX12_DESCRIPTOR_RANGE uavTable;
-	uavTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
+	uavTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0); // UAV to output RWTexture2D resource
 
 	// Root parameter can be a table, root descriptor or root constants.
 	CD3DX12_ROOT_PARAMETER slotRootParameter[3];
 
 	// Perfomance TIP: Order from most frequent to least frequent.
-	slotRootParameter[0].InitAsConstants(12, 0);
+	slotRootParameter[0].InitAsConstants(12, 0); // cbSettings in Blur.hlsl
 	slotRootParameter[1].InitAsDescriptorTable(1, &srvTable);
 	slotRootParameter[2].InitAsDescriptorTable(1, &uavTable);
 
@@ -678,8 +678,9 @@ void BlurApp::BuildPostProcessRootSignature()
 
 void BlurApp::BuildDescriptorHeaps()
 {
-	const int textureDescriptorCount = 3;
-	const int blurDescriptorCount    = 4;
+	//d3d1
+	const int textureDescriptorCount = 3; // grass + water + fence
+	const int blurDescriptorCount    = 4; // ping-pong buffers: create SRV + UAV to each of them, 2 + 2 = 4
 
 	//
 	// Create the SRV heap.
@@ -724,9 +725,12 @@ void BlurApp::BuildDescriptorHeaps()
 	// Fill out the heap with the descriptors to the BlurFilter resources.
 	//
 
-	mBlurFilter->BuildDescriptors(
-	                              CD3DX12_CPU_DESCRIPTOR_HANDLE(mCbvSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 3, mCbvSrvUavDescriptorSize),
-	                              CD3DX12_GPU_DESCRIPTOR_HANDLE(mCbvSrvUavDescriptorHeap->GetGPUDescriptorHandleForHeapStart(), 3, mCbvSrvUavDescriptorSize),
+	mBlurFilter->BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE(mCbvSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+	                                                            3,
+	                                                            mCbvSrvUavDescriptorSize),
+	                              CD3DX12_GPU_DESCRIPTOR_HANDLE(mCbvSrvUavDescriptorHeap->GetGPUDescriptorHandleForHeapStart(),
+	                                                            3,
+	                                                            mCbvSrvUavDescriptorSize),
 	                              mCbvSrvUavDescriptorSize);
 }
 
@@ -748,8 +752,8 @@ void BlurApp::BuildShadersAndInputLayout()
 	mShaders["standardVS"]    = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_0");
 	mShaders["opaquePS"]      = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", defines, "PS", "ps_5_0");
 	mShaders["alphaTestedPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_0");
-	mShaders["horzBlurCS"]    = d3dUtil::CompileShader(L"Shaders\\Blur.hlsl", nullptr, "HorzBlurCS", "cs_5_0");
-	mShaders["vertBlurCS"]    = d3dUtil::CompileShader(L"Shaders\\Blur.hlsl", nullptr, "VertBlurCS", "cs_5_0");
+	mShaders["horzBlurCS"]    = d3dUtil::CompileShader(L"Shaders\\Blur.hlsl", nullptr, "HorzBlurCS", "cs_5_0"); // horizontal kernel has entry point HorzBlurCS
+	mShaders["vertBlurCS"]    = d3dUtil::CompileShader(L"Shaders\\Blur.hlsl", nullptr, "VertBlurCS", "cs_5_0"); // vertical kernel has entry point VertBlurCS
 
 	mInputLayout =
 	{
@@ -986,11 +990,14 @@ void BlurApp::BuildPSOs()
 	alphaTestedPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&alphaTestedPsoDesc, IID_PPV_ARGS(&mPSOs["alphaTested"])));
 
+	// We need two PSOs, one for horizontal blur kernel, one for vertical blur kernel
+	// They share the same root signature, but use different shaders (same file, but different entry points)
+
 	//
 	// PSO for horizontal blur
 	//
 	D3D12_COMPUTE_PIPELINE_STATE_DESC horzBlurPSO = {};
-	horzBlurPSO.pRootSignature                    = mPostProcessRootSignature.Get();
+	horzBlurPSO.pRootSignature                    = mPostProcessRootSignature.Get(); // set compute root signature
 	horzBlurPSO.CS                                =
 	{
 		reinterpret_cast<BYTE*>(mShaders["horzBlurCS"]->GetBufferPointer()),
@@ -1011,6 +1018,9 @@ void BlurApp::BuildPSOs()
 	};
 	vertBlurPSO.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 	ThrowIfFailed(md3dDevice->CreateComputePipelineState(&vertBlurPSO, IID_PPV_ARGS(&mPSOs["vertBlur"])));
+
+	// Notice that compute PSOs have far fewer fields than graphics PSOs because the compute shader sits to the side of the graphics pipeline,
+	// all the graphics pipeline state doesn't apply to compute shaders 
 }
 
 void BlurApp::BuildFrameResources()
