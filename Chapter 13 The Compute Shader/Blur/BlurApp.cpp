@@ -199,7 +199,7 @@ bool BlurApp::Initialize()
 	mBlurFilter = std::make_unique<BlurFilter>(md3dDevice.Get(),
 	                                           mClientWidth,
 	                                           mClientHeight,
-	                                           DXGI_FORMAT_R8G8B8A8_UNORM);
+	                                           DXGI_FORMAT_R8G8B8A8_UNORM); // this is the same as mBackBufferFormat
 
 	LoadTextures();
 	BuildRootSignature();
@@ -233,8 +233,11 @@ void BlurApp::OnResize()
 	XMMATRIX P = XMMatrixPerspectiveFovLH(0.25f * MathHelper::Pi, AspectRatio(), 1.0f, 1000.0f);
 	XMStoreFloat4x4(&mProj, P);
 
+	// Initially, the blur filter resources are created to match the screen
 	if (mBlurFilter != nullptr)
 	{
+		// The texture we render the scene to has the same resolution as the window client area.
+		// Therefore, we need to resize the texture buffers in the blur filter if the user resizes the screen
 		mBlurFilter->OnResize(mClientWidth, mClientHeight);
 	}
 }
@@ -308,8 +311,12 @@ void BlurApp::Draw(const GameTimer& gt)
 	mCommandList->SetPipelineState(mPSOs["transparent"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Transparent]);
 
-	mBlurFilter->Execute(mCommandList.Get(), mPostProcessRootSignature.Get(),
-	                     mPSOs["horzBlur"].Get(), mPSOs["vertBlur"].Get(), CurrentBackBuffer(), 4);
+	mBlurFilter->Execute(mCommandList.Get(),
+	                     mPostProcessRootSignature.Get(),
+	                     mPSOs["horzBlur"].Get(),
+	                     mPSOs["vertBlur"].Get(),
+	                     CurrentBackBuffer(),
+	                     4);
 
 	// Prepare to copy blurred output to the back buffer.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
@@ -642,15 +649,19 @@ void BlurApp::BuildPostProcessRootSignature()
 	slotRootParameter[2].InitAsDescriptorTable(1, &uavTable);
 
 	// A root signature is an array of root parameters.
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(3, slotRootParameter,
-	                                        0, nullptr,
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(3,
+	                                        slotRootParameter,
+	                                        0,
+	                                        nullptr,
 	                                        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	// create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
 	ComPtr<ID3DBlob> serializedRootSig = nullptr;
 	ComPtr<ID3DBlob> errorBlob         = nullptr;
-	HRESULT          hr                = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
-	                                                                 serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+	HRESULT          hr                = D3D12SerializeRootSignature(&rootSigDesc,
+	                                                                 D3D_ROOT_SIGNATURE_VERSION_1,
+	                                                                 serializedRootSig.GetAddressOf(),
+	                                                                 errorBlob.GetAddressOf());
 
 	if (errorBlob != nullptr)
 	{
@@ -1007,7 +1018,10 @@ void BlurApp::BuildFrameResources()
 	for (int i = 0; i < gNumFrameResources; ++i)
 	{
 		mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(),
-		                                                          1, (UINT)mAllRitems.size(), (UINT)mMaterials.size(), mWaves->VertexCount()));
+		                                                          1,
+		                                                          (UINT)mAllRitems.size(),
+		                                                          (UINT)mMaterials.size(),
+		                                                          mWaves->VertexCount()));
 	}
 }
 

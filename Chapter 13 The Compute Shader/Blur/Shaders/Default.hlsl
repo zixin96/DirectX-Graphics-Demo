@@ -22,7 +22,6 @@
 
 Texture2D gDiffuseMap : register(t0);
 
-
 SamplerState gsamPointWrap : register(s0);
 SamplerState gsamPointClamp : register(s1);
 SamplerState gsamLinearWrap : register(s2);

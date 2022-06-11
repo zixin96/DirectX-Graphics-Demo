@@ -8,6 +8,9 @@
 
 #include "../../Common/d3dUtil.h"
 
+/**
+ * \brief This class encapsulates the texture resources, its views, and the actual blur operation
+ */
 class BlurFilter
 {
 public:
