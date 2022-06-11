@@ -29,7 +29,7 @@ Texture2D           gInput : register(t0);  // texture input
 RWTexture2D<float4> gOutput : register(u0); // texture output
 
 #define N 256
-#define CacheSize (N + 2*gMaxBlurRadius)
+#define CacheSize (N + 2*gMaxBlurRadius) // a thread group of N threads requires N + 2 * R texels to perform the blur
 groupshared float4 gCache[CacheSize];
 
 // The # of threads in the thread group. The threads in a group can be arranged in a 1D, 2D, or 3D grid layout
@@ -51,10 +51,10 @@ void HorzBlurCS(int3 groupThreadID : SV_GroupThreadID,
 	if (groupThreadID.x < gBlurRadius)
 	{
 		// Clamp out of bound samples that occur at image borders.
-		int x                   = max(dispatchThreadID.x - gBlurRadius, 0);
+		int x                   = max(dispatchThreadID.x - gBlurRadius, 0); // if dispatchThreadID.x is 0,1,2,3,4,5, x = 0
 		gCache[groupThreadID.x] = gInput[int2(x, dispatchThreadID.y)];
 	}
-	if (groupThreadID.x >= N - gBlurRadius)
+	if (groupThreadID.x >= N - gBlurRadius) //d3d3
 	{
 		// Clamp out of bound samples that occur at image borders.
 		int x                                     = min(dispatchThreadID.x + gBlurRadius, gInput.Length.x - 1);
