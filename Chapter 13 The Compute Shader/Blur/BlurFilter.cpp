@@ -78,7 +78,7 @@ void BlurFilter::Execute(ID3D12GraphicsCommandList* cmdList,
 	                                                                  D3D12_RESOURCE_STATE_COPY_SOURCE));
 
 	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap0.Get(),
-	                                                                  D3D12_RESOURCE_STATE_COMMON,
+	                                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
 	                                                                  D3D12_RESOURCE_STATE_COPY_DEST));
 
 	cmdList->CopyResource(mBlurMap0.Get(), input);
@@ -89,11 +89,6 @@ void BlurFilter::Execute(ID3D12GraphicsCommandList* cmdList,
 	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap0.Get(),
 	                                                                  D3D12_RESOURCE_STATE_COPY_DEST,
 	                                                                  D3D12_RESOURCE_STATE_GENERIC_READ));
-
-	// transition mBlurMap1 to unordered access state (compute shader output state)
-	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap1.Get(),
-	                                                                  D3D12_RESOURCE_STATE_COMMON,
-	                                                                  D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 
 	// blur multiple times
 	for (int i = 0; i < blurCount; ++i)
@@ -156,15 +151,6 @@ void BlurFilter::Execute(ID3D12GraphicsCommandList* cmdList,
 		                                                                  D3D12_RESOURCE_STATE_GENERIC_READ,
 		                                                                  D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 	}
-
-	//! Added by Zixin to fix D3D errors: restore pingpong buffer states to their original ones (be ready for next frame)
-	// cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap0.Get(),
-	//                                                                   D3D12_RESOURCE_STATE_GENERIC_READ,
-	//                                                                   D3D12_RESOURCE_STATE_COMMON));
-	//
-	// cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mBlurMap1.Get(),
-	//                                                                   D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-	//                                                                   D3D12_RESOURCE_STATE_COMMON));
 }
 
 std::vector<float> BlurFilter::CalcGaussWeights(float sigma)
@@ -245,7 +231,7 @@ void BlurFilter::BuildResources()
 		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		              D3D12_HEAP_FLAG_NONE,
 		              &texDesc,
-		              D3D12_RESOURCE_STATE_COMMON,
+		              D3D12_RESOURCE_STATE_GENERIC_READ, // initially, mBlurMap0 will be in READ state (compute shader input state)
 		              nullptr,
 		              IID_PPV_ARGS(&mBlurMap0)));
 
@@ -253,7 +239,7 @@ void BlurFilter::BuildResources()
 		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		              D3D12_HEAP_FLAG_NONE,
 		              &texDesc,
-		              D3D12_RESOURCE_STATE_COMMON,
+		              D3D12_RESOURCE_STATE_UNORDERED_ACCESS, // initially, mBlurMap1 will be in unordered access state (compute shader output state)
 		              nullptr,
 		              IID_PPV_ARGS(&mBlurMap1)));
 }
