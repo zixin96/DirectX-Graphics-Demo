@@ -69,6 +69,9 @@ void HorzBlurCS(int3 groupThreadID : SV_GroupThreadID,
 		gCache[groupThreadID.x + 2 * gBlurRadius] = gInput[int2(x, dispatchThreadID.y)];
 	}
 
+	//! Note: All threads in this thread group will execute the following statement
+	//! If you put all gCache statement in if-else statement, then only threads in the range [gBlurRadius, N - gBlurRadius) will execute the following statement
+
 	// For thread 0 to N - 1, do this: 
 	gCache[groupThreadID.x + gBlurRadius] = gInput[min(dispatchThreadID.xy, gInput.Length.xy - 1)]; // Clamp out of bound samples that occur at image borders.
 
@@ -113,6 +116,7 @@ void VertBlurCS(int3 groupThreadID : SV_GroupThreadID,
 		int y                   = max(dispatchThreadID.y - gBlurRadius, 0);
 		gCache[groupThreadID.y] = gInput[int2(dispatchThreadID.x, y)];
 	}
+
 	if (groupThreadID.y >= N - gBlurRadius)
 	{
 		// Clamp out of bound samples that occur at image borders.
@@ -121,7 +125,7 @@ void VertBlurCS(int3 groupThreadID : SV_GroupThreadID,
 	}
 
 	// Clamp out of bound samples that occur at image borders.
-    gCache[groupThreadID.y + gBlurRadius] = gInput[min(dispatchThreadID.xy, gInput.Length.xy - 1)];
+	gCache[groupThreadID.y + gBlurRadius] = gInput[min(dispatchThreadID.xy, gInput.Length.xy - 1)];
 
 
 	// Wait for all threads to finish.
