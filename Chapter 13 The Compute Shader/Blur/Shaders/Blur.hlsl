@@ -88,8 +88,7 @@ void HorzBlurCS(int3 groupThreadID : SV_GroupThreadID,
 	{
 		int k = groupThreadID.x + gBlurRadius + i;
 
-		blurColor += weights[i + gBlurRadius] // access weights from start to end
-				* gCache[k];
+		blurColor += weights[i + gBlurRadius] * gCache[k];
 	}
 
 	gOutput[dispatchThreadID.xy] = blurColor;
