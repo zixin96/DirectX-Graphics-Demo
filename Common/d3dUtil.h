@@ -190,7 +190,7 @@ struct MeshGeometry
 	Microsoft::WRL::ComPtr<ID3D12Resource> VertexBufferUploader = nullptr;
 	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferUploader  = nullptr;
 
-	// caches the important properties of the vertex and index buffers: 
+	// caches the important properties of the vertex and index buffers (needed when creating vertex and index buffer view): 
 	UINT        VertexByteStride     = 0;
 	UINT        VertexBufferByteSize = 0;
 	DXGI_FORMAT IndexFormat          = DXGI_FORMAT_R16_UINT;
