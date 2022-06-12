@@ -134,6 +134,7 @@ struct DomainOut
 	float4 PosH : SV_POSITION;
 };
 
+// return the cubic Bernstein basis functions
 float4 BernsteinBasis(float t)
 {
 	float invT = 1.0f - t;
@@ -142,6 +143,18 @@ float4 BernsteinBasis(float t)
 	              3.0f * t * invT * invT,
 	              3.0f * t * t * invT,
 	              t * t * t);
+}
+
+// return the derivatives of the cubic Bernstein basis functions
+// useful for computing the tangent vector along the curve
+float4 dBernsteinBasis(float t)
+{
+	float invT = 1.0f - t;
+
+	return float4(-3 * invT * invT,
+	              3 * invT * invT - 6 * t * invT,
+	              6 * t * invT - 3 * t * t,
+	              3 * t * t);
 }
 
 float3 CubicBezierSum(const OutputPatch<HullOut, 16> bezpatch, float4 basisU, float4 basisV)
@@ -153,16 +166,6 @@ float3 CubicBezierSum(const OutputPatch<HullOut, 16> bezpatch, float4 basisU, fl
 	sum += basisV.w * (basisU.x * bezpatch[12].PosL + basisU.y * bezpatch[13].PosL + basisU.z * bezpatch[14].PosL + basisU.w * bezpatch[15].PosL);
 
 	return sum;
-}
-
-float4 dBernsteinBasis(float t)
-{
-	float invT = 1.0f - t;
-
-	return float4(-3 * invT * invT,
-	              3 * invT * invT - 6 * t * invT,
-	              6 * t * invT - 3 * t * t,
-	              3 * t * t);
 }
 
 // The domain shader is called for every vertex created by the tessellator.  
