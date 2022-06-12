@@ -94,7 +94,8 @@ PatchTess ConstantHS(InputPatch<VertexOut, 4> patch,                    // input
 	// use a low-poly mesh in the distance, and increase the tessellation as the mesh approaches the eye
 
 	PatchTess pt;
-	//d3d6
+
+	// See "Quad Patch"
 	float3 centerL = 0.25f * (patch[0].PosL + patch[1].PosL + patch[2].PosL + patch[3].PosL);
 	float3 centerW = mul(float4(centerL, 1.0f), gWorld).xyz;
 
@@ -107,7 +108,7 @@ PatchTess ConstantHS(InputPatch<VertexOut, 4> patch,                    // input
 
 	const float d0   = 20.0f;
 	const float d1   = 100.0f;
-	float       tess = 64.0f * saturate((d1 - d) / (d1 - d0)); //d3d6
+	float       tess = 64.0f * saturate((d1 - d) / (d1 - d0)); // See "Tessellation-Distance Function" 
 
 	// Uniformly tessellate the patch.
 

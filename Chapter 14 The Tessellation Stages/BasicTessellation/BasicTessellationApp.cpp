@@ -546,7 +546,7 @@ void BasicTessellationApp::BuildShadersAndInputLayout()
  */
 void BasicTessellationApp::BuildQuadPatchGeometry()
 {
-	//d3d5
+	// See "Quad Patch"
 	std::array<XMFLOAT3, 4> vertices =
 	{
 		XMFLOAT3(-10.0f, 0.0f, +10.0f),
