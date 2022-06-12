@@ -1,5 +1,5 @@
 /**
- * This demo submits a quad patch to the rendering pipeline, tessellate it based on the distance from the camera, and displace the generated vertices by a mathematic funciton
+ * This demo submits a quad patch to the rendering pipeline, tessellate it based on the distance from the camera, and displace the generated vertices by a mathematical function
  */
 
 #include "../../Common/d3dApp.h"
