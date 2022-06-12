@@ -587,7 +587,7 @@ void BasicTessellationApp::BuildQuadPatchGeometry()
 	geo->IndexBufferByteSize  = ibByteSize;
 
 	SubmeshGeometry quadSubmesh;
-	quadSubmesh.IndexCount         = 4;
+	quadSubmesh.IndexCount         = (UINT)indices.size();
 	quadSubmesh.StartIndexLocation = 0;
 	quadSubmesh.BaseVertexLocation = 0;
 
