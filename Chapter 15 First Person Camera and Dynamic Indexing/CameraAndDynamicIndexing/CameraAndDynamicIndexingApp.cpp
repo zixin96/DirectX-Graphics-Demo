@@ -477,10 +477,10 @@ void CameraAndDynamicIndexingApp::BuildRootSignature()
 	// Perfomance TIP: Order from most frequent to least frequent.
 	// Most: bind it per render item
 	// Least: bind it per frame
-	slotRootParameter[0].InitAsConstantBufferView(0);                                        // Per Object constant buffer b0
-	slotRootParameter[1].InitAsConstantBufferView(1);                                        // b1
-	slotRootParameter[2].InitAsShaderResourceView(0, 1);                                     // t0, space 1
-	slotRootParameter[3].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL); // t0-t3 in space 0
+	slotRootParameter[0].InitAsConstantBufferView(0);                                        // Per Object constant buffer: b0
+	slotRootParameter[1].InitAsConstantBufferView(1);                                        // Per frame constant buffer: b1
+	slotRootParameter[2].InitAsShaderResourceView(0, 1);                                     // Per frame material array data: t0, space 1
+	slotRootParameter[3].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL); // Per frame texture array data: t0-t3 in space 0
 
 	auto staticSamplers = GetStaticSamplers();
 
