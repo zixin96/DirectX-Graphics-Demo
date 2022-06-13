@@ -19,11 +19,10 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{66252CDA-3422-41DD-B089-393287D6E614}</ProjectGuid>
+    <ProjectGuid>{64b58804-1012-4a5b-921c-2da1d631d5e4}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>BasicTessellation</RootNamespace>
+    <RootNamespace>TriangleTessellation</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>Chapter14_Ex1</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">

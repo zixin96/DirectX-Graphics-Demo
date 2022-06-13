@@ -40,6 +40,25 @@ struct MaterialData
 	uint     MatPad2;
 };
 
+struct VertexIn
+{
+	float3 PosL : POSITION;
+	float3 NormalL : NORMAL;
+	float2 TexC : TEXCOORD;
+};
+
+struct VertexOut
+{
+	float4 PosH : SV_POSITION;
+	float3 PosW : POSITION;
+	float3 NormalW : NORMAL;
+	float2 TexC : TEXCOORD;
+
+	// nointerpolation is used so the index is not interpolated 
+	// across the triangle.
+	nointerpolation uint MatIndex : MATINDEX;
+};
+
 // An array of textures, which is only supported in shader model 5.1+.  Unlike Texture2DArray, the textures
 // in this array can be different sizes and formats, making it more flexible than texture arrays.
 Texture2D gDiffuseMap[7] : register(t0);
@@ -80,25 +99,6 @@ float4   gAmbientLight;
 // indices [NUM_DIR_LIGHTS+NUM_POINT_LIGHTS, NUM_DIR_LIGHTS+NUM_POINT_LIGHT+NUM_SPOT_LIGHTS)
 // are spot lights for a maximum of MaxLights per object.
 Light gLights[MaxLights];
-};
-
-struct VertexIn
-{
-	float3 PosL : POSITION;
-	float3 NormalL : NORMAL;
-	float2 TexC : TEXCOORD;
-};
-
-struct VertexOut
-{
-	float4 PosH : SV_POSITION;
-	float3 PosW : POSITION;
-	float3 NormalW : NORMAL;
-	float2 TexC : TEXCOORD;
-
-	// nointerpolation is used so the index is not interpolated 
-	// across the triangle.
-	nointerpolation uint MatIndex : MATINDEX;
 };
 
 VertexOut VS(VertexIn vin, uint instanceID : SV_InstanceID)

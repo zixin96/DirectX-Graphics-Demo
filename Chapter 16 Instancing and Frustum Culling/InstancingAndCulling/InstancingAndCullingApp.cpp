@@ -48,11 +48,11 @@ struct RenderItem
 	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 
 	BoundingBox               Bounds;
-	std::vector<InstanceData> Instances;
+	std::vector<InstanceData> Instances; // store instance data for all instances of this render item in the scene
 
 	// DrawIndexedInstanced parameters.
 	UINT IndexCount         = 0;
-	UINT InstanceCount      = 0;
+	UINT InstanceCount      = 0; // Number of instances to draw
 	UINT StartIndexLocation = 0;
 	int  BaseVertexLocation = 0;
 };
@@ -64,7 +64,6 @@ public:
 	InstancingAndCullingApp(const InstancingAndCullingApp& rhs)            = delete;
 	InstancingAndCullingApp& operator=(const InstancingAndCullingApp& rhs) = delete;
 	~InstancingAndCullingApp() override;
-
 	bool Initialize() override;
 
 private:
@@ -96,39 +95,25 @@ private:
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 
 private:
-	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
-	FrameResource*                              mCurrFrameResource      = nullptr;
-	int                                         mCurrFrameResourceIndex = 0;
-
-	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-
-	ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
-
+	std::vector<std::unique_ptr<FrameResource>>                    mFrameResources;
+	FrameResource*                                                 mCurrFrameResource      = nullptr;
+	int                                                            mCurrFrameResourceIndex = 0;
+	ComPtr<ID3D12RootSignature>                                    mRootSignature          = nullptr;
+	ComPtr<ID3D12DescriptorHeap>                                   mSrvDescriptorHeap      = nullptr;
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 	std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
 	std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
 	std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
 	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
-
-	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
-
-	// List of all the render items.
-	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
-
-	// Render items divided by PSO.
-	std::vector<RenderItem*> mOpaqueRitems;
-
-	UINT mInstanceCount = 0;
-
-	bool mFrustumCullingEnabled = true;
-
-	BoundingFrustum mCamFrustum;
-
-	PassConstants mMainPassCB;
-
-	Camera mCamera;
-
-	POINT mLastMousePos;
+	std::vector<D3D12_INPUT_ELEMENT_DESC>                          mInputLayout;
+	std::vector<std::unique_ptr<RenderItem>>                       mAllRitems;
+	std::vector<RenderItem*>                                       mOpaqueRitems;
+	UINT                                                           mInstanceCount         = 0; // total instance to draw
+	bool                                                           mFrustumCullingEnabled = true;
+	BoundingFrustum                                                mCamFrustum; // BoundingFrustum is provided by DirectX collision library
+	PassConstants                                                  mMainPassCB;
+	Camera                                                         mCamera;
+	POINT                                                          mLastMousePos;
 };
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
@@ -418,10 +403,10 @@ void InstancingAndCullingApp::UpdateMaterialBuffer(const GameTimer& gt)
 			XMMATRIX matTransform = XMLoadFloat4x4(&mat->MatTransform);
 
 			MaterialData matData;
-			matData.DiffuseAlbedo = mat->DiffuseAlbedo;
-			matData.FresnelR0     = mat->FresnelR0;
-			matData.Roughness     = mat->Roughness;
 			XMStoreFloat4x4(&matData.MatTransform, XMMatrixTranspose(matTransform));
+			matData.DiffuseAlbedo   = mat->DiffuseAlbedo;
+			matData.FresnelR0       = mat->FresnelR0;
+			matData.Roughness       = mat->Roughness;
 			matData.DiffuseMapIndex = mat->DiffuseSrvHeapIndex;
 
 			currMaterialBuffer->CopyData(mat->MatCBIndex, matData);
@@ -529,30 +514,32 @@ void InstancingAndCullingApp::LoadTextures()
 
 void InstancingAndCullingApp::BuildRootSignature()
 {
-	CD3DX12_DESCRIPTOR_RANGE texTable;
-	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 7, 0, 0);
-
 	// Root parameter can be a table, root descriptor or root constants.
 	CD3DX12_ROOT_PARAMETER slotRootParameter[4];
 
 	// Perfomance TIP: Order from most frequent to least frequent.
-	slotRootParameter[0].InitAsShaderResourceView(0, 1);
-	slotRootParameter[1].InitAsShaderResourceView(1, 1);
-	slotRootParameter[2].InitAsConstantBufferView(0);
-	slotRootParameter[3].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
-
-	auto staticSamplers = GetStaticSamplers();
+	slotRootParameter[0].InitAsShaderResourceView(0, 1); // StructuredBuffer<InstanceData> gInstanceData : register(t0, space1);
+	slotRootParameter[1].InitAsShaderResourceView(1, 1); // StructuredBuffer<MaterialData> gMaterialData : register(t1, space1);
+	slotRootParameter[2].InitAsConstantBufferView(0);    // cbuffer cbPass : register(b0)
+	CD3DX12_DESCRIPTOR_RANGE texTable;
+	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 7, 0, 0);
+	slotRootParameter[3].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL); // Texture2D gDiffuseMap[7] : register(t0);
+	auto staticSamplers = GetStaticSamplers();                                               // SamplerState gsamPointWrap : register(s0); ... 
 
 	// A root signature is an array of root parameters.
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(4, slotRootParameter,
-	                                        (UINT)staticSamplers.size(), staticSamplers.data(),
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(4,
+	                                        slotRootParameter,
+	                                        (UINT)staticSamplers.size(),
+	                                        staticSamplers.data(),
 	                                        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	// create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
 	ComPtr<ID3DBlob> serializedRootSig = nullptr;
 	ComPtr<ID3DBlob> errorBlob         = nullptr;
-	HRESULT          hr                = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
-	                                                                 serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+	HRESULT          hr                = D3D12SerializeRootSignature(&rootSigDesc,
+	                                                                 D3D_ROOT_SIGNATURE_VERSION_1,
+	                                                                 serializedRootSig.GetAddressOf(),
+	                                                                 errorBlob.GetAddressOf());
 
 	if (errorBlob != nullptr)
 	{
@@ -573,7 +560,7 @@ void InstancingAndCullingApp::BuildDescriptorHeaps()
 	// Create the SRV heap.
 	//
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors             = 7;
+	srvHeapDesc.NumDescriptors             = 7; // 7 texture descriptors in the descriptor table
 	srvHeapDesc.Type                       = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags                      = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mSrvDescriptorHeap)));
@@ -645,12 +632,6 @@ void InstancingAndCullingApp::BuildDescriptorHeaps()
 
 void InstancingAndCullingApp::BuildShadersAndInputLayout()
 {
-	const D3D_SHADER_MACRO alphaTestDefines[] =
-	{
-		"ALPHA_TEST", "1",
-		NULL, NULL
-	};
-
 	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_1");
 	mShaders["opaquePS"]   = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "PS", "ps_5_1");
 
@@ -680,9 +661,9 @@ void InstancingAndCullingApp::BuildSkullGeometry()
 	fin >> ignore >> tcount;
 	fin >> ignore >> ignore >> ignore >> ignore;
 
+	// compute the bounding box of the skull mesh
 	XMFLOAT3 vMinf3(+MathHelper::Infinity, +MathHelper::Infinity, +MathHelper::Infinity);
 	XMFLOAT3 vMaxf3(-MathHelper::Infinity, -MathHelper::Infinity, -MathHelper::Infinity);
-
 	XMVECTOR vMin = XMLoadFloat3(&vMinf3);
 	XMVECTOR vMax = XMLoadFloat3(&vMaxf3);
 
@@ -711,11 +692,13 @@ void InstancingAndCullingApp::BuildSkullGeometry()
 
 		vertices[i].TexC = {u, v};
 
+		// extract min and max out of each vertex (page 568)
 		vMin = XMVectorMin(vMin, P);
 		vMax = XMVectorMax(vMax, P);
 	}
 
 	BoundingBox bounds;
+	// convert min/max representation to center/extent representation used in DirectX::Collision
 	XMStoreFloat3(&bounds.Center, 0.5f * (vMin + vMax));
 	XMStoreFloat3(&bounds.Extents, 0.5f * (vMax - vMin));
 
@@ -808,7 +791,9 @@ void InstancingAndCullingApp::BuildFrameResources()
 	for (int i = 0; i < gNumFrameResources; ++i)
 	{
 		mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(),
-		                                                          1, mInstanceCount, (UINT)mMaterials.size()));
+		                                                          1,
+		                                                          mInstanceCount,
+		                                                          (UINT)mMaterials.size()));
 	}
 }
 
@@ -888,7 +873,7 @@ void InstancingAndCullingApp::BuildRenderItems()
 	skullRitem->Mat                = mMaterials["tile0"].get();
 	skullRitem->Geo                = mGeometries["skullGeo"].get();
 	skullRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	skullRitem->InstanceCount      = 0;
+	skullRitem->InstanceCount      = 0; // initialize the number of instances to draw to 0
 	skullRitem->IndexCount         = skullRitem->Geo->DrawArgs["skull"].IndexCount;
 	skullRitem->StartIndexLocation = skullRitem->Geo->DrawArgs["skull"].StartIndexLocation;
 	skullRitem->BaseVertexLocation = skullRitem->Geo->DrawArgs["skull"].BaseVertexLocation;
@@ -896,9 +881,8 @@ void InstancingAndCullingApp::BuildRenderItems()
 
 	// Generate instance data.
 	const int n    = 5;
-	mInstanceCount = n * n * n;
+	mInstanceCount = n * n * n; // in total, we draw 125 instances
 	skullRitem->Instances.resize(mInstanceCount);
-
 
 	float width  = 200.0f;
 	float height = 200.0f;
@@ -918,8 +902,7 @@ void InstancingAndCullingApp::BuildRenderItems()
 			{
 				int index = k * n * n + i * n + j;
 				// Position instanced along a 3D grid.
-				skullRitem->Instances[index].World = XMFLOAT4X4(
-				                                                1.0f, 0.0f, 0.0f, 0.0f,
+				skullRitem->Instances[index].World = XMFLOAT4X4(1.0f, 0.0f, 0.0f, 0.0f,
 				                                                0.0f, 1.0f, 0.0f, 0.0f,
 				                                                0.0f, 0.0f, 1.0f, 0.0f,
 				                                                x + j * dx, y + i * dy, z + k * dz, 1.0f);
@@ -929,7 +912,6 @@ void InstancingAndCullingApp::BuildRenderItems()
 			}
 		}
 	}
-
 
 	mAllRitems.push_back(std::move(skullRitem));
 
