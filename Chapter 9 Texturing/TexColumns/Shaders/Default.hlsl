@@ -18,23 +18,29 @@
 // Include structures and functions for lighting.
 #include "LightingUtil.hlsl"
 
-Texture2D gDiffuseMap : register(t0);
+struct VertexIn
+{
+	float3 PosL : POSITION;
+	float3 NormalL : NORMAL;
+	float2 TexC : TEXCOORD;
+};
 
-SamplerState gsamPointWrap : register(s0);
-SamplerState gsamPointClamp : register(s1);
-SamplerState gsamLinearWrap : register(s2);
-SamplerState gsamLinearClamp : register(s3);
-SamplerState gsamAnisotropicWrap : register(s4);
-SamplerState gsamAnisotropicClamp : register(s5);
+struct VertexOut
+{
+	float4 PosH : SV_POSITION;
+	float3 PosW : POSITION;
+	float3 NormalW : NORMAL;
+	float2 TexC : TEXCOORD;
+};
 
-// Constant data that varies per frame.
+// This buffer will be populated on a per render item basis
 cbuffer cbPerObject : register(b0)
 {
 float4x4 gWorld;
 float4x4 gTexTransform;
 };
 
-// Constant data that varies per material.
+// This buffer will be populated on a per frame basis
 cbuffer cbPass : register(b1)
 {
 float4x4 gView;
@@ -60,6 +66,7 @@ float4   gAmbientLight;
 Light gLights[MaxLights];
 };
 
+// This buffer will be populated on a per render item basis
 cbuffer cbMaterial : register(b2)
 {
 float4   gDiffuseAlbedo;
@@ -68,20 +75,15 @@ float    gRoughness;
 float4x4 gMatTransform;
 };
 
-struct VertexIn
-{
-	float3 PosL : POSITION;
-	float3 NormalL : NORMAL;
-	float2 TexC : TEXCOORD;
-};
+// This texture will be populated on a per render item basis
+Texture2D gDiffuseMap : register(t0);
 
-struct VertexOut
-{
-	float4 PosH : SV_POSITION;
-	float3 PosW : POSITION;
-	float3 NormalW : NORMAL;
-	float2 TexC : TEXCOORD;
-};
+SamplerState gsamPointWrap : register(s0);
+SamplerState gsamPointClamp : register(s1);
+SamplerState gsamLinearWrap : register(s2);
+SamplerState gsamLinearClamp : register(s3);
+SamplerState gsamAnisotropicWrap : register(s4);
+SamplerState gsamAnisotropicClamp : register(s5);
 
 VertexOut VS(VertexIn vin)
 {

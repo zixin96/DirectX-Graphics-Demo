@@ -5,20 +5,6 @@
 - Design a camera system that behaves like the one used in a first-person game (replacing the orbiting camera system)
 - Control the camera via keyboard and mouse input
 
-### The Mathematics
-
-#### View Space
-
-
-
-### Functionality
-
-
-
-### Implementation
-
-
-
 ## Dynamic Indexing (D3D 12)
 
 - New to shader model 5.1
