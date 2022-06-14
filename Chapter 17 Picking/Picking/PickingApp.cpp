@@ -24,37 +24,18 @@ struct RenderItem
 {
 	RenderItem()                      = default;
 	RenderItem(const RenderItem& rhs) = delete;
-
-	bool Visible = true;
-
-	BoundingBox Bounds;
-
-	// World matrix of the shape that describes the object's local space
-	// relative to the world space, which defines the position, orientation,
-	// and scale of the object in the world.
-	XMFLOAT4X4 World = MathHelper::Identity4x4();
-
-	XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
-
-	// Dirty flag indicating the object data has changed and we need to update the constant buffer.
-	// Because we have an object cbuffer for each FrameResource, we have to apply the
-	// update to each FrameResource.  Thus, when we modify obect data we should set 
-	// NumFramesDirty = gNumFrameResources so that each frame resource gets the update.
-	int NumFramesDirty = gNumFrameResources;
-
-	// Index into GPU constant buffer corresponding to the ObjectCB for this render item.
-	UINT ObjCBIndex = -1;
-
-	Material*     Mat = nullptr;
-	MeshGeometry* Geo = nullptr;
-
-	// Primitive topology.
-	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-	// DrawIndexedInstanced parameters.
-	UINT IndexCount         = 0;
-	UINT StartIndexLocation = 0;
-	int  BaseVertexLocation = 0;
+	bool                     Visible = true;
+	BoundingBox              Bounds;
+	XMFLOAT4X4               World              = MathHelper::Identity4x4();
+	XMFLOAT4X4               TexTransform       = MathHelper::Identity4x4();
+	int                      NumFramesDirty     = gNumFrameResources;
+	UINT                     ObjCBIndex         = -1;
+	Material*                Mat                = nullptr;
+	MeshGeometry*            Geo                = nullptr;
+	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	UINT                     IndexCount         = 0;
+	UINT                     StartIndexLocation = 0;
+	int                      BaseVertexLocation = 0;
 };
 
 enum class RenderLayer : int
@@ -70,18 +51,18 @@ public:
 	PickingApp(HINSTANCE hInstance);
 	PickingApp(const PickingApp& rhs)            = delete;
 	PickingApp& operator=(const PickingApp& rhs) = delete;
-	~PickingApp();
+	~PickingApp() override;
 
-	virtual bool Initialize() override;
+	bool Initialize() override;
 
 private:
-	virtual void OnResize() override;
-	virtual void Update(const GameTimer& gt) override;
-	virtual void Draw(const GameTimer& gt) override;
+	void OnResize() override;
+	void Update(const GameTimer& gt) override;
+	void Draw(const GameTimer& gt) override;
 
-	virtual void OnMouseDown(WPARAM btnState, int x, int y) override;
-	virtual void OnMouseUp(WPARAM btnState, int x, int y) override;
-	virtual void OnMouseMove(WPARAM btnState, int x, int y) override;
+	void OnMouseDown(WPARAM btnState, int x, int y) override;
+	void OnMouseUp(WPARAM btnState, int x, int y) override;
+	void OnMouseMove(WPARAM btnState, int x, int y) override;
 
 	void OnKeyboardInput(const GameTimer& gt);
 	void AnimateMaterials(const GameTimer& gt);
@@ -104,37 +85,23 @@ private:
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 
 private:
-	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
-	FrameResource*                              mCurrFrameResource      = nullptr;
-	int                                         mCurrFrameResourceIndex = 0;
-
-	UINT mCbvSrvDescriptorSize = 0;
-
-	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-
-	ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
-
+	std::vector<std::unique_ptr<FrameResource>>                    mFrameResources;
+	FrameResource*                                                 mCurrFrameResource      = nullptr;
+	int                                                            mCurrFrameResourceIndex = 0;
+	ComPtr<ID3D12RootSignature>                                    mRootSignature          = nullptr;
+	ComPtr<ID3D12DescriptorHeap>                                   mSrvDescriptorHeap      = nullptr;
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
 	std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
 	std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
 	std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
 	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
-
-	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
-
-	// List of all the render items.
-	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
-
-	// Render items divided by PSO.
-	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
-
-	RenderItem* mPickedRitem = nullptr;
-
-	PassConstants mMainPassCB;
-
-	Camera mCamera;
-
-	POINT mLastMousePos;
+	std::vector<D3D12_INPUT_ELEMENT_DESC>                          mInputLayout;
+	std::vector<std::unique_ptr<RenderItem>>                       mAllRitems;
+	std::vector<RenderItem*>                                       mRitemLayer[(int)RenderLayer::Count];
+	RenderItem*                                                    mPickedRitem = nullptr; // cache a pointer to the render-item of the picked triangle
+	PassConstants                                                  mMainPassCB;
+	Camera                                                         mCamera;
+	POINT                                                          mLastMousePos;
 };
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
@@ -179,12 +146,7 @@ bool PickingApp::Initialize()
 	// Reset the command list to prep for initialization commands.
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
-	// Get the increment size of a descriptor in this heap type.  This is hardware specific, 
-	// so we have to query this information.
-	mCbvSrvDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-
-	mCamera.LookAt(
-	               XMFLOAT3(5.0f, 4.0f, -15.0f),
+	mCamera.LookAt(XMFLOAT3(5.0f, 4.0f, -15.0f),
 	               XMFLOAT3(0.0f, 1.0f, 0.0f),
 	               XMFLOAT3(0.0f, 1.0f, 0.0f));
 

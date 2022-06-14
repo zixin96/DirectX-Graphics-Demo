@@ -30,6 +30,20 @@ struct MaterialData
 	uint     MatPad2;
 };
 
+struct VertexIn
+{
+	float3 PosL : POSITION;
+	float3 NormalL : NORMAL;
+	float2 TexC : TEXCOORD;
+};
+
+struct VertexOut
+{
+	float4 PosH : SV_POSITION;
+	float3 PosW : POSITION;
+	float3 NormalW : NORMAL;
+	float2 TexC : TEXCOORD;
+};
 
 // An array of textures, which is only supported in shader model 5.1+.  Unlike Texture2DArray, the textures
 // in this array can be different sizes and formats, making it more flexible than texture arrays.
@@ -39,7 +53,6 @@ Texture2D gDiffuseMap[4] : register(t0);
 // The texture array will occupy registers t0, t1, ..., t3 in space0. 
 StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
 
-
 SamplerState gsamPointWrap : register(s0);
 SamplerState gsamPointClamp : register(s1);
 SamplerState gsamLinearWrap : register(s2);
@@ -47,7 +60,6 @@ SamplerState gsamLinearClamp : register(s3);
 SamplerState gsamAnisotropicWrap : register(s4);
 SamplerState gsamAnisotropicClamp : register(s5);
 
-// Constant data that varies per frame.
 cbuffer cbPerObject : register(b0)
 {
 float4x4 gWorld;
@@ -58,7 +70,6 @@ uint     gObjPad1;
 uint     gObjPad2;
 };
 
-// Constant data that varies per material.
 cbuffer cbPass : register(b1)
 {
 float4x4 gView;
@@ -84,20 +95,6 @@ float4   gAmbientLight;
 Light gLights[MaxLights];
 };
 
-struct VertexIn
-{
-	float3 PosL : POSITION;
-	float3 NormalL : NORMAL;
-	float2 TexC : TEXCOORD;
-};
-
-struct VertexOut
-{
-	float4 PosH : SV_POSITION;
-	float3 PosW : POSITION;
-	float3 NormalW : NORMAL;
-	float2 TexC : TEXCOORD;
-};
 
 VertexOut VS(VertexIn vin)
 {

@@ -547,7 +547,7 @@ bool D3DApp::InitDirect3D()
 
 	CreateCommandObjects();
 	CreateSwapChain();
-	CreateRtvAndDsvDescriptorHeaps();
+	CreateRtvAndDsvDescriptorHeaps(); // Observe that this is a virtual functions. Applications may override this function!
 
 	return true;
 }
