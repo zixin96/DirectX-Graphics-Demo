@@ -29,6 +29,14 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CubeMap", "..\..\Chapter 18
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DynamicCube", "..\..\Chapter 18 Cube Mapping\DynamicCube\DynamicCube.vcxproj", "{454E2EDD-4E64-49AE-8B29-9AC94FAC2494}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chapter 19 Normal Mapping", "Chapter 19 Normal Mapping", "{B21A9AD8-42DA-4305-97B7-E50B07D0D20D}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NormalMap", "..\..\Chapter 19 Normal Mapping\NormalMap\NormalMap.vcxproj", "{BDD38E45-5E08-4654-80AB-204A7C4A3FF3}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chapter 20 Shadow Mapping", "Chapter 20 Shadow Mapping", "{F218FEF7-50F6-4284-A9F1-554D10D2BB4C}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Shadows", "..\..\Chapter 20 Shadow Mapping\Shadows\Shadows.vcxproj", "{BE228814-A8FE-45F3-91A8-5F73AD61AB02}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -101,6 +109,22 @@ Global
 		{454E2EDD-4E64-49AE-8B29-9AC94FAC2494}.Release|x64.Build.0 = Release|x64
 		{454E2EDD-4E64-49AE-8B29-9AC94FAC2494}.Release|x86.ActiveCfg = Release|Win32
 		{454E2EDD-4E64-49AE-8B29-9AC94FAC2494}.Release|x86.Build.0 = Release|Win32
+		{BDD38E45-5E08-4654-80AB-204A7C4A3FF3}.Debug|x64.ActiveCfg = Debug|x64
+		{BDD38E45-5E08-4654-80AB-204A7C4A3FF3}.Debug|x64.Build.0 = Debug|x64
+		{BDD38E45-5E08-4654-80AB-204A7C4A3FF3}.Debug|x86.ActiveCfg = Debug|Win32
+		{BDD38E45-5E08-4654-80AB-204A7C4A3FF3}.Debug|x86.Build.0 = Debug|Win32
+		{BDD38E45-5E08-4654-80AB-204A7C4A3FF3}.Release|x64.ActiveCfg = Release|x64
+		{BDD38E45-5E08-4654-80AB-204A7C4A3FF3}.Release|x64.Build.0 = Release|x64
+		{BDD38E45-5E08-4654-80AB-204A7C4A3FF3}.Release|x86.ActiveCfg = Release|Win32
+		{BDD38E45-5E08-4654-80AB-204A7C4A3FF3}.Release|x86.Build.0 = Release|Win32
+		{BE228814-A8FE-45F3-91A8-5F73AD61AB02}.Debug|x64.ActiveCfg = Debug|x64
+		{BE228814-A8FE-45F3-91A8-5F73AD61AB02}.Debug|x64.Build.0 = Debug|x64
+		{BE228814-A8FE-45F3-91A8-5F73AD61AB02}.Debug|x86.ActiveCfg = Debug|Win32
+		{BE228814-A8FE-45F3-91A8-5F73AD61AB02}.Debug|x86.Build.0 = Debug|Win32
+		{BE228814-A8FE-45F3-91A8-5F73AD61AB02}.Release|x64.ActiveCfg = Release|x64
+		{BE228814-A8FE-45F3-91A8-5F73AD61AB02}.Release|x64.Build.0 = Release|x64
+		{BE228814-A8FE-45F3-91A8-5F73AD61AB02}.Release|x86.ActiveCfg = Release|Win32
+		{BE228814-A8FE-45F3-91A8-5F73AD61AB02}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -114,6 +138,8 @@ Global
 		{BA776CBA-A555-43D1-B4B8-82A3BEFEFDB9} = {BC7A8527-E24F-4F89-97AF-301120D6D00A}
 		{75FB9415-C135-4C93-9B35-8C27FB9BF7F3} = {2DB2BB1B-984F-4CE4-857A-09B96F21A50D}
 		{454E2EDD-4E64-49AE-8B29-9AC94FAC2494} = {2DB2BB1B-984F-4CE4-857A-09B96F21A50D}
+		{BDD38E45-5E08-4654-80AB-204A7C4A3FF3} = {B21A9AD8-42DA-4305-97B7-E50B07D0D20D}
+		{BE228814-A8FE-45F3-91A8-5F73AD61AB02} = {F218FEF7-50F6-4284-A9F1-554D10D2BB4C}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {66D88F0D-E298-4B62-8A42-8B68B71961CF}
