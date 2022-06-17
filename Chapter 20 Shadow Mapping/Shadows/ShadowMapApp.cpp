@@ -2,6 +2,8 @@
 // ShadowMapApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
 //***************************************************************************************
 
+#include <iostream>
+
 #include "../../Common/d3dApp.h"
 #include "../../Common/MathHelper.h"
 #include "../../Common/UploadBuffer.h"
@@ -16,8 +18,7 @@ using namespace PackedVector;
 
 const int gNumFrameResources = 3;
 
-// Lightweight structure stores parameters to draw a shape.  This will
-// vary from app-to-app.
+// Lightweight structure stores parameters to draw a shape.  This will vary from app-to-app.
 struct RenderItem
 {
 	RenderItem()                      = default;
@@ -68,7 +69,6 @@ public:
 	~ShadowMapApp() override;
 
 	bool Initialize() override;
-
 private:
 	void CreateRtvAndDsvDescriptorHeaps() override;
 	void OnResize() override;
@@ -280,7 +280,6 @@ void ShadowMapApp::Update(const GameTimer& gt)
 	//
 
 	mLightRotationAngle += 0.1f * gt.DeltaTime();
-
 	XMMATRIX R = XMMatrixRotationY(mLightRotationAngle);
 	for (int i = 0; i < 3; ++i)
 	{
@@ -1158,7 +1157,9 @@ void ShadowMapApp::BuildFrameResources()
 	for (int i = 0; i < gNumFrameResources; ++i)
 	{
 		mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(),
-		                                                          2, (UINT)mAllRitems.size(), (UINT)mMaterials.size()));
+		                                                          2,
+		                                                          (UINT)mAllRitems.size(),
+		                                                          (UINT)mMaterials.size()));
 	}
 }
 

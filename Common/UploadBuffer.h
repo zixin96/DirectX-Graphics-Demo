@@ -23,7 +23,9 @@ class UploadBuffer
 			// UINT   SizeInBytes;   // multiple of 256
 			// } D3D12_CONSTANT_BUFFER_VIEW_DESC;
 			if (isConstantBuffer)
+			{
 				mElementByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(T));
+			}
 
 			ThrowIfFailed(device->CreateCommittedResource(
 				              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD), // Upload heap. This is where we commit resources where we need to upload data from the CPU to the GPU resource
@@ -33,6 +35,7 @@ class UploadBuffer
 				              nullptr,
 				              IID_PPV_ARGS(&mUploadBuffer)));
 
+			
 			// obtain a pointer to the resource data
 			ThrowIfFailed(mUploadBuffer->Map(
 				              0,                                        // a subresource index identifying the subresource to map. For a buffer, the only subresource is the buffer itself, so we just set this to 0
