@@ -4,7 +4,7 @@
 #include <iostream>
 using namespace std;
 using namespace DirectX;
-using namespace PackedVector;
+using namespace DirectX::PackedVector;
 
 // Overload the  "<<" operators so that we can use cout to 
 // output XMVECTOR objects.

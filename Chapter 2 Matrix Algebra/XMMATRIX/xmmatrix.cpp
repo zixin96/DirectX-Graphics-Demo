@@ -39,10 +39,17 @@ int main()
 		return 0;
 	}
 
+	// constructor initialization
 	XMMATRIX A(1.0f, 0.0f, 0.0f, 0.0f,
 	           0.0f, 2.0f, 0.0f, 0.0f,
 	           0.0f, 0.0f, 4.0f, 0.0f,
 	           1.0f, 2.0f, 3.0f, 1.0f);
+
+	// "set" initialization
+	XMMATRIX ASetMethod = XMMatrixSet(1.0f, 0.0f, 0.0f, 0.0f,
+	                                  0.0f, 2.0f, 0.0f, 0.0f,
+	                                  0.0f, 0.0f, 4.0f, 0.0f,
+	                                  1.0f, 2.0f, 3.0f, 1.0f);
 
 	XMMATRIX B = XMMatrixIdentity();
 
@@ -50,17 +57,21 @@ int main()
 
 	XMMATRIX D = XMMatrixTranspose(A);
 
-	XMVECTOR det = XMMatrixDeterminant(A);
-	//! you can pass nullptr to the first parameter, which optionally gives you the determinent of the input matrix
-	XMMATRIX E   = XMMatrixInverse(&det, A);
+	XMVECTOR EDet = XMMatrixDeterminant(A);
+
+	XMVECTOR det;
+	//! you can pass nullptr to the first parameter if you don't want to return the determinant
+	XMMATRIX E = XMMatrixInverse(&det, A);
 
 	XMMATRIX F = A * E;
 
 	cout << "A = " << endl << A << endl;
+	cout << "A(Set Method) = " << endl << ASetMethod << endl;
 	cout << "B = " << endl << B << endl;
 	cout << "C = A*B = " << endl << C << endl;
 	cout << "D = transpose(A) = " << endl << D << endl;
 	cout << "det = determinant(A) = " << det << endl << endl;
+	cout << "det = determinant(A) = " << EDet << endl << endl;
 	cout << "E = inverse(A) = " << endl << E << endl;
 	cout << "F = A*E = " << endl << F << endl;
 
