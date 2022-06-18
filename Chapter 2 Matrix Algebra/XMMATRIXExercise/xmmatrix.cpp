@@ -44,6 +44,7 @@ ostream& operator <<(ostream& os, const float arr[4][4])
 	return os;
 }
 
+// compute inverse of a matrix and its determinant
 bool gluInvertMatrix(float* retDet, const float input[4][4], float output[4][4])
 {
 	float m[16];
@@ -172,7 +173,7 @@ bool gluInvertMatrix(float* retDet, const float input[4][4], float output[4][4])
 	          m[8] * m[2] * m[5];
 
 	det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
-	
+
 	*retDet = det;
 
 	if (det == 0)
@@ -206,26 +207,12 @@ int main()
 		return 0;
 	}
 
-	// constructor initialization
-	XMMATRIX A(1.0f, 0.0f, 0.0f, 0.0f,
-	           0.0f, 2.0f, 0.0f, 0.0f,
-	           0.0f, 0.0f, 4.0f, 0.0f,
-	           1.0f, 2.0f, 3.0f, 1.0f);
-	XMVECTOR ADeter;
-	XMMATRIX AInv = XMMatrixInverse(&ADeter, A);
-
-	cout << "A = " << endl << A << endl;
-	cout << "A(Transpose) = " << endl << XMMatrixTranspose(A) << endl;
-	cout << "A(Determinant) = " << endl << ADeter << endl;
-	cout << "A(Inverse) = " << endl << AInv << endl;
-
 	float zzxA[4][4] = {
 		{1.0f, 0.0f, 0.0f, 0.0f},
 		{0.0f, 2.0f, 0.0f, 0.0f},
 		{0.0f, 0.0f, 4.0f, 0.0f},
 		{1.0f, 2.0f, 3.0f, 1.0f}
 	};
-
 
 	// compute transpose
 	float zzxATranpose[4][4];
@@ -237,6 +224,7 @@ int main()
 		}
 	}
 
+	// compute determinant and inverse
 	float zzxAInv[4][4];
 	float zzxADet;
 	gluInvertMatrix(&zzxADet, zzxA, zzxAInv);
@@ -245,5 +233,18 @@ int main()
 	cout << "A(Transpose) Computed = " << endl << zzxATranpose << endl;
 	cout << "A(Determinant) Computed= " << endl << zzxADet << endl;
 	cout << "A(Inverse) Computed= " << endl << zzxAInv << endl;
+
+	// correctness check:
+	XMMATRIX A(1.0f, 0.0f, 0.0f, 0.0f,
+	           0.0f, 2.0f, 0.0f, 0.0f,
+	           0.0f, 0.0f, 4.0f, 0.0f,
+	           1.0f, 2.0f, 3.0f, 1.0f);
+	XMVECTOR ADeter;
+	XMMATRIX AInv = XMMatrixInverse(&ADeter, A);
+
+	cout << "A = " << endl << A << endl;
+	cout << "A(Transpose) = " << endl << XMMatrixTranspose(A) << endl;
+	cout << "A(Determinant) = " << endl << ADeter << endl;
+	cout << "A(Inverse) = " << endl << AInv << endl;
 	return 0;
 }
