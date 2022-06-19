@@ -45,6 +45,7 @@ ostream& operator <<(ostream& os, const float arr[4][4])
 }
 
 // compute inverse of a matrix and its determinant
+// https://stackoverflow.com/questions/1148309/inverting-a-4x4-matrix
 bool gluInvertMatrix(float* retDet, const float input[4][4], float output[4][4])
 {
 	float m[16];
