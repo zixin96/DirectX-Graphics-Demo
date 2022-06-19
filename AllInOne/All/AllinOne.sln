@@ -3,15 +3,15 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.2.32526.322
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chapter 16 Instancing and Frustum Culling", "Chapter 16 Instancing and Frustum Culling", "{90630E09-8FD7-4510-9CA0-A2136935368C}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "zChapter 16 Instancing and Frustum Culling", "zChapter 16 Instancing and Frustum Culling", "{90630E09-8FD7-4510-9CA0-A2136935368C}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "InstancingAndCulling", "..\..\Chapter 16 Instancing and Frustum Culling\InstancingAndCulling\InstancingAndCulling.vcxproj", "{08EDFAC3-2447-4CDF-9B1F-D91C8D9887E7}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chapter 15 First Person Camera and Dynamic Indexing", "Chapter 15 First Person Camera and Dynamic Indexing", "{9DD823BA-3AEF-45A5-8EA1-B453CF4D78DB}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "zChapter 15 First Person Camera and Dynamic Indexing", "zChapter 15 First Person Camera and Dynamic Indexing", "{9DD823BA-3AEF-45A5-8EA1-B453CF4D78DB}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CameraAndDynamicIndexing", "..\..\Chapter 15 First Person Camera and Dynamic Indexing\CameraAndDynamicIndexing\CameraAndDynamicIndexing.vcxproj", "{EBA44FF6-C000-495A-ABE9-E6848AF88F17}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chapter 14 The Tessellation Stages", "Chapter 14 The Tessellation Stages", "{34EB023C-D9A0-414B-BE7D-C747A78E4F5C}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "zChapter 14 The Tessellation Stages", "zChapter 14 The Tessellation Stages", "{34EB023C-D9A0-414B-BE7D-C747A78E4F5C}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BasicTessellation", "..\..\Chapter 14 The Tessellation Stages\BasicTessellation\BasicTessellation.vcxproj", "{66252CDA-3422-41DD-B089-393287D6E614}"
 EndProject
@@ -19,37 +19,37 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "BezierPatch", "..\..\Chapte
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TriangleTessellation", "..\..\Chapter 14 The Tessellation Stages\TriangleTessellation\TriangleTessellation.vcxproj", "{64B58804-1012-4A5B-921C-2DA1D631D5E4}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chapter 17 Picking", "Chapter 17 Picking", "{BC7A8527-E24F-4F89-97AF-301120D6D00A}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "zChapter 17 Picking", "zChapter 17 Picking", "{BC7A8527-E24F-4F89-97AF-301120D6D00A}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Picking", "..\..\Chapter 17 Picking\Picking\Picking.vcxproj", "{BA776CBA-A555-43D1-B4B8-82A3BEFEFDB9}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chapter 18 Cube Mapping", "Chapter 18 Cube Mapping", "{2DB2BB1B-984F-4CE4-857A-09B96F21A50D}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "zChapter 18 Cube Mapping", "zChapter 18 Cube Mapping", "{2DB2BB1B-984F-4CE4-857A-09B96F21A50D}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CubeMap", "..\..\Chapter 18 Cube Mapping\CubeMap\CubeMap.vcxproj", "{75FB9415-C135-4C93-9B35-8C27FB9BF7F3}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DynamicCube", "..\..\Chapter 18 Cube Mapping\DynamicCube\DynamicCube.vcxproj", "{454E2EDD-4E64-49AE-8B29-9AC94FAC2494}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chapter 19 Normal Mapping", "Chapter 19 Normal Mapping", "{B21A9AD8-42DA-4305-97B7-E50B07D0D20D}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "zChapter 19 Normal Mapping", "zChapter 19 Normal Mapping", "{B21A9AD8-42DA-4305-97B7-E50B07D0D20D}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NormalMap", "..\..\Chapter 19 Normal Mapping\NormalMap\NormalMap.vcxproj", "{BDD38E45-5E08-4654-80AB-204A7C4A3FF3}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chapter 20 Shadow Mapping", "Chapter 20 Shadow Mapping", "{F218FEF7-50F6-4284-A9F1-554D10D2BB4C}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "zChapter 20 Shadow Mapping", "zChapter 20 Shadow Mapping", "{F218FEF7-50F6-4284-A9F1-554D10D2BB4C}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Shadows", "..\..\Chapter 20 Shadow Mapping\Shadows\Shadows.vcxproj", "{BE228814-A8FE-45F3-91A8-5F73AD61AB02}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chapter 8 Lighting", "Chapter 8 Lighting", "{DE4190B1-3FFA-43E6-9A58-C083F5298677}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "zChapter 8 Lighting", "zChapter 8 Lighting", "{DE4190B1-3FFA-43E6-9A58-C083F5298677}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LitWaves", "..\..\Chapter 8 Lighting\LitWaves\LitWaves.vcxproj", "{2D456930-7EE8-4CE4-965A-A85A744F8515}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LitColumns", "..\..\Chapter 8 Lighting\LitColumns\LitColumns.vcxproj", "{8713DCC9-E21C-485A-99E5-B8D1E5AD91B6}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chapter 21 Ambient Occlusion", "Chapter 21 Ambient Occlusion", "{73D3FA0F-8085-43A2-BE56-4FF99D7D24ED}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "zChapter 21 Ambient Occlusion", "zChapter 21 Ambient Occlusion", "{73D3FA0F-8085-43A2-BE56-4FF99D7D24ED}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Ssao", "..\..\Chapter 21 Ambient Occlusion\Ssao\Ssao.vcxproj", "{19D1BAEA-0053-4B68-A3A3-FE3A2F4D7E46}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chapter 1 Vector Algebra", "Chapter 1 Vector Algebra", "{66BE599E-CE02-4440-A4CD-31154A7432EA}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "aChapter 1 Vector Algebra", "aChapter 1 Vector Algebra", "{66BE599E-CE02-4440-A4CD-31154A7432EA}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Chapter 2 Matrix Algebra", "Chapter 2 Matrix Algebra", "{763243BB-34AD-41D5-A255-757AD272D86B}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "bChapter 2 Matrix Algebra", "bChapter 2 Matrix Algebra", "{763243BB-34AD-41D5-A255-757AD272D86B}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XMMATRIX", "..\..\Chapter 2 Matrix Algebra\XMMATRIX\XMMATRIX.vcxproj", "{7CDBAD5D-00B5-4477-965E-803411B39454}"
 EndProject
@@ -62,6 +62,24 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FloatingPointError", "..\..\Chapter 1 Vector Algebra\FloatingPointError\FloatingPointError.vcxproj", "{2E36C05E-EE34-4F1A-98C0-46951826465E}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "XMMATRIXExercise", "..\..\Chapter 2 Matrix Algebra\XMMATRIXExercise\XMMATRIXExercise.vcxproj", "{795555A9-D557-4467-97CE-D911C2A83FA5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "cChapter 4 Direct3D Initialization", "cChapter 4 Direct3D Initialization", "{760C2CE2-5A2C-4A98-9635-7278EC29F60D}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Init Direct3D", "..\..\Chapter 4 Direct3D Initialization\Init Direct3D\Init Direct3D.vcxproj", "{C4680F18-E037-4881-A760-CF9AC4C668C5}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "dChapter 6 Drawing in Direct3D", "dChapter 6 Drawing in Direct3D", "{139CAB3C-DDCE-48D8-BAD5-CBFCD7EA1883}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Box", "..\..\Chapter 6 Drawing in Direct3D\Box\Box.vcxproj", "{B590A678-E935-4AED-AF1F-3B6D02A4AE95}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "eChapter 7 Drawing in Direct3D Part II", "eChapter 7 Drawing in Direct3D Part II", "{17142145-F6B6-4739-BA82-984A7C967F45}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LandAndWaves", "..\..\Chapter 7 Drawing in Direct3D Part II\LandAndWaves\LandAndWaves.vcxproj", "{BDC63514-5D6B-4C7E-BC4F-11F19364456A}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Shapes", "..\..\Chapter 7 Drawing in Direct3D Part II\Shapes\Shapes.vcxproj", "{3F4D6E80-3635-4577-B6AC-CE8B90068BDD}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "zAppendix A Introduction to Windows Programming", "zAppendix A Introduction to Windows Programming", "{98738A80-C66F-4A0D-9926-1E74BBF30338}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Win32Basic", "..\..\AppendixA\Win32Basic\Win32Basic.vcxproj", "{CC70F8A7-F444-431E-AD79-9451FBDDD6C2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -223,6 +241,46 @@ Global
 		{795555A9-D557-4467-97CE-D911C2A83FA5}.Release|x64.Build.0 = Release|Win32
 		{795555A9-D557-4467-97CE-D911C2A83FA5}.Release|x86.ActiveCfg = Release|Win32
 		{795555A9-D557-4467-97CE-D911C2A83FA5}.Release|x86.Build.0 = Release|Win32
+		{C4680F18-E037-4881-A760-CF9AC4C668C5}.Debug|x64.ActiveCfg = Debug|x64
+		{C4680F18-E037-4881-A760-CF9AC4C668C5}.Debug|x64.Build.0 = Debug|x64
+		{C4680F18-E037-4881-A760-CF9AC4C668C5}.Debug|x86.ActiveCfg = Debug|Win32
+		{C4680F18-E037-4881-A760-CF9AC4C668C5}.Debug|x86.Build.0 = Debug|Win32
+		{C4680F18-E037-4881-A760-CF9AC4C668C5}.Release|x64.ActiveCfg = Release|x64
+		{C4680F18-E037-4881-A760-CF9AC4C668C5}.Release|x64.Build.0 = Release|x64
+		{C4680F18-E037-4881-A760-CF9AC4C668C5}.Release|x86.ActiveCfg = Release|Win32
+		{C4680F18-E037-4881-A760-CF9AC4C668C5}.Release|x86.Build.0 = Release|Win32
+		{B590A678-E935-4AED-AF1F-3B6D02A4AE95}.Debug|x64.ActiveCfg = Debug|x64
+		{B590A678-E935-4AED-AF1F-3B6D02A4AE95}.Debug|x64.Build.0 = Debug|x64
+		{B590A678-E935-4AED-AF1F-3B6D02A4AE95}.Debug|x86.ActiveCfg = Debug|Win32
+		{B590A678-E935-4AED-AF1F-3B6D02A4AE95}.Debug|x86.Build.0 = Debug|Win32
+		{B590A678-E935-4AED-AF1F-3B6D02A4AE95}.Release|x64.ActiveCfg = Release|x64
+		{B590A678-E935-4AED-AF1F-3B6D02A4AE95}.Release|x64.Build.0 = Release|x64
+		{B590A678-E935-4AED-AF1F-3B6D02A4AE95}.Release|x86.ActiveCfg = Release|Win32
+		{B590A678-E935-4AED-AF1F-3B6D02A4AE95}.Release|x86.Build.0 = Release|Win32
+		{BDC63514-5D6B-4C7E-BC4F-11F19364456A}.Debug|x64.ActiveCfg = Debug|x64
+		{BDC63514-5D6B-4C7E-BC4F-11F19364456A}.Debug|x64.Build.0 = Debug|x64
+		{BDC63514-5D6B-4C7E-BC4F-11F19364456A}.Debug|x86.ActiveCfg = Debug|Win32
+		{BDC63514-5D6B-4C7E-BC4F-11F19364456A}.Debug|x86.Build.0 = Debug|Win32
+		{BDC63514-5D6B-4C7E-BC4F-11F19364456A}.Release|x64.ActiveCfg = Release|x64
+		{BDC63514-5D6B-4C7E-BC4F-11F19364456A}.Release|x64.Build.0 = Release|x64
+		{BDC63514-5D6B-4C7E-BC4F-11F19364456A}.Release|x86.ActiveCfg = Release|Win32
+		{BDC63514-5D6B-4C7E-BC4F-11F19364456A}.Release|x86.Build.0 = Release|Win32
+		{3F4D6E80-3635-4577-B6AC-CE8B90068BDD}.Debug|x64.ActiveCfg = Debug|x64
+		{3F4D6E80-3635-4577-B6AC-CE8B90068BDD}.Debug|x64.Build.0 = Debug|x64
+		{3F4D6E80-3635-4577-B6AC-CE8B90068BDD}.Debug|x86.ActiveCfg = Debug|Win32
+		{3F4D6E80-3635-4577-B6AC-CE8B90068BDD}.Debug|x86.Build.0 = Debug|Win32
+		{3F4D6E80-3635-4577-B6AC-CE8B90068BDD}.Release|x64.ActiveCfg = Release|x64
+		{3F4D6E80-3635-4577-B6AC-CE8B90068BDD}.Release|x64.Build.0 = Release|x64
+		{3F4D6E80-3635-4577-B6AC-CE8B90068BDD}.Release|x86.ActiveCfg = Release|Win32
+		{3F4D6E80-3635-4577-B6AC-CE8B90068BDD}.Release|x86.Build.0 = Release|Win32
+		{CC70F8A7-F444-431E-AD79-9451FBDDD6C2}.Debug|x64.ActiveCfg = Debug|x64
+		{CC70F8A7-F444-431E-AD79-9451FBDDD6C2}.Debug|x64.Build.0 = Debug|x64
+		{CC70F8A7-F444-431E-AD79-9451FBDDD6C2}.Debug|x86.ActiveCfg = Debug|Win32
+		{CC70F8A7-F444-431E-AD79-9451FBDDD6C2}.Debug|x86.Build.0 = Debug|Win32
+		{CC70F8A7-F444-431E-AD79-9451FBDDD6C2}.Release|x64.ActiveCfg = Release|x64
+		{CC70F8A7-F444-431E-AD79-9451FBDDD6C2}.Release|x64.Build.0 = Release|x64
+		{CC70F8A7-F444-431E-AD79-9451FBDDD6C2}.Release|x86.ActiveCfg = Release|Win32
+		{CC70F8A7-F444-431E-AD79-9451FBDDD6C2}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -247,6 +305,11 @@ Global
 		{845F508D-8AB3-4A87-8CA7-C6C85D4FC049} = {66BE599E-CE02-4440-A4CD-31154A7432EA}
 		{2E36C05E-EE34-4F1A-98C0-46951826465E} = {66BE599E-CE02-4440-A4CD-31154A7432EA}
 		{795555A9-D557-4467-97CE-D911C2A83FA5} = {763243BB-34AD-41D5-A255-757AD272D86B}
+		{C4680F18-E037-4881-A760-CF9AC4C668C5} = {760C2CE2-5A2C-4A98-9635-7278EC29F60D}
+		{B590A678-E935-4AED-AF1F-3B6D02A4AE95} = {139CAB3C-DDCE-48D8-BAD5-CBFCD7EA1883}
+		{BDC63514-5D6B-4C7E-BC4F-11F19364456A} = {17142145-F6B6-4739-BA82-984A7C967F45}
+		{3F4D6E80-3635-4577-B6AC-CE8B90068BDD} = {17142145-F6B6-4739-BA82-984A7C967F45}
+		{CC70F8A7-F444-431E-AD79-9451FBDDD6C2} = {98738A80-C66F-4A0D-9926-1E74BBF30338}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {66D88F0D-E298-4B62-8A42-8B68B71961CF}
