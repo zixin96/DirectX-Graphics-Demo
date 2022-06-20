@@ -127,19 +127,15 @@ bool D3DApp::Initialize()
 	return true;
 }
 
-/**
- * \brief Create the render target and depth stencil descriptor heaps to store the descriptors/views
- */
 void D3DApp::CreateRtvAndDsvDescriptorHeaps()
 {
 	// RTV heap 
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
-	rtvHeapDesc.NumDescriptors = SwapChainBufferCount; // we need to store 2 render target descriptors in this heap to describe the buffer resources in the swap chain 
+	rtvHeapDesc.NumDescriptors = SWAP_CHAIN_BUFFER_COUNT; // we need to store 2 render target descriptors in this heap to describe the buffer resources in the swap chain 
 	rtvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	rtvHeapDesc.NodeMask       = 0;
-	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
-		              &rtvHeapDesc, IID_PPV_ARGS(&mRtvHeap)));
+	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&mRtvHeap)));
 
 	// DSV heap
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
@@ -147,8 +143,7 @@ void D3DApp::CreateRtvAndDsvDescriptorHeaps()
 	dsvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	dsvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	dsvHeapDesc.NodeMask       = 0;
-	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
-		              &dsvHeapDesc, IID_PPV_ARGS(&mDsvHeap)));
+	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&mDsvHeap)));
 }
 
 void D3DApp::OnResize()
@@ -161,11 +156,12 @@ void D3DApp::OnResize()
 	FlushCommandQueue();
 
 	// reset the command list to prep for recreation commands
-	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(),
+	ThrowIfFailed(mCommandList->Reset(
+		              mDirectCmdListAlloc.Get(),
 		              nullptr)); // we are not using this command list for drawing in D3DApp::OnResize, so specify pipeline init state is nullptr here
 
 	// Release the previous resources we will be recreating. (You must release the swap chain resources before calling IDXGISwapChain::ResizeBuffers)
-	for (int i = 0; i < SwapChainBufferCount; ++i)
+	for (int i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
 	{
 		mSwapChainBuffer[i].Reset();
 	}
@@ -174,7 +170,7 @@ void D3DApp::OnResize()
 
 	// Resize the swap chain.
 	ThrowIfFailed(mSwapChain->ResizeBuffers(
-		              SwapChainBufferCount,
+		              SWAP_CHAIN_BUFFER_COUNT,
 		              mClientWidth,
 		              mClientHeight,
 		              mBackBufferFormat,
@@ -184,7 +180,7 @@ void D3DApp::OnResize()
 
 	// create an RTV to each buffer in the swap chain
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(mRtvHeap->GetCPUDescriptorHandleForHeapStart());
-	for (UINT i = 0; i < SwapChainBufferCount; i++)
+	for (UINT i = 0; i < SWAP_CHAIN_BUFFER_COUNT; i++)
 	{
 		// get the ith buffer in the swap chain
 		ThrowIfFailed(mSwapChain->GetBuffer(i, IID_PPV_ARGS(&mSwapChainBuffer[i]))); // use GetBuffer to retrieve buffer resources that are stored in the swap chain
@@ -220,6 +216,7 @@ void D3DApp::OnResize()
 	//depthStencilDesc.SampleDesc.Count   = m4xMsaaState ? 4 : 1;                    
 	//depthStencilDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
 
+	//! This sample descriptions must match those in the back buffer
 	depthStencilDesc.SampleDesc.Count   = 1;
 	depthStencilDesc.SampleDesc.Quality = 0;
 
@@ -234,7 +231,7 @@ void D3DApp::OnResize()
 	ThrowIfFailed(md3dDevice->CreateCommittedResource(
 		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), // resources that are solely accessed by GPU
 		              D3D12_HEAP_FLAG_NONE,
-		              &depthStencilDesc,           //  describes the resource 
+		              &depthStencilDesc,           // describes the resource 
 		              D3D12_RESOURCE_STATE_COMMON, // initial state 
 		              &optClear,                   // optimal clear values (if your clear value matches this, it's optimal)
 		              IID_PPV_ARGS(&mDepthStencilBuffer)));
@@ -244,9 +241,9 @@ void D3DApp::OnResize()
 
 	// Create the depth/stencil descriptor to mip level 0 of entire resource using the format of the resource.
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
-	dsvDesc.Flags              = D3D12_DSV_FLAG_NONE;
-	dsvDesc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
-	dsvDesc.Format             = mDepthStencilFormat;
+	dsvDesc.Format        = mDepthStencilFormat;
+	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+	dsvDesc.Flags         = D3D12_DSV_FLAG_NONE;
 	dsvDesc.Texture2D.MipSlice = 0;
 	md3dDevice->CreateDepthStencilView(mDepthStencilBuffer.Get(),
 	                                   &dsvDesc,            // since our depth buffer resource is typeless, we must provide a D3D12_DEPTH_STENCIL_VIEW_DESC. 
@@ -299,11 +296,13 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			{
 				mAppPaused = true;
 				mTimer.Stop();
+				//OutputDebugString(L"Paused!!!");
 			}
 			else
 			{
 				mAppPaused = false;
 				mTimer.Start();
+				//OutputDebugString(L"Unpaused!!!");
 			}
 			return 0;
 
@@ -500,7 +499,7 @@ bool D3DApp::InitMainWindow()
 bool D3DApp::InitDirect3D()
 {
 	#if defined(DEBUG) || defined(_DEBUG)
-	// Enable the D3D12 debug layer.
+	// Enable the D3D12 debug layer for debug mode builds.
 	{
 		ComPtr<ID3D12Debug> debugController;
 		ThrowIfFailed(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
@@ -510,13 +509,12 @@ bool D3DApp::InitDirect3D()
 
 	ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&mdxgiFactory)));
 
-	// Try to create hardware device.
-	HRESULT hardwareResult = D3D12CreateDevice(
-	                                           nullptr,                // use the default adapter
+	// create a D3D 12 device
+	HRESULT hardwareResult = D3D12CreateDevice(nullptr,                // specify nullptr to use the primary display adapter
 	                                           D3D_FEATURE_LEVEL_11_0, // minimum D3D_FEATURE_LEVEL
 	                                           IID_PPV_ARGS(&md3dDevice));
 
-	// Fallback to WARP device.
+	// Fallback to WARP device if we fail to create a D3D12 device.
 	if (FAILED(hardwareResult))
 	{
 		ComPtr<IDXGIAdapter> pWarpAdapter;
@@ -534,7 +532,8 @@ bool D3DApp::InitDirect3D()
 		              D3D12_FENCE_FLAG_NONE,
 		              IID_PPV_ARGS(&mFence)));
 
-	// query descriptors' size
+	// query descriptor sizes as they can vary across GPUs
+	// cache them so that they are available when we need them
 	mRtvDescriptorSize       = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV); // GetDescriptorHandleIncrementSize() above allows applications to manually offset handles into a heap (producing handles into anywhere in a descriptor heap).
 	mDsvDescriptorSize       = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV); // https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html
 	mCbvSrvUavDescriptorSize = md3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
@@ -562,20 +561,17 @@ void D3DApp::CreateCommandObjects()
 	queueDesc.Flags                    = D3D12_COMMAND_QUEUE_FLAG_NONE;
 	ThrowIfFailed(md3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&mCommandQueue))); //! usage of IID_PPV_ARGS: page 109
 
-	ThrowIfFailed(md3dDevice->CreateCommandAllocator(
-		              D3D12_COMMAND_LIST_TYPE_DIRECT,
-		              IID_PPV_ARGS(&mDirectCmdListAlloc)));
+	ThrowIfFailed(md3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&mDirectCmdListAlloc)));
 
 	ThrowIfFailed(md3dDevice->CreateCommandList(
 		              0, // For single-GPU operation, set this to zero
 		              D3D12_COMMAND_LIST_TYPE_DIRECT,
 		              mDirectCmdListAlloc.Get(), // initially, we associate the command list with mDirectCmdListAlloc
-		              nullptr,                   // mCommandList is not used to submit draw commands (the one in frame resource does), thus we specify nullptr here
+		              nullptr,                   // we do not need a valid pipeline state object for initialization purpose, thus we specify nullptr to the initial pipeline state
 		              IID_PPV_ARGS(&mCommandList)));
 
-	// Start off in a closed state.  This is because the first time we refer 
-	// to the command list we will Reset it (in D3DApp::OnResize), and it needs to be closed before
-	// calling Reset.
+	// Start off in a closed state.  This is because the first time we refer to the command list
+	// we will Reset it (in D3DApp::OnResize), and it needs to be closed before calling Reset.
 	mCommandList->Close();
 }
 
@@ -585,13 +581,17 @@ void D3DApp::CreateCommandObjects()
  */
 void D3DApp::CreateSwapChain()
 {
+	// release the previous swap chain we will be recreating
+	//! we need this when we support MSAA and want to change the multi-sampling settings at runtime
+	mSwapChain.Reset();
+
 	// Create a descriptor for the swap chain.
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
 	swapChainDesc.Width                 = mClientWidth;
 	swapChainDesc.Height                = mClientHeight;
 	swapChainDesc.Format                = mBackBufferFormat;
 	swapChainDesc.BufferUsage           = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.BufferCount           = SwapChainBufferCount;
+	swapChainDesc.BufferCount           = SWAP_CHAIN_BUFFER_COUNT;
 	swapChainDesc.SampleDesc.Count      = 1;
 	swapChainDesc.SampleDesc.Quality    = 0;
 	swapChainDesc.Scaling               = DXGI_SCALING_STRETCH;
@@ -660,10 +660,6 @@ D3D12_CPU_DESCRIPTOR_HANDLE D3DApp::CurrentBackBufferView() const
 	                                     mRtvDescriptorSize);                            // byte size of descriptor
 }
 
-/**
- * \brief Return the CPU descriptor handle that represents the start of the heap that holds the depth-stencil view 
- * \return the CPU descriptor handle
- */
 D3D12_CPU_DESCRIPTOR_HANDLE D3DApp::DepthStencilView() const
 {
 	return mDsvHeap->GetCPUDescriptorHandleForHeapStart();

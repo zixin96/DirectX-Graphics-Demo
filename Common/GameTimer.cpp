@@ -1,6 +1,8 @@
 #include <Windows.h>
 #include "GameTimer.h"
 
+#include <sstream>
+
 GameTimer::GameTimer()
 	: mSecondsPerCount(0.0),
 	  mDeltaTime(-1.0),
@@ -31,11 +33,7 @@ float GameTimer::TotalTime() const
 	// The distance mCurrTime - mBaseTime includes paused time,
 	// which we do not want to count.  To correct this, we can subtract 
 	// the paused time from mCurrTime:  
-
-	else
-	{
-		return (float)(((mCurrTime - mPausedTime) - mBaseTime) * mSecondsPerCount);
-	}
+	return (float)(((mCurrTime - mPausedTime) - mBaseTime) * mSecondsPerCount);
 }
 
 float GameTimer::DeltaTime() const
@@ -104,6 +102,12 @@ void GameTimer::Tick()
 {
 	if (mStopped)
 	{
+		// static int          dummy = 0;
+		// std::wostringstream woss;
+		// woss << dummy++;
+		// OutputDebugString(L"Stopped Tick()!!");
+		// OutputDebugString(woss.str().c_str());
+		// OutputDebugString(L"\n");
 		mDeltaTime = 0.0;
 		return;
 	}

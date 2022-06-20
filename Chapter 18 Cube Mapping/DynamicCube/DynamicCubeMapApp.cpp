@@ -228,7 +228,7 @@ void DynamicCubeMapApp::CreateRtvAndDsvDescriptorHeaps()
 {
 	// rendering to a cube map requires 6 additional RTVs, one for each face
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
-	rtvHeapDesc.NumDescriptors = SwapChainBufferCount + 6; // +6
+	rtvHeapDesc.NumDescriptors = SWAP_CHAIN_BUFFER_COUNT + 6; // +6
 	rtvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	rtvHeapDesc.NodeMask       = 0;
@@ -380,7 +380,7 @@ void DynamicCubeMapApp::Draw(const GameTimer& gt)
 
 	// Swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
@@ -709,7 +709,7 @@ void DynamicCubeMapApp::BuildDescriptorHeaps()
 	auto rtvCpuStart = mRtvHeap->GetCPUDescriptorHandleForHeapStart();
 
 	// Cubemap RTV goes after the swap chain descriptors.
-	int rtvOffset = SwapChainBufferCount;
+	int rtvOffset = SWAP_CHAIN_BUFFER_COUNT; 
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE cubeRtvHandles[6];
 	for (int i = 0; i < 6; ++i)
@@ -1031,8 +1031,10 @@ void DynamicCubeMapApp::BuildPSOs()
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	opaquePsoDesc.NumRenderTargets      = 1;
 	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	//opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
+	//opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.SampleDesc.Count      = 1;
+	opaquePsoDesc.SampleDesc.Quality    = 0;
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 

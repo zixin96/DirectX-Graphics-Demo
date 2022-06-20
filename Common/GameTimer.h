@@ -1,5 +1,4 @@
-#ifndef GAMETIMER_H
-#define GAMETIMER_H
+#pragma once
 
 /**
  * \brief This class uses the performance timer (counter) for accurate time measurements
@@ -30,5 +29,3 @@ private:
 
 	bool mStopped;
 };
-
-#endif // GAMETIMER_H
