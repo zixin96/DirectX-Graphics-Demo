@@ -32,8 +32,8 @@ public:
 	HWND      MainWnd() const;
 	float     AspectRatio() const;
 
-	bool Get4xMsaaState() const;
-	void Set4xMsaaState(bool value);
+	// bool Get4xMsaaState() const;
+	// void Set4xMsaaState(bool value);
 
 	int Run();
 
@@ -76,22 +76,27 @@ protected:
 	void LogAdapters();
 	void LogAdapterOutputs(IDXGIAdapter* adapter);
 	void LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format);
-private:
-	void Query4XMSAAQualityLevel();
+// private:
+// 	void Query4XMSAAQualityLevel();
 protected:
-	static D3DApp*                                    mApp;
-	HINSTANCE                                         mhAppInst        = nullptr; // application instance handle
-	HWND                                              mhMainWnd        = nullptr; // main window handle
-	bool                                              mAppPaused       = false;   // is the application paused?
-	bool                                              mMinimized       = false;   // is the application minimized?
-	bool                                              mMaximized       = false;   // is the application maximized?
-	bool                                              mResizing        = false;   // are the resize bars being dragged?
-	bool                                              mFullscreenState = false;   // fullscreen enabled
-	bool                                              m4xMsaaState     = false;   // TODO: MSAA must be set to false. We must create an MSAA render target that we explicitly resolve in D3D 12. https://stackoverflow.com/q/56286975/13795171
-	UINT                                              m4xMsaaQuality   = 0;       // quality level of 4X MSAA, range from [0, NumQualityLevels-1]
-	GameTimer                                         mTimer;                     // Used to keep track of the “delta-time” and game time
-	Microsoft::WRL::ComPtr<IDXGIFactory4>             mdxgiFactory;               // IDXGIFactory4 is used to create our swap chain and a WARP adapter if necessary
-	Microsoft::WRL::ComPtr<IDXGISwapChain>            mSwapChain;                 // swap chain in D3D is represented by IDXGISwapChain. It stores the front and back buffer textures, and provides methods for resizing and presenting. 
+	static D3DApp* mApp;
+	HINSTANCE      mhAppInst        = nullptr; // application instance handle
+	HWND           mhMainWnd        = nullptr; // main window handle
+	bool           mAppPaused       = false;   // is the application paused?
+	bool           mMinimized       = false;   // is the application minimized?
+	bool           mMaximized       = false;   // is the application maximized?
+	bool           mResizing        = false;   // are the resize bars being dragged?
+	bool           mFullscreenState = false;   // fullscreen enabled
+
+	// TODO: MSAA must be set to false. We must create an MSAA render target that we explicitly resolve in D3D 12. https://stackoverflow.com/q/56286975/13795171
+	// quality level of 4X MSAA, range from [0, NumQualityLevels-1]
+
+	//bool                                              m4xMsaaState     = false;   
+	//UINT                                              m4xMsaaQuality   = 0;      
+
+	GameTimer                                         mTimer;       // Used to keep track of the “delta-time” and game time
+	Microsoft::WRL::ComPtr<IDXGIFactory4>             mdxgiFactory; // IDXGIFactory4 is used to create our swap chain and a WARP adapter if necessary
+	Microsoft::WRL::ComPtr<IDXGISwapChain>            mSwapChain;   // swap chain in D3D is represented by IDXGISwapChain. It stores the front and back buffer textures, and provides methods for resizing and presenting. 
 	Microsoft::WRL::ComPtr<ID3D12Device>              md3dDevice;
 	Microsoft::WRL::ComPtr<ID3D12Fence>               mFence;            // fence is used to sync GPU and CPU
 	UINT64                                            mCurrentFence = 0; // a fence object maintains a UINT64 value, which is an integer to identify a fence point in time. Every time we need to mark a new fence point, we increment the integer. 

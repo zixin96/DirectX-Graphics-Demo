@@ -60,22 +60,22 @@ float D3DApp::AspectRatio() const
 	return static_cast<float>(mClientWidth) / mClientHeight;
 }
 
-bool D3DApp::Get4xMsaaState() const
-{
-	return m4xMsaaState;
-}
+// bool D3DApp::Get4xMsaaState() const
+// {
+// 	return m4xMsaaState;
+// }
 
-void D3DApp::Set4xMsaaState(bool value)
-{
-	if (m4xMsaaState != value)
-	{
-		m4xMsaaState = value;
-
-		// Recreate the swapchain and buffers with new multisample settings.
-		CreateSwapChain();
-		OnResize();
-	}
-}
+// void D3DApp::Set4xMsaaState(bool value)
+// {
+// 	if (m4xMsaaState != value)
+// 	{
+// 		m4xMsaaState = value;
+//
+// 		// Recreate the swapchain and buffers with new multisample settings.
+// 		CreateSwapChain();
+// 		OnResize();
+// 	}
+// }
 
 int D3DApp::Run()
 {
@@ -217,10 +217,14 @@ void D3DApp::OnResize()
 	// we need to create the depth buffer resource with a typeless format.  
 	depthStencilDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
 
-	depthStencilDesc.SampleDesc.Count   = m4xMsaaState ? 4 : 1;                    // both the back buffer and depth buffer must be created with the same multisampling settings
-	depthStencilDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0; // both the back buffer and depth buffer must be created with the same multisampling settings
-	depthStencilDesc.Layout             = D3D12_TEXTURE_LAYOUT_UNKNOWN;            // let driver to choose the most efficient layout
-	depthStencilDesc.Flags              = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL; // flags for depth/stencil buffer
+	//depthStencilDesc.SampleDesc.Count   = m4xMsaaState ? 4 : 1;                    
+	//depthStencilDesc.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+
+	depthStencilDesc.SampleDesc.Count   = 1;
+	depthStencilDesc.SampleDesc.Quality = 0;
+
+	depthStencilDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;            // let driver to choose the most efficient layout
+	depthStencilDesc.Flags  = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL; // flags for depth/stencil buffer
 
 	D3D12_CLEAR_VALUE optClear;
 	optClear.Format               = mDepthStencilFormat;
@@ -412,7 +416,7 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			}
 			else if ((int)wParam == VK_F2)
 			{
-				Set4xMsaaState(!m4xMsaaState);
+				// Set4xMsaaState(!m4xMsaaState);
 			}
 
 			return 0;
@@ -477,21 +481,21 @@ bool D3DApp::InitMainWindow()
 	return true;
 }
 
-void D3DApp::Query4XMSAAQualityLevel()
-{
-	// Query the number of quality levels for a given texture format and sample count
-	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels;
-	msQualityLevels.Format           = mBackBufferFormat;
-	msQualityLevels.SampleCount      = 4;
-	msQualityLevels.Flags            = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
-	msQualityLevels.NumQualityLevels = 0;
-	ThrowIfFailed(md3dDevice->CheckFeatureSupport(
-		              D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
-		              &msQualityLevels, // this parameter is both an input (format, sample count, flags) and output (NumQualityLevels)
-		              sizeof(msQualityLevels)));
-	m4xMsaaQuality = msQualityLevels.NumQualityLevels; //! Note: the valid quality levels range from [0, NumQualityLevels-1]
-	assert(m4xMsaaQuality > 0 && "Unexpected MSAA quality level.");
-}
+// void D3DApp::Query4XMSAAQualityLevel()
+// {
+// 	// Query the number of quality levels for a given texture format and sample count
+// 	D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels;
+// 	msQualityLevels.Format           = mBackBufferFormat;
+// 	msQualityLevels.SampleCount      = 4;
+// 	msQualityLevels.Flags            = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+// 	msQualityLevels.NumQualityLevels = 0;
+// 	ThrowIfFailed(md3dDevice->CheckFeatureSupport(
+// 		              D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+// 		              &msQualityLevels, // this parameter is both an input (format, sample count, flags) and output (NumQualityLevels)
+// 		              sizeof(msQualityLevels)));
+// 	m4xMsaaQuality = msQualityLevels.NumQualityLevels; //! Note: the valid quality levels range from [0, NumQualityLevels-1]
+// 	assert(m4xMsaaQuality > 0 && "Unexpected MSAA quality level.");
+// }
 
 bool D3DApp::InitDirect3D()
 {
@@ -538,7 +542,7 @@ bool D3DApp::InitDirect3D()
 	// Check 4X MSAA quality support for our back buffer format.
 	// All Direct3D 11 capable devices support 4X MSAA for all render 
 	// target formats, so we only need to check quality support.
-	Query4XMSAAQualityLevel();
+	// Query4XMSAAQualityLevel();
 
 	#ifdef _DEBUG
 	// LogAdapters();
@@ -581,33 +585,38 @@ void D3DApp::CreateCommandObjects()
  */
 void D3DApp::CreateSwapChain()
 {
-	// describe the swap chain first
-	DXGI_SWAP_CHAIN_DESC sd;
-	// filling DXGI_MODE_DESC: description of back buffer
-	sd.BufferDesc.Width                   = mClientWidth;
-	sd.BufferDesc.Height                  = mClientHeight;
-	sd.BufferDesc.RefreshRate.Numerator   = 60; // TODO: Changing this value doesn't affect refresh rate, investigate 
-	sd.BufferDesc.RefreshRate.Denominator = 1;
-	sd.BufferDesc.Format                  = mBackBufferFormat;
-	sd.BufferDesc.ScanlineOrdering        = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-	sd.BufferDesc.Scaling                 = DXGI_MODE_SCALING_UNSPECIFIED;
-	// filling DXGI_SAMPLE_DESC: Multisampling
-	sd.SampleDesc.Count   = m4xMsaaState ? 4 : 1;                    // # of samples to take per pixel 
-	sd.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0; // specify the desired quality level (what "quality level" means can vary across hardware manufacturers)
-	// back buffer usage
-	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT; // we're going to render to the back buffer (use it as a render target)
-	// back buffer count
-	sd.BufferCount  = SwapChainBufferCount; // two for double buffering
-	sd.OutputWindow = mhMainWnd;
-	sd.Windowed     = true;
-	sd.SwapEffect   = DXGI_SWAP_EFFECT_FLIP_DISCARD;
-	sd.Flags        = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+	// Create a descriptor for the swap chain.
+	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+	swapChainDesc.Width                 = mClientWidth;
+	swapChainDesc.Height                = mClientHeight;
+	swapChainDesc.Format                = mBackBufferFormat;
+	swapChainDesc.BufferUsage           = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	swapChainDesc.BufferCount           = SwapChainBufferCount;
+	swapChainDesc.SampleDesc.Count      = 1;
+	swapChainDesc.SampleDesc.Quality    = 0;
+	swapChainDesc.Scaling               = DXGI_SCALING_STRETCH;
+	swapChainDesc.SwapEffect            = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	swapChainDesc.AlphaMode             = DXGI_ALPHA_MODE_IGNORE;
+	swapChainDesc.Flags                 = 0u;
 
-	// then, create the swap chain
-	ThrowIfFailed(mdxgiFactory->CreateSwapChain(
-		              mCommandQueue.Get(), // we pass a pointer to the command queue b/c swap chain need to submit to the queue the actual commands to display a buffer to the screen
-		              &sd,
-		              &mSwapChain)); // will release the previous swap chain
+	DXGI_SWAP_CHAIN_FULLSCREEN_DESC fsSwapChainDesc = {};
+	fsSwapChainDesc.Windowed                        = TRUE;
+
+	// Create a swap chain for the window.
+	ComPtr<IDXGISwapChain1> swapChain;
+	ThrowIfFailed(mdxgiFactory->CreateSwapChainForHwnd(
+		              mCommandQueue.Get(),
+		              mhMainWnd,
+		              &swapChainDesc,
+		              &fsSwapChainDesc,
+		              nullptr,
+		              swapChain.GetAddressOf()
+	              ));
+
+	ThrowIfFailed(swapChain.As(&mSwapChain));
+
+	// This class does not support exclusive full-screen mode and prevents DXGI from responding to the ALT+ENTER shortcut
+	ThrowIfFailed(mdxgiFactory->MakeWindowAssociation(mhMainWnd, DXGI_MWA_NO_ALT_ENTER));
 }
 
 /**
