@@ -166,7 +166,10 @@ void D3DApp::OnResize()
 
 	// Release the previous resources we will be recreating. (You must release the swap chain resources before calling IDXGISwapChain::ResizeBuffers)
 	for (int i = 0; i < SwapChainBufferCount; ++i)
+	{
 		mSwapChainBuffer[i].Reset();
+	}
+
 	mDepthStencilBuffer.Reset();
 
 	// Resize the swap chain.
@@ -184,7 +187,7 @@ void D3DApp::OnResize()
 	for (UINT i = 0; i < SwapChainBufferCount; i++)
 	{
 		// get the ith buffer in the swap chain
-		ThrowIfFailed(mSwapChain->GetBuffer(i, IID_PPV_ARGS(mSwapChainBuffer[i].GetAddressOf()))); // use GetBuffer to retrieve buffer resources that are stored in the swap chain
+		ThrowIfFailed(mSwapChain->GetBuffer(i, IID_PPV_ARGS(&mSwapChainBuffer[i]))); // use GetBuffer to retrieve buffer resources that are stored in the swap chain
 
 		// create an RTV to it 
 		md3dDevice->CreateRenderTargetView(mSwapChainBuffer[i].Get(),
@@ -230,7 +233,7 @@ void D3DApp::OnResize()
 		              &depthStencilDesc,           //  describes the resource 
 		              D3D12_RESOURCE_STATE_COMMON, // initial state 
 		              &optClear,                   // optimal clear values (if your clear value matches this, it's optimal)
-		              IID_PPV_ARGS(mDepthStencilBuffer.GetAddressOf())));
+		              IID_PPV_ARGS(&mDepthStencilBuffer)));
 
 	// before using the depth/stencil buffer, we must create an associated
 	// depth/stencil view to be bound to the pipeline

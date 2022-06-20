@@ -33,7 +33,7 @@ ComPtr<ID3DBlob> d3dUtil::LoadBinary(const std::wstring& filename)
 
 	// create D3D buffer for the binary data
 	ComPtr<ID3DBlob> blob;
-	ThrowIfFailed(D3DCreateBlob(size, blob.GetAddressOf()));
+	ThrowIfFailed(D3DCreateBlob(size, &blob));
 
 	fin.read((char*)blob->GetBufferPointer(), size);
 	fin.close();
@@ -58,7 +58,7 @@ ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(ID3D12Device*              d
 		              &CD3DX12_RESOURCE_DESC::Buffer(byteSize),          // A pointer to a D3D12_RESOURCE_DESC structure that describes the resource
 		              D3D12_RESOURCE_STATE_COMMON,                       // The initial state of the resource
 		              nullptr,                                           // Specifies a D3D12_CLEAR_VALUE structure that describes the default value for a clear color
-		              IID_PPV_ARGS(defaultBuffer.GetAddressOf())));
+		              IID_PPV_ARGS(&defaultBuffer)));
 
 	// In order to copy CPU memory data into our default buffer, we need to create
 	// an intermediate upload heap. 
@@ -68,7 +68,7 @@ ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(ID3D12Device*              d
 		              &CD3DX12_RESOURCE_DESC::Buffer(byteSize),
 		              D3D12_RESOURCE_STATE_GENERIC_READ, // this is the required starting state for an upload heap
 		              nullptr,
-		              IID_PPV_ARGS(uploadBuffer.GetAddressOf())));
+		              IID_PPV_ARGS(&uploadBuffer)));
 
 
 	// Describe the data we want to copy into the default buffer.
