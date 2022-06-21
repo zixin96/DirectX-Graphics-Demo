@@ -1,15 +1,15 @@
-#include "BoxInputElemDescApp.h"
+#include "BoxApp.h"
 
-BoxInputElemDescApp::BoxInputElemDescApp(HINSTANCE hInstance)
+BoxApp::BoxApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
 {
 }
 
-BoxInputElemDescApp::~BoxInputElemDescApp()
+BoxApp::~BoxApp()
 {
 }
 
-bool BoxInputElemDescApp::Initialize()
+bool BoxApp::Initialize()
 {
 	if (!D3DApp::Initialize())
 		return false;
@@ -37,7 +37,7 @@ bool BoxInputElemDescApp::Initialize()
 	return true;
 }
 
-void BoxInputElemDescApp::OnResize()
+void BoxApp::OnResize()
 {
 	D3DApp::OnResize();
 
@@ -46,7 +46,7 @@ void BoxInputElemDescApp::OnResize()
 	XMStoreFloat4x4(&mProj, P);
 }
 
-void BoxInputElemDescApp::Update(const GameTimer& gt)
+void BoxApp::Update(const GameTimer& gt)
 {
 	OnKeyboardInput(gt);
 
@@ -70,10 +70,13 @@ void BoxInputElemDescApp::Update(const GameTimer& gt)
 	// Update the constant buffer with the latest worldViewProj matrix.
 	ObjectConstants objConstants;
 	XMStoreFloat4x4(&objConstants.WorldViewProj, XMMatrixTranspose(worldViewProj));
+	//!? update constant buffer data
+	objConstants.Time       = gt.TotalTime();
+	objConstants.PulseColor = XMFLOAT4(Colors::IndianRed);
 	mObjectCB->CopyData(0, objConstants);
 }
 
-void BoxInputElemDescApp::Draw(const GameTimer& gt)
+void BoxApp::Draw(const GameTimer& gt)
 {
 	// Reuse the memory associated with command recording.
 	// We can only reset when the associated command lists have finished execution on the GPU.
@@ -149,7 +152,7 @@ void BoxInputElemDescApp::Draw(const GameTimer& gt)
 	FlushCommandQueue();
 }
 
-void BoxInputElemDescApp::OnMouseDown(WPARAM btnState, int x, int y)
+void BoxApp::OnMouseDown(WPARAM btnState, int x, int y)
 {
 	mLastMousePos.x = x;
 	mLastMousePos.y = y;
@@ -157,12 +160,12 @@ void BoxInputElemDescApp::OnMouseDown(WPARAM btnState, int x, int y)
 	SetCapture(mhMainWnd);
 }
 
-void BoxInputElemDescApp::OnMouseUp(WPARAM btnState, int x, int y)
+void BoxApp::OnMouseUp(WPARAM btnState, int x, int y)
 {
 	ReleaseCapture();
 }
 
-void BoxInputElemDescApp::OnMouseMove(WPARAM btnState, int x, int y)
+void BoxApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
 	if (d3dUtil::IsKeyDown(MK_LBUTTON))
 	{
@@ -194,7 +197,7 @@ void BoxInputElemDescApp::OnMouseMove(WPARAM btnState, int x, int y)
 	mLastMousePos.y = y;
 }
 
-void BoxInputElemDescApp::OnKeyboardInput(const GameTimer& gt)
+void BoxApp::OnKeyboardInput(const GameTimer& gt)
 {
 	if (d3dUtil::IsKeyDown('1'))
 		mIsWireframe = true;
@@ -205,7 +208,7 @@ void BoxInputElemDescApp::OnKeyboardInput(const GameTimer& gt)
 /**
  * \brief Descriptor heap for constant buffer descriptor
  */
-void BoxInputElemDescApp::BuildDescriptorHeaps()
+void BoxApp::BuildDescriptorHeaps()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
 	cbvHeapDesc.NumDescriptors = 1;                                         // we only have a single object, thus we only need a single descriptor to describe a single constant buffer
@@ -216,7 +219,7 @@ void BoxInputElemDescApp::BuildDescriptorHeaps()
 		              IID_PPV_ARGS(&mCbvHeap)));
 }
 
-void BoxInputElemDescApp::BuildCBVs()
+void BoxApp::BuildCBVs()
 {
 	// constant buffer to store the constants of n object (in this case, we have a single object)
 	mObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(md3dDevice.Get(), 1, true);
@@ -238,7 +241,7 @@ void BoxInputElemDescApp::BuildCBVs()
 	                                     mCbvHeap->GetCPUDescriptorHandleForHeapStart()); // Describes the CPU descriptor handle that represents the destination where the newly-created constant buffer view will reside
 }
 
-void BoxInputElemDescApp::BuildRootSignature()
+void BoxApp::BuildRootSignature()
 {
 	// Shader programs typically require resources as input (constant buffers,
 	// textures, samplers).  The root signature defines the resources the shader
@@ -286,69 +289,30 @@ void BoxInputElemDescApp::BuildRootSignature()
 		              IID_PPV_ARGS(&mRootSignature)));
 }
 
-void BoxInputElemDescApp::BuildInputLayout()
+void BoxApp::BuildInputLayout()
 {
-	//!? we changed the input layout
 	mInputLayout =
 	{
 		{
-			"POSITION", 0,
-			DXGI_FORMAT_R32G32B32_FLOAT,
-			0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			0
+			"POSITION", 0,                              // semanticName + semanticIndex: corresponds to "float3 PosL  : POSITION0;" in shader. 
+			DXGI_FORMAT_R32G32B32_FLOAT,                // data type: float3
+			0,                                          // input slot: this element comes from the input slot 0
+			0,                                          // 0-byte offset from the start of the C++ Vertex struct of the input slot 0 to the start of the vertex component. could use D3D12_APPEND_ALIGNED_ELEMENT instead of manually specifying the offset
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, // Input data is per-vertex data
+			0                                           // This value must be 0 for an element that contains per-vertex data
 		},
 		{
-			"TANGENT", 0,
-			DXGI_FORMAT_R32G32B32_FLOAT,
-			0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			0
-		},
-		{
-			"NORMAL", 0,
-			DXGI_FORMAT_R32G32B32_FLOAT,
-			0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			0
-		},
-		{
-			"TEX", 0,
-			DXGI_FORMAT_R32G32_FLOAT,
-			0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			0
-		},
-		{
-			"TEX", 1,
-			DXGI_FORMAT_R32G32_FLOAT,
-			0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			0
-		},
-		//!? tricky: choose the correct format: DXGI_FORMAT_B8G8R8A8_UNORM to match XMCOLOR 
-		//!? XMCOLOR internally has structure: MSB A R G B LSB. The matching DXGI format is B8G8R8A8 (not R8G8B8A8!), which (LSB)B8-G8-R8-A8(MSB) 
-		//!? See here: https://www.gamedev.net/forums/topic/706668-how-to-declare-xmcolor-in-hlsl/5425100/ and page 263
-		{
-			"COLOR", 0,
-			//!? Experiment with the following two to see the color diffference:
-			// DXGI_FORMAT_R8G8B8A8_UNORM: wrong
-			// DXGI_FORMAT_B8G8R8A8_UNORM: correct
-			DXGI_FORMAT_B8G8R8A8_UNORM,
-			0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			0
-		},
+			"COLOR", 0,                                 // semanticName + semanticIndex: corresponds to "float4 Color : COLOR0;" in shader
+			DXGI_FORMAT_R32G32B32A32_FLOAT,             // data type: float4
+			0,                                          // input slot: this element comes from the input slot 0
+			12,                                         // 12-byte offset from the start of the C++ Vertex struct of the input slot 0 to the start of the vertex component. could use D3D12_APPEND_ALIGNED_ELEMENT instead of manually specifying the offset
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, // Input data is per-vertex data
+			0                                           // This value must be 0 for an element that contains per-vertex data
+		}
 	};
 }
 
-void BoxInputElemDescApp::BuildShaders()
+void BoxApp::BuildShaders()
 {
 	// Offline .cso shader loading:
 	// mvsByteCode = d3dUtil::LoadBinary(L"Shaders\\color2.cso");
@@ -358,28 +322,18 @@ void BoxInputElemDescApp::BuildShaders()
 	mpsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
 }
 
-void BoxInputElemDescApp::BuildBoxGeometry()
+void BoxApp::BuildBoxGeometry()
 {
 	std::array<Vertex, 8> vertices =
 	{
-		Vertex({XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::White)}),
-		Vertex({XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Black)}),
-		Vertex({XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Red)}),
-		Vertex({XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Green)}),
-		Vertex({XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Blue)}),
-		Vertex({XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Yellow)}),
-		Vertex({XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Cyan)}),
-		Vertex({XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Magenta)})
-
-		// RosyBrown 0.737254918f, 0.560784340f, 0.560784340f, 1.000000000f
-		// Vertex({XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
-		// Vertex({XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
-		// Vertex({XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
-		// Vertex({XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
-		// Vertex({XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
-		// Vertex({XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
-		// Vertex({XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
-		// Vertex({XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)})
+		Vertex({XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White)}),
+		Vertex({XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black)}),
+		Vertex({XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red)}),
+		Vertex({XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green)}),
+		Vertex({XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue)}),
+		Vertex({XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow)}),
+		Vertex({XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan)}),
+		Vertex({XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta)})
 	};
 
 	std::array<std::uint16_t, 36> indices =
@@ -447,7 +401,7 @@ void BoxInputElemDescApp::BuildBoxGeometry()
 	mBoxGeo->DrawArgs["box"] = submesh;
 }
 
-void BoxInputElemDescApp::BuildPSO()
+void BoxApp::BuildPSO()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 	ZeroMemory(&opaquePsoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
