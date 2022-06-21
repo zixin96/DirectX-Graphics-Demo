@@ -1,8 +1,3 @@
-//***************************************************************************************
-// color.hlsl by Frank Luna (C) 2015 All Rights Reserved.
-//
-// Transforms and colors geometry.
-//***************************************************************************************
 
 // new syntax supported after model 5.1
 struct ObjectConstants
