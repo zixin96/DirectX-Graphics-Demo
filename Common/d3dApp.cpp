@@ -115,13 +115,10 @@ int D3DApp::Run()
 
 bool D3DApp::Initialize()
 {
-	if (!InitMainWindow())
-		return false;
+	if (!InitMainWindow()) { return false; }
 
-	if (!InitDirect3D())
-		return false;
+	if (!InitDirect3D()) { return false; }
 
-	// Do the initial resize code.
 	OnResize();
 
 	return true;
@@ -160,12 +157,14 @@ void D3DApp::OnResize()
 		              mDirectCmdListAlloc.Get(),
 		              nullptr)); // we are not using this command list for drawing in D3DApp::OnResize, so specify pipeline init state is nullptr here
 
-	// Release the previous resources we will be recreating. (You must release the swap chain resources before calling IDXGISwapChain::ResizeBuffers)
+	// You must release the swap chain resources before calling IDXGISwapChain::ResizeBuffers
 	for (int i = 0; i < SWAP_CHAIN_BUFFER_COUNT; ++i)
 	{
+		// destroy old back buffers
 		mSwapChainBuffer[i].Reset();
 	}
 
+	// destroy old depth/stencil buffer
 	mDepthStencilBuffer.Reset();
 
 	// Resize the swap chain.
@@ -228,8 +227,9 @@ void D3DApp::OnResize()
 	optClear.DepthStencil.Depth   = 1.0f;
 	optClear.DepthStencil.Stencil = 0;
 
+	CD3DX12_HEAP_PROPERTIES defaultHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
 	ThrowIfFailed(md3dDevice->CreateCommittedResource(
-		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), // resources that are solely accessed by GPU
+		              &defaultHeap, // resources that are solely accessed by GPU
 		              D3D12_HEAP_FLAG_NONE,
 		              &depthStencilDesc,           // describes the resource 
 		              D3D12_RESOURCE_STATE_COMMON, // initial state 
@@ -241,9 +241,9 @@ void D3DApp::OnResize()
 
 	// Create the depth/stencil descriptor to mip level 0 of entire resource using the format of the resource.
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
-	dsvDesc.Format        = mDepthStencilFormat;
-	dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-	dsvDesc.Flags         = D3D12_DSV_FLAG_NONE;
+	dsvDesc.Format             = mDepthStencilFormat;
+	dsvDesc.ViewDimension      = D3D12_DSV_DIMENSION_TEXTURE2D;
+	dsvDesc.Flags              = D3D12_DSV_FLAG_NONE;
 	dsvDesc.Texture2D.MipSlice = 0;
 	md3dDevice->CreateDepthStencilView(mDepthStencilBuffer.Get(),
 	                                   &dsvDesc,            // since our depth buffer resource is typeless, we must provide a D3D12_DEPTH_STENCIL_VIEW_DESC. 
@@ -274,16 +274,6 @@ void D3DApp::OnResize()
 	mScissorRect = {0, 0, mClientWidth, mClientHeight};
 }
 
-/**
- * \brief The window procedure function for the main application window.
- * Override this method if there is a message you need to handle that this function does not handle.
- * If you override this method, any message that you do not handle should be forwarded to this function.
- * \param hwnd The handle to the window receiving the message
- * \param msg A predefined constant value identifying the message
- * \param wParam Extra information about the message which is dependent upon the specific message
- * \param lParam Extra information about the message which is dependent upon the specific message
- * \return whether the procedure is a success or failure.
- */
 LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (msg)
@@ -326,7 +316,7 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 					mMaximized = true;
 					OnResize();
 				}
-				else if (wParam == SIZE_RESTORED)
+				else if (wParam == SIZE_RESTORED) // The window has been resized, but neither the SIZE_MINIMIZED nor SIZE_MAXIMIZED value applies
 				{
 					// Restoring from minimized state?
 					if (mMinimized)
@@ -335,7 +325,6 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 						mMinimized = false;
 						OnResize();
 					}
-
 					// Restoring from maximized state?
 					else if (mMaximized)
 					{
@@ -595,7 +584,7 @@ void D3DApp::CreateSwapChain()
 	swapChainDesc.SampleDesc.Count      = 1;
 	swapChainDesc.SampleDesc.Quality    = 0;
 	swapChainDesc.Scaling               = DXGI_SCALING_STRETCH;
-	swapChainDesc.SwapEffect            = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	swapChainDesc.SwapEffect            = DXGI_SWAP_EFFECT_FLIP_DISCARD; // DXGI_SWAP_EFFECT_FLIP_DISCARD should be preferred when applications fully render over the back buffer before presenting it
 	swapChainDesc.AlphaMode             = DXGI_ALPHA_MODE_IGNORE;
 	swapChainDesc.Flags                 = 0u;
 

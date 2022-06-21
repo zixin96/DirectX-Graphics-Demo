@@ -1,120 +1,4 @@
-//***************************************************************************************
-// BoxApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
-//
-// Shows how to draw a box in Direct3D 12.
-//
-// Controls:
-//   Hold the left mouse button down and move the mouse to rotate.
-//   Hold the right mouse button down and move the mouse to zoom in and out.
-//***************************************************************************************
-
-#include "../../Common/d3dApp.h"
-#include "../../Common/MathHelper.h"
-#include "../../Common/UploadBuffer.h"
-
-using Microsoft::WRL::ComPtr;
-using namespace DirectX;
-using namespace DirectX::PackedVector;
-
-/**
- * \brief Define our custom vertex format
- * We inform D3D about this structure of our Vertex using a vector of D3D12_INPUT_ELEMENT_DESC.
- * Each element in our structure corresponds to one element in this vector. 
- */
-struct Vertex
-{
-	XMFLOAT3 Pos;
-	XMFLOAT4 Color;
-};
-
-/**
- * \brief Constant data per-object
- */
-struct ObjectConstants
-{
-	XMFLOAT4X4 WorldViewProj = MathHelper::Identity4x4();
-};
-
-class BoxApp : public D3DApp
-{
-	public:
-		BoxApp(HINSTANCE hInstance);
-		BoxApp(const BoxApp& rhs)            = delete;
-		BoxApp& operator=(const BoxApp& rhs) = delete;
-		~BoxApp() override;
-
-		bool Initialize() override;
-
-	private:
-		void OnResize() override;
-		void Update(const GameTimer& gt) override;
-		void Draw(const GameTimer& gt) override;
-
-		void OnMouseDown(WPARAM btnState, int x, int y) override;
-		void OnMouseUp(WPARAM btnState, int x, int y) override;
-		void OnMouseMove(WPARAM btnState, int x, int y) override;
-
-		void OnKeyboardInput(const GameTimer& gt);
-
-		void BuildDescriptorHeaps();
-		void BuildConstantBuffers();
-		void BuildRootSignature();
-		void BuildShadersAndInputLayout();
-		void BuildBoxGeometry();
-		void BuildPSO();
-
-	private:
-		ComPtr<ID3D12RootSignature>  mRootSignature = nullptr;
-		ComPtr<ID3D12DescriptorHeap> mCbvHeap       = nullptr;
-
-		std::unique_ptr<UploadBuffer<ObjectConstants>> mObjectCB = nullptr;
-
-		std::unique_ptr<MeshGeometry> mBoxGeo = nullptr;
-
-		ComPtr<ID3DBlob> mvsByteCode = nullptr;
-		ComPtr<ID3DBlob> mpsByteCode = nullptr;
-
-		std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout; // a description of our custom vertex structure
-
-		std::unordered_map<std::string, ComPtr<ID3D12PipelineState>> mPSOs;
-
-		bool mIsWireframe = false;
-
-		XMFLOAT4X4 mWorld = MathHelper::Identity4x4();
-		XMFLOAT4X4 mView  = MathHelper::Identity4x4();
-		XMFLOAT4X4 mProj  = MathHelper::Identity4x4();
-
-		float mTheta  = 1.5f * XM_PI; // 3 * pi / 2
-		float mPhi    = XM_PIDIV4;    // pi / 4
-		float mRadius = 5.0f;
-
-		POINT mLastMousePos;
-};
-
-int WINAPI WinMain(HINSTANCE hInstance,
-                   HINSTANCE prevInstance,
-                   PSTR      cmdLine,
-                   int       showCmd)
-{
-	// Enable run-time memory check for debug builds.
-	#if defined(DEBUG) | defined(_DEBUG)
-	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	#endif
-
-	try
-	{
-		BoxApp theApp(hInstance);
-		if (!theApp.Initialize())
-			return 0;
-
-		return theApp.Run();
-	}
-	catch (DxException& e)
-	{
-		MessageBox(nullptr, e.ToString().c_str(), L"HR Failed", MB_OK);
-		return 0;
-	}
-}
+#include "BoxApp.h"
 
 BoxApp::BoxApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
@@ -134,11 +18,12 @@ bool BoxApp::Initialize()
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(),
 		              nullptr)); // we are not drawing, pipeline state could be nullptr
 
-	BuildDescriptorHeaps();
-	BuildConstantBuffers();
-	BuildRootSignature();
-	BuildShadersAndInputLayout();
+	BuildInputLayout();
 	BuildBoxGeometry();
+	BuildDescriptorHeaps();
+	BuildCBVs();
+	BuildRootSignature();
+	BuildShaders();
 	BuildPSO();
 
 	// Execute the initialization commands.
@@ -236,10 +121,11 @@ void BoxApp::Draw(const GameTimer& gt)
 	mCommandList->SetGraphicsRootDescriptorTable(0,                                               // index of the root parameter we are setting
 	                                             mCbvHeap->GetGPUDescriptorHandleForHeapStart()); // handle to a descriptor in the heap that specifies the first descriptor in the table being set
 
-	mCommandList->DrawIndexedInstanced(mBoxGeo->DrawArgs["box"].IndexCount, // # of indices to draw
-	                                   1,                                   // advanced ONLY
-	                                   0, 0,                                // one geometry to draw
-	                                   0);                                  // advanced ONLY
+	mCommandList->DrawIndexedInstanced(mBoxGeo->DrawArgs["box"].IndexCount,
+	                                   1,
+	                                   mBoxGeo->DrawArgs["box"].StartIndexLocation,
+	                                   mBoxGeo->DrawArgs["box"].BaseVertexLocation,
+	                                   0);
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
@@ -255,7 +141,7 @@ void BoxApp::Draw(const GameTimer& gt)
 
 	// swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Wait until frame commands are complete.  This waiting is inefficient and is
 	// done for simplicity.  Later we will show how to organize our rendering code
@@ -278,7 +164,7 @@ void BoxApp::OnMouseUp(WPARAM btnState, int x, int y)
 
 void BoxApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
-	if ((btnState & MK_LBUTTON) != 0)
+	if (d3dUtil::IsKeyDown(MK_LBUTTON))
 	{
 		// Make each pixel correspond to a quarter of a degree.
 		float dx = XMConvertToRadians(0.25f * static_cast<float>(x - mLastMousePos.x));
@@ -291,7 +177,7 @@ void BoxApp::OnMouseMove(WPARAM btnState, int x, int y)
 		// Restrict the angle mPhi.
 		mPhi = MathHelper::Clamp(mPhi, 0.1f, MathHelper::Pi - 0.1f);
 	}
-	else if ((btnState & MK_RBUTTON) != 0)
+	else if (d3dUtil::IsKeyDown(MK_RBUTTON))
 	{
 		// Make each pixel correspond to 0.005 unit in the scene.
 		float dx = 0.005f * static_cast<float>(x - mLastMousePos.x);
@@ -310,7 +196,7 @@ void BoxApp::OnMouseMove(WPARAM btnState, int x, int y)
 
 void BoxApp::OnKeyboardInput(const GameTimer& gt)
 {
-	if (GetAsyncKeyState('1') & 0x8000)
+	if (d3dUtil::IsKeyDown('1'))
 		mIsWireframe = true;
 	else
 		mIsWireframe = false;
@@ -330,7 +216,7 @@ void BoxApp::BuildDescriptorHeaps()
 		              IID_PPV_ARGS(&mCbvHeap)));
 }
 
-void BoxApp::BuildConstantBuffers()
+void BoxApp::BuildCBVs()
 {
 	// constant buffer to store the constants of n object (in this case, we have a single object)
 	mObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(md3dDevice.Get(), 1, true);
@@ -400,23 +286,8 @@ void BoxApp::BuildRootSignature()
 		              IID_PPV_ARGS(&mRootSignature)));
 }
 
-void BoxApp::BuildShadersAndInputLayout()
+void BoxApp::BuildInputLayout()
 {
-	mvsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_0");
-	mpsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
-
-	// Offline .cso shader loading:
-	// mvsByteCode = d3dUtil::LoadBinary(L"Shaders\\color2.cso");
-	// mpsByteCode = d3dUtil::LoadBinary(L"Shaders\\color2.cso");
-
-
-	// struct Vertex
-	// {
-	// 	XMFLOAT3 Pos; // 0-byte offset
-	// 	XMFLOAT4 Color; // 12-byte offset
-	// };
-
-	// Each element in mInputLayout corresponds to one element in our Vertex struct
 	mInputLayout =
 	{
 		{
@@ -436,6 +307,16 @@ void BoxApp::BuildShadersAndInputLayout()
 			0                                           // This value must be 0 for an element that contains per-vertex data
 		}
 	};
+}
+
+void BoxApp::BuildShaders()
+{
+	// Offline .cso shader loading:
+	// mvsByteCode = d3dUtil::LoadBinary(L"Shaders\\color2.cso");
+	// mpsByteCode = d3dUtil::LoadBinary(L"Shaders\\color2.cso");
+
+	mvsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_0");
+	mpsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
 }
 
 void BoxApp::BuildBoxGeometry()
@@ -482,7 +363,8 @@ void BoxApp::BuildBoxGeometry()
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
-	mBoxGeo       = std::make_unique<MeshGeometry>();
+	mBoxGeo = std::make_unique<MeshGeometry>();
+
 	mBoxGeo->Name = "boxGeo";
 
 	ThrowIfFailed(D3DCreateBlob(vbByteSize, &mBoxGeo->VertexBufferCPU));
@@ -520,8 +402,8 @@ void BoxApp::BuildPSO()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 	ZeroMemory(&opaquePsoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
-	opaquePsoDesc.InputLayout    = {mInputLayout.data(), (UINT)mInputLayout.size()}; // fill in D3D12_INPUT_LAYOUT_DESC: {an array of D3D12_INPUT_ELEMENT_DESC, # of elements}
 	opaquePsoDesc.pRootSignature = mRootSignature.Get();
+	opaquePsoDesc.InputLayout    = {mInputLayout.data(), (UINT)mInputLayout.size()}; // fill in D3D12_INPUT_LAYOUT_DESC: {an array of D3D12_INPUT_ELEMENT_DESC, # of elements}
 	opaquePsoDesc.VS             =
 	{
 		reinterpret_cast<BYTE*>(mvsByteCode->GetBufferPointer()),
@@ -539,8 +421,8 @@ void BoxApp::BuildPSO()
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	opaquePsoDesc.NumRenderTargets      = 1;
 	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.SampleDesc.Count      = 1;
+	opaquePsoDesc.SampleDesc.Quality    = 0;
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 

@@ -1,8 +1,8 @@
 #pragma once
 
 #if defined(DEBUG) || defined(_DEBUG)
-// Enable memory leak detection: https://docs.microsoft.com/en-us/visualstudio/debugger/finding-memory-leaks-using-the-crt-library?view=vs-2022
-#define _CRTDBG_MAP_ALLOC // CRT: C Run Time Library
+// Find memory leaks with the CRT library: https://docs.microsoft.com/en-us/visualstudio/debugger/finding-memory-leaks-using-the-crt-library?view=vs-2022
+#define _CRTDBG_MAP_ALLOC 
 #include <crtdbg.h>
 #endif
 
@@ -27,31 +27,34 @@ protected:
 
 public:
 	static D3DApp* GetApp();
+	HINSTANCE      AppInst() const;
+	HWND           MainWnd() const;
+	float          AspectRatio() const;
+	int            Run();
 
-	HINSTANCE AppInst() const;
-	HWND      MainWnd() const;
-	float     AspectRatio() const;
+	// This method does basic initialization for a D3D app.
+	// Clients may need to override this: D3DApp::Initialize() + application-specific init code
+	virtual bool Initialize();
 
-	// bool Get4xMsaaState() const;
-	// void Set4xMsaaState(bool value);
-
-	int Run();
-
-	virtual bool    Initialize();
+	// This method implements the window procedure for the main application window.
+	// You rarely need to override this function unless there is a message you need to handle that this function doesn't handle.
+	// If you override this function, any messages that you do not handle should be forwarded to this function.
 	virtual LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 protected:
-	/**
-	 * \brief Create the render target and depth stencil descriptor heaps to store the descriptors/views
-	 * Clients may need to override this if they want more render target descriptors, for example
-	 */
+	// Create the render target and depth stencil descriptor heaps to store the descriptors/views
+	// Clients may need to override this for more advanced rendering techniques
 	virtual void CreateRtvAndDsvDescriptorHeaps();
-	/**
-	 * \brief Resize the swap chain
-	 * Clients may need to override this, but they most likely still need to call D3DApp::OnResize() and after that, do their own stuff
-	 */
+
+	// Resize the swap chain if the window is resized
+	// Clients may need to override this: D3DApp::OnResize() + application-specific init code
 	virtual void OnResize();
+
+	// this method is called every frame to update the 3D application over time:
+	// perform animations, move the camera, do collision detection, check for user-input, etc
 	virtual void Update(const GameTimer& gt) =0;
+
+	// this method is called every frame to issue rendering commands
 	virtual void Draw(const GameTimer& gt) =0;
 
 	// Convenience overrides for handling mouse input.
@@ -68,14 +71,12 @@ protected:
 	}
 
 protected:
-	bool InitMainWindow();
-	bool InitDirect3D();
-	void CreateCommandObjects();
-	void CreateSwapChain();
-
-	void FlushCommandQueue();
-
-	ID3D12Resource*             CurrentBackBuffer() const;
+	bool            InitMainWindow();
+	bool            InitDirect3D();
+	void            CreateCommandObjects();
+	void            CreateSwapChain();
+	void            FlushCommandQueue();
+	ID3D12Resource* CurrentBackBuffer() const;
 
 	// access descriptors in the heap
 	D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView() const;
@@ -137,6 +138,11 @@ protected:
 	int             mClientWidth    = 800;
 	int             mClientHeight   = 600;
 };
+
+
+// bool Get4xMsaaState() const;
+// void Set4xMsaaState(bool value);
+
 
 // private:
 // 	void Query4XMSAAQualityLevel();

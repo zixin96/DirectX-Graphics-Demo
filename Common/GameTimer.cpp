@@ -1,8 +1,6 @@
 #include <Windows.h>
 #include "GameTimer.h"
 
-#include <sstream>
-
 GameTimer::GameTimer()
 	: mSecondsPerCount(0.0),
 	  mDeltaTime(-1.0),
@@ -27,6 +25,7 @@ float GameTimer::TotalTime() const
 
 	if (mStopped)
 	{
+		//? Why we do need this? 
 		return (float)(((mStopTime - mPausedTime) - mBaseTime) * mSecondsPerCount);
 	}
 
@@ -102,12 +101,7 @@ void GameTimer::Tick()
 {
 	if (mStopped)
 	{
-		// static int          dummy = 0;
-		// std::wostringstream woss;
-		// woss << dummy++;
-		// OutputDebugString(L"Stopped Tick()!!");
-		// OutputDebugString(woss.str().c_str());
-		// OutputDebugString(L"\n");
+		// if the timer is stopped, there is no delta time
 		mDeltaTime = 0.0;
 		return;
 	}
