@@ -1,15 +1,15 @@
-#include "BoxApp.h"
+#include "BoxInputElemDescApp.h"
 
-BoxApp::BoxApp(HINSTANCE hInstance)
+BoxInputElemDescApp::BoxInputElemDescApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
 {
 }
 
-BoxApp::~BoxApp()
+BoxInputElemDescApp::~BoxInputElemDescApp()
 {
 }
 
-bool BoxApp::Initialize()
+bool BoxInputElemDescApp::Initialize()
 {
 	if (!D3DApp::Initialize())
 		return false;
@@ -37,7 +37,7 @@ bool BoxApp::Initialize()
 	return true;
 }
 
-void BoxApp::OnResize()
+void BoxInputElemDescApp::OnResize()
 {
 	D3DApp::OnResize();
 
@@ -46,7 +46,7 @@ void BoxApp::OnResize()
 	XMStoreFloat4x4(&mProj, P);
 }
 
-void BoxApp::Update(const GameTimer& gt)
+void BoxInputElemDescApp::Update(const GameTimer& gt)
 {
 	OnKeyboardInput(gt);
 
@@ -73,7 +73,7 @@ void BoxApp::Update(const GameTimer& gt)
 	mObjectCB->CopyData(0, objConstants);
 }
 
-void BoxApp::Draw(const GameTimer& gt)
+void BoxInputElemDescApp::Draw(const GameTimer& gt)
 {
 	// Reuse the memory associated with command recording.
 	// We can only reset when the associated command lists have finished execution on the GPU.
@@ -110,10 +110,8 @@ void BoxApp::Draw(const GameTimer& gt)
 
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get()); // bind root signature to the pipeline
 
-	//!? We bind the 2 vertex buffers to slots 0 and 1
-	D3D12_VERTEX_BUFFER_VIEW vertexBuffers[] = {mBoxGeo->VertexPosBufferView(), mBoxGeo->VertexColorBufferView()};
-	mCommandList->IASetVertexBuffers(0,
-	                                 _countof(vertexBuffers), //!? we are binding buffers to input slot 0, 1
+	D3D12_VERTEX_BUFFER_VIEW vertexBuffers[] = {mBoxGeo->VertexBufferView()};
+	mCommandList->IASetVertexBuffers(0, 1, // we are binding buffers to input slot 0
 	                                 vertexBuffers);
 
 	mCommandList->IASetIndexBuffer(&mBoxGeo->IndexBufferView());
@@ -151,7 +149,7 @@ void BoxApp::Draw(const GameTimer& gt)
 	FlushCommandQueue();
 }
 
-void BoxApp::OnMouseDown(WPARAM btnState, int x, int y)
+void BoxInputElemDescApp::OnMouseDown(WPARAM btnState, int x, int y)
 {
 	mLastMousePos.x = x;
 	mLastMousePos.y = y;
@@ -159,12 +157,12 @@ void BoxApp::OnMouseDown(WPARAM btnState, int x, int y)
 	SetCapture(mhMainWnd);
 }
 
-void BoxApp::OnMouseUp(WPARAM btnState, int x, int y)
+void BoxInputElemDescApp::OnMouseUp(WPARAM btnState, int x, int y)
 {
 	ReleaseCapture();
 }
 
-void BoxApp::OnMouseMove(WPARAM btnState, int x, int y)
+void BoxInputElemDescApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
 	if (d3dUtil::IsKeyDown(MK_LBUTTON))
 	{
@@ -196,7 +194,7 @@ void BoxApp::OnMouseMove(WPARAM btnState, int x, int y)
 	mLastMousePos.y = y;
 }
 
-void BoxApp::OnKeyboardInput(const GameTimer& gt)
+void BoxInputElemDescApp::OnKeyboardInput(const GameTimer& gt)
 {
 	if (d3dUtil::IsKeyDown('1'))
 		mIsWireframe = true;
@@ -207,7 +205,7 @@ void BoxApp::OnKeyboardInput(const GameTimer& gt)
 /**
  * \brief Descriptor heap for constant buffer descriptor
  */
-void BoxApp::BuildDescriptorHeaps()
+void BoxInputElemDescApp::BuildDescriptorHeaps()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
 	cbvHeapDesc.NumDescriptors = 1;                                         // we only have a single object, thus we only need a single descriptor to describe a single constant buffer
@@ -218,7 +216,7 @@ void BoxApp::BuildDescriptorHeaps()
 		              IID_PPV_ARGS(&mCbvHeap)));
 }
 
-void BoxApp::BuildCBVs()
+void BoxInputElemDescApp::BuildCBVs()
 {
 	// constant buffer to store the constants of n object (in this case, we have a single object)
 	mObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(md3dDevice.Get(), 1, true);
@@ -240,7 +238,7 @@ void BoxApp::BuildCBVs()
 	                                     mCbvHeap->GetCPUDescriptorHandleForHeapStart()); // Describes the CPU descriptor handle that represents the destination where the newly-created constant buffer view will reside
 }
 
-void BoxApp::BuildRootSignature()
+void BoxInputElemDescApp::BuildRootSignature()
 {
 	// Shader programs typically require resources as input (constant buffers,
 	// textures, samplers).  The root signature defines the resources the shader
@@ -288,30 +286,69 @@ void BoxApp::BuildRootSignature()
 		              IID_PPV_ARGS(&mRootSignature)));
 }
 
-void BoxApp::BuildInputLayout()
+void BoxInputElemDescApp::BuildInputLayout()
 {
+	//!? we changed the input layout
 	mInputLayout =
 	{
 		{
 			"POSITION", 0,
 			DXGI_FORMAT_R32G32B32_FLOAT,
-			0, //!? Input Slot 0
-			0, //!? Note that aligned byte offset is 0, because position and color are no longer interleaved in a single input slot
+			0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
 			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
 			0
 		},
 		{
-			"COLOR", 0,
-			DXGI_FORMAT_R32G32B32A32_FLOAT,
-			1, //!? Input Slot 1
-			0, //!? Note that aligned byte offset is 0, because position and color are no longer interleaved in a single input slot
+			"TANGENT", 0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
 			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
 			0
-		}
+		},
+		{
+			"NORMAL", 0,
+			DXGI_FORMAT_R32G32B32_FLOAT,
+			0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+			0
+		},
+		{
+			"TEX", 0,
+			DXGI_FORMAT_R32G32_FLOAT,
+			0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+			0
+		},
+		{
+			"TEX", 1,
+			DXGI_FORMAT_R32G32_FLOAT,
+			0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+			0
+		},
+		//!? tricky: choose the correct format: DXGI_FORMAT_B8G8R8A8_UNORM to match XMCOLOR 
+		//!? XMCOLOR internally has structure: MSB A R G B LSB. The matching DXGI format is B8G8R8A8 (not R8G8B8A8!), which (LSB)B8-G8-R8-A8(MSB) 
+		//!? See here: https://www.gamedev.net/forums/topic/706668-how-to-declare-xmcolor-in-hlsl/5425100/
+		{
+			"COLOR", 0,
+			//!? Experiment with the following two to see the color diffference:
+			// DXGI_FORMAT_R8G8B8A8_UNORM: wrong
+			// DXGI_FORMAT_B8G8R8A8_UNORM: correct
+			DXGI_FORMAT_B8G8R8A8_UNORM,
+			0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
+			0
+		},
 	};
 }
 
-void BoxApp::BuildShaders()
+void BoxInputElemDescApp::BuildShaders()
 {
 	// Offline .cso shader loading:
 	// mvsByteCode = d3dUtil::LoadBinary(L"Shaders\\color2.cso");
@@ -321,32 +358,28 @@ void BoxApp::BuildShaders()
 	mpsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
 }
 
-void BoxApp::BuildBoxGeometry()
+void BoxInputElemDescApp::BuildBoxGeometry()
 {
-	//!? we need to change how we build box geometry
-
-	std::array<VertexPosData, 8> vertices =
+	std::array<Vertex, 8> vertices =
 	{
-		VertexPosData({XMFLOAT3(-1.0f, -1.0f, -1.0f)}),
-		VertexPosData({XMFLOAT3(-1.0f, +1.0f, -1.0f)}),
-		VertexPosData({XMFLOAT3(+1.0f, +1.0f, -1.0f)}),
-		VertexPosData({XMFLOAT3(+1.0f, -1.0f, -1.0f)}),
-		VertexPosData({XMFLOAT3(-1.0f, -1.0f, +1.0f)}),
-		VertexPosData({XMFLOAT3(-1.0f, +1.0f, +1.0f)}),
-		VertexPosData({XMFLOAT3(+1.0f, +1.0f, +1.0f)}),
-		VertexPosData({XMFLOAT3(+1.0f, -1.0f, +1.0f)}),
-	};
+		Vertex({XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::White)}),
+		Vertex({XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Black)}),
+		Vertex({XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Red)}),
+		Vertex({XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Green)}),
+		Vertex({XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Blue)}),
+		Vertex({XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Yellow)}),
+		Vertex({XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Cyan)}),
+		Vertex({XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Magenta)})
 
-	std::array<VertexColorData, 8> colors =
-	{
-		VertexColorData({XMFLOAT4(Colors::White)}),
-		VertexColorData({XMFLOAT4(Colors::Black)}),
-		VertexColorData({XMFLOAT4(Colors::Red)}),
-		VertexColorData({XMFLOAT4(Colors::Green)}),
-		VertexColorData({XMFLOAT4(Colors::Blue)}),
-		VertexColorData({XMFLOAT4(Colors::Yellow)}),
-		VertexColorData({XMFLOAT4(Colors::Cyan)}),
-		VertexColorData({XMFLOAT4(Colors::Magenta)})
+		// RosyBrown 0.737254918f, 0.560784340f, 0.560784340f, 1.000000000f
+		// Vertex({XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
+		// Vertex({XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
+		// Vertex({XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
+		// Vertex({XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
+		// Vertex({XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
+		// Vertex({XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
+		// Vertex({XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
+		// Vertex({XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)})
 	};
 
 	std::array<std::uint16_t, 36> indices =
@@ -376,34 +409,24 @@ void BoxApp::BuildBoxGeometry()
 		4, 3, 7
 	};
 
-	const UINT vbPosByteSize   = (UINT)vertices.size() * sizeof(VertexPosData);
-	const UINT vbColorByteSize = (UINT)colors.size() * sizeof(VertexColorData);
-	const UINT ibByteSize      = (UINT)indices.size() * sizeof(std::uint16_t);
+	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
 
-	mBoxGeo = std::make_unique<MeshGeometryTwoBuffers>();
+	mBoxGeo = std::make_unique<MeshGeometry>();
 
 	mBoxGeo->Name = "boxGeo";
 
-	ThrowIfFailed(D3DCreateBlob(vbPosByteSize, &mBoxGeo->VertexPosBufferCPU));
-	CopyMemory(mBoxGeo->VertexPosBufferCPU->GetBufferPointer(), vertices.data(), vbPosByteSize);
-
-	ThrowIfFailed(D3DCreateBlob(vbColorByteSize, &mBoxGeo->VertexColorBufferCPU));
-	CopyMemory(mBoxGeo->VertexColorBufferCPU->GetBufferPointer(), colors.data(), vbColorByteSize);
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, &mBoxGeo->VertexBufferCPU));
+	CopyMemory(mBoxGeo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
 
 	ThrowIfFailed(D3DCreateBlob(ibByteSize, &mBoxGeo->IndexBufferCPU));
 	CopyMemory(mBoxGeo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
-	mBoxGeo->VertexPosBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                           mCommandList.Get(),
-	                                                           vertices.data(),
-	                                                           vbPosByteSize,
-	                                                           mBoxGeo->VertexPosBufferUploader);
-
-	mBoxGeo->VertexColorBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                             mCommandList.Get(),
-	                                                             colors.data(),
-	                                                             vbColorByteSize,
-	                                                             mBoxGeo->VertexColorBufferUploader);
+	mBoxGeo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
+	                                                        mCommandList.Get(),
+	                                                        vertices.data(),
+	                                                        vbByteSize,
+	                                                        mBoxGeo->VertexBufferUploader);
 
 	mBoxGeo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
 	                                                       mCommandList.Get(),
@@ -411,14 +434,10 @@ void BoxApp::BuildBoxGeometry()
 	                                                       ibByteSize,
 	                                                       mBoxGeo->IndexBufferUploader);
 
-	mBoxGeo->VertexPosByteStride     = sizeof(VertexPosData);
-	mBoxGeo->VertexPosBufferByteSize = vbPosByteSize;
-
-	mBoxGeo->VertexColorByteStride     = sizeof(VertexColorData);
-	mBoxGeo->VertexColorBufferByteSize = vbColorByteSize;
-
-	mBoxGeo->IndexFormat         = DXGI_FORMAT_R16_UINT;
-	mBoxGeo->IndexBufferByteSize = ibByteSize;
+	mBoxGeo->VertexByteStride     = sizeof(Vertex);
+	mBoxGeo->VertexBufferByteSize = vbByteSize;
+	mBoxGeo->IndexFormat          = DXGI_FORMAT_R16_UINT;
+	mBoxGeo->IndexBufferByteSize  = ibByteSize;
 
 	SubmeshGeometry submesh;
 	submesh.IndexCount         = (UINT)indices.size();
@@ -428,7 +447,7 @@ void BoxApp::BuildBoxGeometry()
 	mBoxGeo->DrawArgs["box"] = submesh;
 }
 
-void BoxApp::BuildPSO()
+void BoxInputElemDescApp::BuildPSO()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 	ZeroMemory(&opaquePsoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));

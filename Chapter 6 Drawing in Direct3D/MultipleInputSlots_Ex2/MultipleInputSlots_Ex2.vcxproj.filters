@@ -18,7 +18,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="BoxApp.cpp">
+    <ClCompile Include="BoxMultipleSlotsApp.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Common\d3dApp.cpp">
@@ -53,7 +53,7 @@
     <ClInclude Include="..\..\Common\UploadBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="BoxApp.h">
+    <ClInclude Include="BoxMultipleSlotsApp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

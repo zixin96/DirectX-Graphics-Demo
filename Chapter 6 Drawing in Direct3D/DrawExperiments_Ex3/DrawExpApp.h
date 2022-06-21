@@ -13,15 +13,10 @@ using namespace PackedVector;
  * We inform D3D about this structure of our Vertex using a vector of D3D12_INPUT_ELEMENT_DESC.
  * Each element in our structure corresponds to one element in this vector. 
  */
-//!? we changed C++ vertex structure
 struct Vertex
 {
 	XMFLOAT3 Pos;
-	XMFLOAT3 Tangent;
-	XMFLOAT3 Normal;
-	XMFLOAT2 Tex0;
-	XMFLOAT2 Tex1;
-	XMCOLOR  Color; // name has changed
+	XMFLOAT4 Color;
 };
 
 /**
@@ -32,13 +27,13 @@ struct ObjectConstants
 	XMFLOAT4X4 WorldViewProj = MathHelper::Identity4x4();
 };
 
-class BoxApp : public D3DApp
+class DrawExpApp : public D3DApp
 {
 public:
-	BoxApp(HINSTANCE hInstance);
-	BoxApp(const BoxApp& rhs)            = delete;
-	BoxApp& operator=(const BoxApp& rhs) = delete;
-	~BoxApp() override;
+	DrawExpApp(HINSTANCE hInstance);
+	DrawExpApp(const DrawExpApp& rhs)            = delete;
+	DrawExpApp& operator=(const DrawExpApp& rhs) = delete;
+	~DrawExpApp() override;
 
 	bool Initialize() override;
 
@@ -58,7 +53,7 @@ private:
 	void BuildRootSignature();
 	void BuildInputLayout();
 	void BuildShaders();
-	void BuildBoxGeometry();
+	void BuildDrawGeometry();
 	void BuildPSO();
 
 private:

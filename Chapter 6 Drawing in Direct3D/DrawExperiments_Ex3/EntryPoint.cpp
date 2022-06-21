@@ -1,4 +1,4 @@
-#include "BoxInputElemDescApp.h"
+#include "DrawExpApp.h"
 
 int WINAPI WinMain(HINSTANCE hInstance,
                    HINSTANCE prevInstance,
@@ -12,7 +12,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
 
 	try
 	{
-		BoxInputElemDescApp theApp(hInstance);
+		DrawExpApp theApp(hInstance);
 		if (!theApp.Initialize())
 			return 0;
 

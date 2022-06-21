@@ -8,16 +8,20 @@ using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace PackedVector;
 
-//!? Experiment with multiple input slots
-
-struct VertexPosData
+/**
+ * \brief Define our custom vertex format
+ * We inform D3D about this structure of our Vertex using a vector of D3D12_INPUT_ELEMENT_DESC.
+ * Each element in our structure corresponds to one element in this vector. 
+ */
+//!? we changed C++ vertex structure
+struct Vertex
 {
 	XMFLOAT3 Pos;
-};
-
-struct VertexColorData
-{
-	XMFLOAT4 Color;
+	XMFLOAT3 Tangent;
+	XMFLOAT3 Normal;
+	XMFLOAT2 Tex0;
+	XMFLOAT2 Tex1;
+	XMCOLOR  Color; // name has changed
 };
 
 /**
@@ -28,13 +32,13 @@ struct ObjectConstants
 	XMFLOAT4X4 WorldViewProj = MathHelper::Identity4x4();
 };
 
-class BoxApp : public D3DApp
+class BoxInputElemDescApp : public D3DApp
 {
 public:
-	BoxApp(HINSTANCE hInstance);
-	BoxApp(const BoxApp& rhs)            = delete;
-	BoxApp& operator=(const BoxApp& rhs) = delete;
-	~BoxApp() override;
+	BoxInputElemDescApp(HINSTANCE hInstance);
+	BoxInputElemDescApp(const BoxInputElemDescApp& rhs)            = delete;
+	BoxInputElemDescApp& operator=(const BoxInputElemDescApp& rhs) = delete;
+	~BoxInputElemDescApp() override;
 
 	bool Initialize() override;
 
@@ -61,7 +65,7 @@ private:
 	ComPtr<ID3D12RootSignature>                    mRootSignature = nullptr;
 	ComPtr<ID3D12DescriptorHeap>                   mCbvHeap       = nullptr;
 	std::unique_ptr<UploadBuffer<ObjectConstants>> mObjectCB      = nullptr;
-	std::unique_ptr<MeshGeometryTwoBuffers>        mBoxGeo        = nullptr; //!? use a customized MeshGeometry with two buffer views
+	std::unique_ptr<MeshGeometry>                  mBoxGeo        = nullptr;
 	ComPtr<ID3DBlob>                               mvsByteCode    = nullptr;
 	ComPtr<ID3DBlob>                               mpsByteCode    = nullptr;
 

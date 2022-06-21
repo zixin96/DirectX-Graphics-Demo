@@ -1,4 +1,4 @@
-#include "BoxApp.h"
+#include "BoxMultipleSlotsApp.h"
 
 int WINAPI WinMain(HINSTANCE hInstance,
                    HINSTANCE prevInstance,
@@ -12,7 +12,7 @@ int WINAPI WinMain(HINSTANCE hInstance,
 
 	try
 	{
-		BoxApp theApp(hInstance);
+		BoxMultipleSlotsApp theApp(hInstance);
 		if (!theApp.Initialize())
 			return 0;
 

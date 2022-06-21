@@ -1,15 +1,15 @@
-#include "BoxApp.h"
+#include "DrawExpApp.h"
 
-BoxApp::BoxApp(HINSTANCE hInstance)
+DrawExpApp::DrawExpApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
 {
 }
 
-BoxApp::~BoxApp()
+DrawExpApp::~DrawExpApp()
 {
 }
 
-bool BoxApp::Initialize()
+bool DrawExpApp::Initialize()
 {
 	if (!D3DApp::Initialize())
 		return false;
@@ -19,7 +19,7 @@ bool BoxApp::Initialize()
 		              nullptr)); // we are not drawing, pipeline state could be nullptr
 
 	BuildInputLayout();
-	BuildBoxGeometry();
+	BuildDrawGeometry();
 	BuildDescriptorHeaps();
 	BuildCBVs();
 	BuildRootSignature();
@@ -37,7 +37,7 @@ bool BoxApp::Initialize()
 	return true;
 }
 
-void BoxApp::OnResize()
+void DrawExpApp::OnResize()
 {
 	D3DApp::OnResize();
 
@@ -46,7 +46,7 @@ void BoxApp::OnResize()
 	XMStoreFloat4x4(&mProj, P);
 }
 
-void BoxApp::Update(const GameTimer& gt)
+void DrawExpApp::Update(const GameTimer& gt)
 {
 	OnKeyboardInput(gt);
 
@@ -73,7 +73,7 @@ void BoxApp::Update(const GameTimer& gt)
 	mObjectCB->CopyData(0, objConstants);
 }
 
-void BoxApp::Draw(const GameTimer& gt)
+void DrawExpApp::Draw(const GameTimer& gt)
 {
 	// Reuse the memory associated with command recording.
 	// We can only reset when the associated command lists have finished execution on the GPU.
@@ -115,7 +115,15 @@ void BoxApp::Draw(const GameTimer& gt)
 	                                 vertexBuffers);
 
 	mCommandList->IASetIndexBuffer(&mBoxGeo->IndexBufferView());
-	mCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	//!? Change primitive topology
+	// mCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	// mCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);
+
+	// mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);
+
+	mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINESTRIP);
+	// mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);
 
 	// bind the descriptor table to the pipeline
 	mCommandList->SetGraphicsRootDescriptorTable(0,                                               // index of the root parameter we are setting
@@ -149,7 +157,7 @@ void BoxApp::Draw(const GameTimer& gt)
 	FlushCommandQueue();
 }
 
-void BoxApp::OnMouseDown(WPARAM btnState, int x, int y)
+void DrawExpApp::OnMouseDown(WPARAM btnState, int x, int y)
 {
 	mLastMousePos.x = x;
 	mLastMousePos.y = y;
@@ -157,12 +165,12 @@ void BoxApp::OnMouseDown(WPARAM btnState, int x, int y)
 	SetCapture(mhMainWnd);
 }
 
-void BoxApp::OnMouseUp(WPARAM btnState, int x, int y)
+void DrawExpApp::OnMouseUp(WPARAM btnState, int x, int y)
 {
 	ReleaseCapture();
 }
 
-void BoxApp::OnMouseMove(WPARAM btnState, int x, int y)
+void DrawExpApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
 	if (d3dUtil::IsKeyDown(MK_LBUTTON))
 	{
@@ -194,7 +202,7 @@ void BoxApp::OnMouseMove(WPARAM btnState, int x, int y)
 	mLastMousePos.y = y;
 }
 
-void BoxApp::OnKeyboardInput(const GameTimer& gt)
+void DrawExpApp::OnKeyboardInput(const GameTimer& gt)
 {
 	if (d3dUtil::IsKeyDown('1'))
 		mIsWireframe = true;
@@ -205,7 +213,7 @@ void BoxApp::OnKeyboardInput(const GameTimer& gt)
 /**
  * \brief Descriptor heap for constant buffer descriptor
  */
-void BoxApp::BuildDescriptorHeaps()
+void DrawExpApp::BuildDescriptorHeaps()
 {
 	D3D12_DESCRIPTOR_HEAP_DESC cbvHeapDesc;
 	cbvHeapDesc.NumDescriptors = 1;                                         // we only have a single object, thus we only need a single descriptor to describe a single constant buffer
@@ -216,7 +224,7 @@ void BoxApp::BuildDescriptorHeaps()
 		              IID_PPV_ARGS(&mCbvHeap)));
 }
 
-void BoxApp::BuildCBVs()
+void DrawExpApp::BuildCBVs()
 {
 	// constant buffer to store the constants of n object (in this case, we have a single object)
 	mObjectCB = std::make_unique<UploadBuffer<ObjectConstants>>(md3dDevice.Get(), 1, true);
@@ -238,7 +246,7 @@ void BoxApp::BuildCBVs()
 	                                     mCbvHeap->GetCPUDescriptorHandleForHeapStart()); // Describes the CPU descriptor handle that represents the destination where the newly-created constant buffer view will reside
 }
 
-void BoxApp::BuildRootSignature()
+void DrawExpApp::BuildRootSignature()
 {
 	// Shader programs typically require resources as input (constant buffers,
 	// textures, samplers).  The root signature defines the resources the shader
@@ -286,69 +294,30 @@ void BoxApp::BuildRootSignature()
 		              IID_PPV_ARGS(&mRootSignature)));
 }
 
-void BoxApp::BuildInputLayout()
+void DrawExpApp::BuildInputLayout()
 {
-	//!? we changed the input layout
 	mInputLayout =
 	{
 		{
-			"POSITION", 0,
-			DXGI_FORMAT_R32G32B32_FLOAT,
-			0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			0
+			"POSITION", 0,                              // semanticName + semanticIndex: corresponds to "float3 PosL  : POSITION0;" in shader. 
+			DXGI_FORMAT_R32G32B32_FLOAT,                // data type: float3
+			0,                                          // input slot: this element comes from the input slot 0
+			0,                                          // 0-byte offset from the start of the C++ Vertex struct of the input slot 0 to the start of the vertex component. could use D3D12_APPEND_ALIGNED_ELEMENT instead of manually specifying the offset
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, // Input data is per-vertex data
+			0                                           // This value must be 0 for an element that contains per-vertex data
 		},
 		{
-			"TANGENT", 0,
-			DXGI_FORMAT_R32G32B32_FLOAT,
-			0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			0
-		},
-		{
-			"NORMAL", 0,
-			DXGI_FORMAT_R32G32B32_FLOAT,
-			0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			0
-		},
-		{
-			"TEX", 0,
-			DXGI_FORMAT_R32G32_FLOAT,
-			0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			0
-		},
-		{
-			"TEX", 1,
-			DXGI_FORMAT_R32G32_FLOAT,
-			0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			0
-		},
-		//!? tricky: choose the correct format: DXGI_FORMAT_B8G8R8A8_UNORM to match XMCOLOR 
-		//!? XMCOLOR internally has structure: MSB A R G B LSB. The matching DXGI format is B8G8R8A8 (not R8G8B8A8!), which (LSB)B8-G8-R8-A8(MSB) 
-		//!? See here: https://www.gamedev.net/forums/topic/706668-how-to-declare-xmcolor-in-hlsl/5425100/
-		{
-			"COLOR", 0,
-			//!? Experiment with the following two to see the color diffference:
-			// DXGI_FORMAT_R8G8B8A8_UNORM: wrong
-			// DXGI_FORMAT_B8G8R8A8_UNORM: correct
-			DXGI_FORMAT_B8G8R8A8_UNORM,
-			0,
-			D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,
-			0
-		},
+			"COLOR", 0,                                 // semanticName + semanticIndex: corresponds to "float4 Color : COLOR0;" in shader
+			DXGI_FORMAT_R32G32B32A32_FLOAT,             // data type: float4
+			0,                                          // input slot: this element comes from the input slot 0
+			12,                                         // 12-byte offset from the start of the C++ Vertex struct of the input slot 0 to the start of the vertex component. could use D3D12_APPEND_ALIGNED_ELEMENT instead of manually specifying the offset
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, // Input data is per-vertex data
+			0                                           // This value must be 0 for an element that contains per-vertex data
+		}
 	};
 }
 
-void BoxApp::BuildShaders()
+void DrawExpApp::BuildShaders()
 {
 	// Offline .cso shader loading:
 	// mvsByteCode = d3dUtil::LoadBinary(L"Shaders\\color2.cso");
@@ -358,56 +327,64 @@ void BoxApp::BuildShaders()
 	mpsByteCode = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_0");
 }
 
-void BoxApp::BuildBoxGeometry()
+void DrawExpApp::BuildDrawGeometry()
 {
+	//!? change vertex and index buffers
 	std::array<Vertex, 8> vertices =
 	{
-		Vertex({XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::White)}),
-		Vertex({XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Black)}),
-		Vertex({XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Red)}),
-		Vertex({XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Green)}),
-		Vertex({XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Blue)}),
-		Vertex({XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Yellow)}),
-		Vertex({XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Cyan)}),
-		Vertex({XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::Magenta)})
-
-		// RosyBrown 0.737254918f, 0.560784340f, 0.560784340f, 1.000000000f
-		// Vertex({XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
-		// Vertex({XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
-		// Vertex({XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
-		// Vertex({XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
-		// Vertex({XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
-		// Vertex({XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
-		// Vertex({XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)}),
-		// Vertex({XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT3(1.0f, 1.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMFLOAT2(0.0f, 0.0f), XMCOLOR(Colors::RosyBrown)})
+		Vertex({XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Red)}),
+		Vertex({XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red)}),
+		Vertex({XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red)}),
+		Vertex({XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Red)}),
+		Vertex({XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Red)}),
+		Vertex({XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Red)}),
+		Vertex({XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Red)}),
+		Vertex({XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Red)})
 	};
-
+	
 	std::array<std::uint16_t, 36> indices =
 	{
-		// front face
-		0, 1, 2,
-		0, 2, 3,
-
-		// back face
-		4, 6, 5,
-		4, 7, 6,
-
-		// left face
-		4, 5, 1,
-		4, 1, 0,
-
-		// right face
-		3, 2, 6,
-		3, 6, 7,
-
-		// top face
-		1, 5, 6,
-		1, 6, 2,
-
-		// bottom face
-		4, 0, 3,
-		4, 3, 7
+		0, 1, 2, 3, 4, 5, 6, 7,
 	};
+
+	// std::array<Vertex, 8> vertices =
+	// {
+	// 	Vertex({XMFLOAT3(-1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::White)}),
+	// 	Vertex({XMFLOAT3(-1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Black)}),
+	// 	Vertex({XMFLOAT3(+1.0f, +1.0f, -1.0f), XMFLOAT4(Colors::Red)}),
+	// 	Vertex({XMFLOAT3(+1.0f, -1.0f, -1.0f), XMFLOAT4(Colors::Green)}),
+	// 	Vertex({XMFLOAT3(-1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Blue)}),
+	// 	Vertex({XMFLOAT3(-1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Yellow)}),
+	// 	Vertex({XMFLOAT3(+1.0f, +1.0f, +1.0f), XMFLOAT4(Colors::Cyan)}),
+	// 	Vertex({XMFLOAT3(+1.0f, -1.0f, +1.0f), XMFLOAT4(Colors::Magenta)})
+	// };
+	//
+	// std::array<std::uint16_t, 36> indices =
+	// {
+	// 	// front face
+	// 	0, 1, 2,
+	// 	0, 2, 3,
+	//
+	// 	// back face
+	// 	4, 6, 5,
+	// 	4, 7, 6,
+	//
+	// 	// left face
+	// 	4, 5, 1,
+	// 	4, 1, 0,
+	//
+	// 	// right face
+	// 	3, 2, 6,
+	// 	3, 6, 7,
+	//
+	// 	// top face
+	// 	1, 5, 6,
+	// 	1, 6, 2,
+	//
+	// 	// bottom face
+	// 	4, 0, 3,
+	// 	4, 3, 7
+	// };
 
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
@@ -447,7 +424,7 @@ void BoxApp::BuildBoxGeometry()
 	mBoxGeo->DrawArgs["box"] = submesh;
 }
 
-void BoxApp::BuildPSO()
+void DrawExpApp::BuildPSO()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 	ZeroMemory(&opaquePsoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
@@ -463,16 +440,21 @@ void BoxApp::BuildPSO()
 		reinterpret_cast<BYTE*>(mpsByteCode->GetBufferPointer()),
 		mpsByteCode->GetBufferSize()
 	};
-	opaquePsoDesc.RasterizerState       = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.DepthStencilState     = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.SampleMask            = UINT_MAX; // do not disable any samples
-	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	opaquePsoDesc.NumRenderTargets      = 1;
-	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count      = 1;
-	opaquePsoDesc.SampleDesc.Quality    = 0;
-	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
+	opaquePsoDesc.RasterizerState   = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.BlendState        = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.SampleMask        = UINT_MAX; // do not disable any samples
+
+	//!? change what primitives to draw
+	// opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	// opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
+
+	opaquePsoDesc.NumRenderTargets   = 1;
+	opaquePsoDesc.RTVFormats[0]      = mBackBufferFormat;
+	opaquePsoDesc.SampleDesc.Count   = 1;
+	opaquePsoDesc.SampleDesc.Quality = 0;
+	opaquePsoDesc.DSVFormat          = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaqueWireframePsoDesc = opaquePsoDesc;
