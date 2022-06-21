@@ -164,6 +164,72 @@ struct SubmeshGeometry
 	DirectX::BoundingBox Bounds;
 };
 
+//!? For Chapter 6, Exercise 2: we need to create a new struct representing mesh geometry that has two vertex buffer views
+struct MeshGeometryTwoBuffers
+{
+	std::string Name;
+
+	Microsoft::WRL::ComPtr<ID3DBlob>       VertexPosBufferCPU      = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> VertexPosBufferGPU      = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> VertexPosBufferUploader = nullptr;
+
+	Microsoft::WRL::ComPtr<ID3DBlob>       VertexColorBufferCPU      = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> VertexColorBufferGPU      = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> VertexColorBufferUploader = nullptr;
+
+	Microsoft::WRL::ComPtr<ID3DBlob>       IndexBufferCPU      = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferGPU      = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> IndexBufferUploader = nullptr;
+
+	UINT VertexPosByteStride     = 0;
+	UINT VertexPosBufferByteSize = 0;
+
+	UINT VertexColorByteStride     = 0;
+	UINT VertexColorBufferByteSize = 0;
+
+	DXGI_FORMAT IndexFormat         = DXGI_FORMAT_R16_UINT;
+	UINT        IndexBufferByteSize = 0;
+
+	std::unordered_map<std::string, SubmeshGeometry> DrawArgs;
+
+	D3D12_VERTEX_BUFFER_VIEW VertexPosBufferView() const
+	{
+		D3D12_VERTEX_BUFFER_VIEW vbv;
+		vbv.BufferLocation = VertexPosBufferGPU->GetGPUVirtualAddress();
+		vbv.StrideInBytes  = VertexPosByteStride;
+		vbv.SizeInBytes    = VertexPosBufferByteSize;
+
+		return vbv;
+	}
+
+	D3D12_VERTEX_BUFFER_VIEW VertexColorBufferView() const
+	{
+		D3D12_VERTEX_BUFFER_VIEW vbv;
+		vbv.BufferLocation = VertexColorBufferGPU->GetGPUVirtualAddress();
+		vbv.StrideInBytes  = VertexColorByteStride;
+		vbv.SizeInBytes    = VertexColorBufferByteSize;
+
+		return vbv;
+	}
+
+	D3D12_INDEX_BUFFER_VIEW IndexBufferView() const
+	{
+		D3D12_INDEX_BUFFER_VIEW ibv;
+		ibv.BufferLocation = IndexBufferGPU->GetGPUVirtualAddress();
+		ibv.Format         = IndexFormat;
+		ibv.SizeInBytes    = IndexBufferByteSize;
+
+		return ibv;
+	}
+
+	void DisposeUploaders()
+	{
+		VertexPosBufferUploader   = nullptr;
+		VertexColorBufferUploader = nullptr;
+		IndexBufferUploader       = nullptr;
+	}
+};
+
 /**
  * \brief A structure that groups a vertex and index buffer together to define a group of geometry
  * We say "a group" because one vertex/index buffer can contain multiple geometry. See page 215

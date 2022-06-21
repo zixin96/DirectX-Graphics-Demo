@@ -87,6 +87,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Line drawing and anti alias
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "InputEleDes_Ex1", "..\..\Chapter 6 Drawing in Direct3D\InputEleDes_Ex1\InputEleDes_Ex1.vcxproj", "{9A7A8A96-BCBD-4F71-ACC2-97F4B249348F}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MultipleInputSlots_Ex2", "..\..\Chapter 6 Drawing in Direct3D\MultipleInputSlots_Ex2\MultipleInputSlots_Ex2.vcxproj", "{AADC3E72-64A2-4329-934A-9F10A18A2EB4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -303,6 +305,14 @@ Global
 		{9A7A8A96-BCBD-4F71-ACC2-97F4B249348F}.Release|x64.Build.0 = Release|x64
 		{9A7A8A96-BCBD-4F71-ACC2-97F4B249348F}.Release|x86.ActiveCfg = Release|Win32
 		{9A7A8A96-BCBD-4F71-ACC2-97F4B249348F}.Release|x86.Build.0 = Release|Win32
+		{AADC3E72-64A2-4329-934A-9F10A18A2EB4}.Debug|x64.ActiveCfg = Debug|x64
+		{AADC3E72-64A2-4329-934A-9F10A18A2EB4}.Debug|x64.Build.0 = Debug|x64
+		{AADC3E72-64A2-4329-934A-9F10A18A2EB4}.Debug|x86.ActiveCfg = Debug|Win32
+		{AADC3E72-64A2-4329-934A-9F10A18A2EB4}.Debug|x86.Build.0 = Debug|Win32
+		{AADC3E72-64A2-4329-934A-9F10A18A2EB4}.Release|x64.ActiveCfg = Release|x64
+		{AADC3E72-64A2-4329-934A-9F10A18A2EB4}.Release|x64.Build.0 = Release|x64
+		{AADC3E72-64A2-4329-934A-9F10A18A2EB4}.Release|x86.ActiveCfg = Release|Win32
+		{AADC3E72-64A2-4329-934A-9F10A18A2EB4}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -334,6 +344,7 @@ Global
 		{CC70F8A7-F444-431E-AD79-9451FBDDD6C2} = {98738A80-C66F-4A0D-9926-1E74BBF30338}
 		{D232909E-96E9-4DB0-948F-2A4CFE9523FE} = {E6CE4C2E-321C-4147-BDC5-1F8351B28AAB}
 		{9A7A8A96-BCBD-4F71-ACC2-97F4B249348F} = {139CAB3C-DDCE-48D8-BAD5-CBFCD7EA1883}
+		{AADC3E72-64A2-4329-934A-9F10A18A2EB4} = {139CAB3C-DDCE-48D8-BAD5-CBFCD7EA1883}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {66D88F0D-E298-4B62-8A42-8B68B71961CF}
