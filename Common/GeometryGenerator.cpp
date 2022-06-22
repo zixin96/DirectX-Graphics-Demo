@@ -437,7 +437,7 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(float bottomRadius
 			// position on the ring can be presented by coordinates on a circle with radius r
 			vertex.Position = XMFLOAT3(r * c, y, r * s);
 
-			// TODO: Blackbox: how do we generate tex coordinates, tangent and normal? 
+			// To visualize this, see Notability 
 			vertex.TexC.x = (float)j / sliceCount;
 			vertex.TexC.y = 1.0f - (float)i / stackCount;
 
@@ -461,9 +461,13 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(float bottomRadius
 			//  dz/dv = (r0-r1)*sin(t)
 
 			// This is unit length.
+			//! Find a tangentU that is always perpendicular to the position vector
+			//! Proof: dot(vertex.TangentU, vertex.Position) = r * c * -s + 0 + r * s * c  = 0
 			vertex.TangentU = XMFLOAT3(-s, 0.0f, c);
 
+			//! Find bitangent that is always perpendicular to tangentU
 			float    dr = bottomRadius - topRadius;
+			//? Why does y have to be -height? If it is zero, dot(tangentU, bitangent) is still zero. 
 			XMFLOAT3 bitangent(dr * c, -height, dr * s);
 
 			XMVECTOR T = XMLoadFloat3(&vertex.TangentU);

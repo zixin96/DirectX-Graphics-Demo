@@ -4,8 +4,6 @@ using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace PackedVector;
 
-const int gNumFrameResources = 3;
-
 ShapesApp::ShapesApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
 {
@@ -418,10 +416,11 @@ void ShapesApp::BuildShapeGeometry()
 	// we place all scene geometry in one big vertex and index buffer
 
 	GeometryGenerator           geoGen;
-	GeometryGenerator::MeshData box      = geoGen.CreateBox(1.5f, 0.5f, 1.5f, 3);
-	GeometryGenerator::MeshData grid     = geoGen.CreateGrid(20.0f, 30.0f, 60, 40);
-	GeometryGenerator::MeshData sphere   = geoGen.CreateSphere(0.5f, 20, 20);
-	GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(0.5f, 0.3f, 3.0f, 20, 20);
+	GeometryGenerator::MeshData box    = geoGen.CreateBox(1.5f, 0.5f, 1.5f, 3);
+	GeometryGenerator::MeshData grid   = geoGen.CreateGrid(20.0f, 30.0f, 60, 40);
+	GeometryGenerator::MeshData sphere = geoGen.CreateSphere(0.5f, 20, 20);
+	GeometryGenerator::MeshData cylinder     = geoGen.CreateCylinder(0.5f, 0.3f, 3.0f, 20, 20);
+	//GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(1.0f, 0.5f, 10.0f, 8, 2);
 
 	//
 	// define the regions in the buffer each submesh covers.
