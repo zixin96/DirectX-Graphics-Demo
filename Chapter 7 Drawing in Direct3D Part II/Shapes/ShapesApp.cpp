@@ -416,12 +416,19 @@ void ShapesApp::BuildShapeGeometry()
 	// we place all scene geometry in one big vertex and index buffer
 
 	GeometryGenerator           geoGen;
-	GeometryGenerator::MeshData box    = geoGen.CreateBox(1.5f, 0.5f, 1.5f, 3);
-	GeometryGenerator::MeshData grid   = geoGen.CreateGrid(20.0f, 30.0f, 60, 40);
-	GeometryGenerator::MeshData sphere = geoGen.CreateSphere(0.5f, 20, 20);
-	GeometryGenerator::MeshData cylinder     = geoGen.CreateCylinder(0.5f, 0.3f, 3.0f, 20, 20);
+	GeometryGenerator::MeshData box  = geoGen.CreateBox(1.5f, 0.5f, 1.5f, 3);
+	GeometryGenerator::MeshData grid = geoGen.CreateGrid(20.0f, 30.0f, 60, 40);
+
+	GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(0.5f, 0.3f, 3.0f, 20, 20);
 	//GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(1.0f, 0.5f, 10.0f, 8, 2);
 
+	//!? Experiment with GeoSphere
+	//GeometryGenerator::MeshData sphere = geoGen.CreateSphere(0.5f, 20, 20);
+	//GeometryGenerator::MeshData sphere = geoGen.CreateGeosphere(0.5f, 0);
+	//GeometryGenerator::MeshData sphere = geoGen.CreateGeosphere(0.5f, 1);
+	//GeometryGenerator::MeshData geoSphere = geoGen.CreateGeosphere(0.5f, 2);
+	GeometryGenerator::MeshData sphere = geoGen.CreateGeosphere(0.5f, 3);
+	//GeometryGenerator::MeshData sphere = geoGen.CreateGeosphere(0.5f, 4);
 	//
 	// define the regions in the buffer each submesh covers.
 	//

@@ -86,42 +86,6 @@ void LandAndWavesApp::Draw(const GameTimer& gt)
 	ImGui::NewFrame();
 	//--------imgui---------------
 
-	// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-	if (show_demo_window)
-		ImGui::ShowDemoWindow(&show_demo_window);
-
-	// 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
-	{
-		static float f       = 0.0f;
-		static int   counter = 0;
-
-		ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
-
-		ImGui::Text("This is some useful text.");          // Display some text (you can use a format strings too)
-		ImGui::Checkbox("Demo Window", &show_demo_window); // Edit bools storing our window open/close state
-		ImGui::Checkbox("Another Window", &show_another_window);
-
-		ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-		ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-		if (ImGui::Button("Button")) // Buttons return true when clicked (most widgets return true when edited/activated)
-			counter++;
-		ImGui::SameLine();
-		ImGui::Text("counter = %d", counter);
-
-		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		ImGui::End();
-	}
-
-	// 3. Show another simple window.
-	if (show_another_window)
-	{
-		ImGui::Begin("Another Window", &show_another_window); // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-		ImGui::Text("Hello from another window!");
-		if (ImGui::Button("Close Me"))
-			show_another_window = false;
-		ImGui::End();
-	}
 
 	auto cmdListAlloc = mCurrFrameResource->CmdListAlloc;
 
@@ -154,7 +118,6 @@ void LandAndWavesApp::Draw(const GameTimer& gt)
 
 	// Specify the buffers we are going to render to.
 	mCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
-
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
 	// Bind per-pass constant buffer.  We only need to do this once per-pass.
@@ -434,13 +397,7 @@ void LandAndWavesApp::BuildLandGeometry()
 
 	// after we have created the grid, we can extract the vertex elements we want from the MeshData grid,
 	// turn the flat grid into a surface representing hills, and generate a color for each vertex
-	// based on the vertex altitude (Y-coordinate)
-
-	//
-	// Extract the vertex elements we are interested and apply the height function to
-	// each vertex.  In addition, color the vertices based on their height so we have
-	// sandy looking beaches, grassy low hills, and snow mountain peaks.
-	//
+	// based on the vertex altitude (Y-coordinate) so we have sandy looking beaches, grassy low hills, and snow mountain peaks.
 
 	std::vector<Vertex> vertices(grid.Vertices.size());
 	for (size_t i = 0; i < grid.Vertices.size(); ++i)
@@ -526,7 +483,7 @@ void LandAndWavesApp::BuildWavesGeometryBuffers()
 		{
 			// each quad has 2 triangles
 
-			// TODO: blackbox See book 7.7.2
+			// TODO: See book 7.7.2
 			indices[k]     = i * n + j;
 			indices[k + 1] = i * n + j + 1;
 			indices[k + 2] = (i + 1) * n + j;
@@ -658,8 +615,7 @@ void LandAndWavesApp::BuildRenderItems()
 void LandAndWavesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 {
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-
-	auto objectCB = mCurrFrameResource->ObjectCB->Resource();
+	auto objectCB      = mCurrFrameResource->ObjectCB->Resource();
 
 	// For each render item...
 	for (size_t i = 0; i < ritems.size(); ++i)

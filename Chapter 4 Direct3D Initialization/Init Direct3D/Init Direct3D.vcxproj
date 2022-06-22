@@ -143,6 +143,8 @@
     <ClCompile Include="..\..\Common\d3dApp.cpp" />
     <ClCompile Include="..\..\Common\d3dUtil.cpp" />
     <ClCompile Include="..\..\Common\GameTimer.cpp" />
+    <ClCompile Include="..\..\Common\ImguiManager.cpp" />
+    <ClCompile Include="..\..\Common\imgui_wrapper.cpp" />
     <ClCompile Include="InitDirect3DApp.cpp" />
     <ClCompile Include="EntryPoint.cpp" />
   </ItemGroup>
@@ -150,6 +152,7 @@
     <ClInclude Include="..\..\Common\d3dApp.h" />
     <ClInclude Include="..\..\Common\d3dUtil.h" />
     <ClInclude Include="..\..\Common\GameTimer.h" />
+    <ClInclude Include="..\..\Common\ImguiManager.h" />
     <ClInclude Include="InitDirect3DApp.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

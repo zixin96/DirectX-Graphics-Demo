@@ -180,7 +180,7 @@ bool gluInvertMatrix(float* retDet, const float input[4][4], float output[4][4])
 	if (det == 0)
 		return false;
 
-	det = 1.0 / det;
+	det = 1.0f / det;
 
 
 	for (i = 0; i < 16; i++)

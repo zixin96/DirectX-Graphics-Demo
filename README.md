@@ -79,6 +79,13 @@ void App::Update(const GameTimer& gt)
 
 ---
 
+What things need to be in the frame resource? 
+
+- Things we update every frame on the CPU's side **AND**
+- GPU will access them every frame 
+
+---
+
 Imgui: 
 
 Subapplicaitons only need to add imgui code in Draw functions
@@ -110,6 +117,26 @@ void XXApp::Draw(const GameTimer& gt)
 	ImGui::UpdatePlatformWindows();
 	ImGui::RenderPlatformWindowsDefault(NULL, (void*)mCommandList.Get());
 	//--------imgui---------------
+
+	...
+}
+```
+
+---
+
+Every `x` seconds, we do something: 
+
+```c++
+void XXApp::UpdateXX(const GameTimer& gt)
+{
+	// Every x second, do something
+	static float t_base = 0.0f;
+	if ((mTimer.TotalTime() - t_base) >= x)
+	{
+		t_base += x;
+
+		// do something
+	}
 
 	...
 }
