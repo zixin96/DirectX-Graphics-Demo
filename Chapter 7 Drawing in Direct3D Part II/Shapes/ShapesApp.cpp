@@ -1,148 +1,10 @@
-//***************************************************************************************
-// ShapesApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
-//
-// Hold down '1' key to view scene in wireframe mode.
-//***************************************************************************************
-
-#include "../../Common/d3dApp.h"
-#include "../../Common/MathHelper.h"
-#include "../../Common/UploadBuffer.h"
-#include "../../Common/GeometryGenerator.h"
-#include "FrameResource.h"
+#include "ShapesApp.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
-using namespace DirectX::PackedVector;
+using namespace PackedVector;
 
 const int gNumFrameResources = 3;
-
-// Lightweight structure stores parameters to draw a shape.
-// This contains the set of data needed to submit a full draw call.
-// Our application will maintain a list of render items separated by how they will be drawn (PSO).
-struct RenderItem
-{
-	RenderItem() = default;
-
-	// World matrix of the shape that describes the object's local space
-	// relative to the world space, which defines the position, orientation,
-	// and scale of the object in the world.
-	XMFLOAT4X4 World = MathHelper::Identity4x4();
-
-	// Dirty flag indicating the object data has changed and we need to update the constant buffer.
-	// Because we have an object cbuffer for each FrameResource, we have to apply the
-	// update to each FrameResource.  Thus, when we modify object data we should set 
-	// NumFramesDirty = gNumFrameResources so that each frame resource gets the update.
-	int NumFramesDirty = gNumFrameResources;
-
-	// Index into GPU constant buffer corresponding to the ObjectCB for this render item.
-	UINT ObjCBIndex = -1;
-
-	// when drawing, this parameter is used to access vertex and index buffer view
-	MeshGeometry* Geo = nullptr;
-
-	// Primitive topology.
-	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-	// DrawIndexedInstanced parameters that defined the geometry to draw 
-	UINT IndexCount         = 0;
-	UINT StartIndexLocation = 0;
-	int  BaseVertexLocation = 0;
-};
-
-class ShapesApp : public D3DApp
-{
-	public:
-		ShapesApp(HINSTANCE hInstance);
-		ShapesApp(const ShapesApp& rhs)            = delete;
-		ShapesApp& operator=(const ShapesApp& rhs) = delete;
-		~ShapesApp() override;
-
-		bool Initialize() override;
-
-	private:
-		void OnResize() override;
-		void Update(const GameTimer& gt) override;
-		void Draw(const GameTimer& gt) override;
-
-		void OnMouseDown(WPARAM btnState, int x, int y) override;
-		void OnMouseUp(WPARAM btnState, int x, int y) override;
-		void OnMouseMove(WPARAM btnState, int x, int y) override;
-
-		void OnKeyboardInput(const GameTimer& gt);
-		void UpdateCamera(const GameTimer& gt);
-		void UpdateObjectCBs(const GameTimer& gt);
-		void UpdateMainPassCB(const GameTimer& gt);
-
-		void BuildDescriptorHeaps();
-		void BuildRootSignature();
-		void BuildShadersAndInputLayout();
-		void BuildShapeGeometry();
-		void BuildPSOs();
-		void BuildFrameResources();
-		void BuildRenderItems();
-		void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
-
-	private:
-		// application keeps track of a vector of gNumFrameResources (3) frame resources and member variables to track the current frame resource:
-
-		std::vector<std::unique_ptr<FrameResource>> mFrameResources;
-		FrameResource*                              mCurrFrameResource      = nullptr;
-		int                                         mCurrFrameResourceIndex = 0;
-
-		ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-
-		ComPtr<ID3D12DescriptorHeap> mCbvHeap       = nullptr;
-		UINT                         mPassCbvOffset = 0;
-
-		// it's cumbersome to create a new variable name for each geometry, PSO, texture, shader, etc, so we use hash maps:
-
-		std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
-		std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
-		std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
-
-		std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
-
-		// List of all the render items.
-		std::vector<std::unique_ptr<RenderItem>> mAllRenderItems;
-		std::vector<RenderItem*>                 mOpaqueRitems; // Render items divided by PSO.
-
-		PassConstants mMainPassCB;
-
-		bool mIsWireframe = false;
-
-		XMFLOAT3   mEyePos = {0.0f, 0.0f, 0.0f};
-		XMFLOAT4X4 mView   = MathHelper::Identity4x4();
-		XMFLOAT4X4 mProj   = MathHelper::Identity4x4();
-
-		float mTheta  = 1.5f * XM_PI;
-		float mPhi    = 0.2f * XM_PI;
-		float mRadius = 15.0f;
-
-		POINT mLastMousePos;
-};
-
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
-                   PSTR      cmdLine, int         showCmd)
-{
-	// Enable run-time memory check for debug builds.
-	#if defined(DEBUG) | defined(_DEBUG)
-	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	#endif
-
-	try
-	{
-		ShapesApp theApp(hInstance);
-		if (!theApp.Initialize())
-			return 0;
-
-		return theApp.Run();
-	}
-	catch (DxException& e)
-	{
-		MessageBox(nullptr, e.ToString().c_str(), L"HR Failed", MB_OK);
-		return 0;
-	}
-}
 
 ShapesApp::ShapesApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
@@ -169,6 +31,7 @@ bool ShapesApp::Initialize()
 	BuildRenderItems();
 	BuildFrameResources();
 	BuildDescriptorHeaps();
+	BuildDescriptors();
 	BuildPSOs();
 
 	// Execute the initialization commands.
@@ -276,7 +139,7 @@ void ShapesApp::Draw(const GameTimer& gt)
 
 	// Swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
@@ -433,11 +296,14 @@ void ShapesApp::BuildDescriptorHeaps()
 	cbvHeapDesc.NodeMask       = 0;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&cbvHeapDesc,
 		              IID_PPV_ARGS(&mCbvHeap)));
+}
 
-	//
-	// Fill out the heap with actual descriptors.
-	//
+// See Notability
+void ShapesApp::BuildDescriptors()
+{
+	UINT objCount      = (UINT)mOpaqueRitems.size();
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
+	auto handle        = CD3DX12_CPU_DESCRIPTOR_HANDLE(mCbvHeap->GetCPUDescriptorHandleForHeapStart());
 
 	// Need a CBV descriptor for each object for each frame resource.
 	for (int frameIndex = 0; frameIndex < gNumFrameResources; ++frameIndex)
@@ -446,19 +312,17 @@ void ShapesApp::BuildDescriptorHeaps()
 		for (UINT i = 0; i < objCount; ++i)
 		{
 			D3D12_GPU_VIRTUAL_ADDRESS cbAddress = objectCB->GetGPUVirtualAddress();
-
 			// Offset to the ith object constant buffer in the buffer.
 			cbAddress += i * objCBByteSize;
-
-			int  heapIndex = frameIndex * objCount + i; // number of descriptors to offset
-			auto handle    = CD3DX12_CPU_DESCRIPTOR_HANDLE(mCbvHeap->GetCPUDescriptorHandleForHeapStart());
-			handle.Offset(heapIndex, mCbvSrvUavDescriptorSize); // get the location of this descriptor in the heap
 
 			D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
 			cbvDesc.BufferLocation = cbAddress;
 			cbvDesc.SizeInBytes    = objCBByteSize;
 
 			md3dDevice->CreateConstantBufferView(&cbvDesc, handle);
+
+			// move on to the next descriptor
+			handle.Offset(1, mCbvSrvUavDescriptorSize); 
 		}
 	}
 
@@ -470,15 +334,14 @@ void ShapesApp::BuildDescriptorHeaps()
 		auto                      passCB    = mFrameResources[frameIndex]->PassCB->Resource();
 		D3D12_GPU_VIRTUAL_ADDRESS cbAddress = passCB->GetGPUVirtualAddress();
 
-		int  heapIndex = mPassCbvOffset + frameIndex; // number of descriptors to offset
-		auto handle    = CD3DX12_CPU_DESCRIPTOR_HANDLE(mCbvHeap->GetCPUDescriptorHandleForHeapStart());
-		handle.Offset(heapIndex, mCbvSrvUavDescriptorSize); // get the location of this descriptor in the heap
-
 		D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
 		cbvDesc.BufferLocation = cbAddress;
 		cbvDesc.SizeInBytes    = passCBByteSize;
 
 		md3dDevice->CreateConstantBufferView(&cbvDesc, handle);
+
+		// move on to the next descriptor
+		handle.Offset(1, mCbvSrvUavDescriptorSize);
 	}
 }
 
@@ -486,6 +349,10 @@ void ShapesApp::BuildRootSignature()
 {
 	// root signature takes 2 root parameters of descriptor-tables type 
 	CD3DX12_ROOT_PARAMETER slotRootParameter[2];
+
+	//? Why do we need two descriptor tables? Can we just put them in the same table?
+	//! No, we need to bind these two CBVs at different frequencies. We must put them into separate tables.
+	//! For example, we bind per-pass CBV once per frame whereas we bind per-object CBV once per object
 
 	// Describes a descriptor range: https://microsoft.github.io/DirectX-Specs/d3d/ResourceBinding.html#using-descriptor-tables
 	CD3DX12_DESCRIPTOR_RANGE cbvTable0;
@@ -520,7 +387,7 @@ void ShapesApp::BuildRootSignature()
 
 	if (errorBlob != nullptr)
 	{
-		::OutputDebugStringA((char*)errorBlob->GetBufferPointer());
+		OutputDebugStringA((char*)errorBlob->GetBufferPointer());
 	}
 	ThrowIfFailed(hr);
 
@@ -555,7 +422,6 @@ void ShapesApp::BuildShapeGeometry()
 	GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(0.5f, 0.3f, 3.0f, 20, 20);
 
 	//
-	// We are concatenating all the geometry into one big vertex/index buffer.  So
 	// define the regions in the buffer each submesh covers.
 	//
 
@@ -618,25 +484,25 @@ void ShapesApp::BuildShapeGeometry()
 	for (size_t i = 0; i < box.Vertices.size(); ++i, ++k)
 	{
 		vertices[k].Pos   = box.Vertices[i].Position;
-		vertices[k].Color = XMFLOAT4(DirectX::Colors::DarkGreen);
+		vertices[k].Color = XMFLOAT4(Colors::DarkGreen);
 	}
 
 	for (size_t i = 0; i < grid.Vertices.size(); ++i, ++k)
 	{
 		vertices[k].Pos   = grid.Vertices[i].Position;
-		vertices[k].Color = XMFLOAT4(DirectX::Colors::ForestGreen);
+		vertices[k].Color = XMFLOAT4(Colors::ForestGreen);
 	}
 
 	for (size_t i = 0; i < sphere.Vertices.size(); ++i, ++k)
 	{
 		vertices[k].Pos   = sphere.Vertices[i].Position;
-		vertices[k].Color = XMFLOAT4(DirectX::Colors::Crimson);
+		vertices[k].Color = XMFLOAT4(Colors::Crimson);
 	}
 
 	for (size_t i = 0; i < cylinder.Vertices.size(); ++i, ++k)
 	{
 		vertices[k].Pos   = cylinder.Vertices[i].Position;
-		vertices[k].Color = XMFLOAT4(DirectX::Colors::SteelBlue);
+		vertices[k].Color = XMFLOAT4(Colors::SteelBlue);
 	}
 
 	std::vector<std::uint16_t> indices;
@@ -701,8 +567,8 @@ void ShapesApp::BuildPSOs()
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	opaquePsoDesc.NumRenderTargets      = 1;
 	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.SampleDesc.Count      = 1;
+	opaquePsoDesc.SampleDesc.Quality    = 0;
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 
@@ -804,7 +670,9 @@ void ShapesApp::BuildRenderItems()
 
 	// All the render items are opaque.
 	for (auto& e : mAllRenderItems)
+	{
 		mOpaqueRitems.push_back(e.get());
+	}
 }
 
 void ShapesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
