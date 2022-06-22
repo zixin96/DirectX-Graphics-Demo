@@ -77,6 +77,46 @@ void App::Update(const GameTimer& gt)
 1. The frame resource is in its initial state (`mCurrFrameResource->Fence == 0`). There is no data in it. We can safely upload data. **OR** 
 2. Directx12 Fence has reached the frame resource's fence value (`mFence->GetCompletedValue() >= mCurrFrameResource->Fence`). GPU has finished using this frame resource's data. We can safely update the data.
 
+---
+
+Imgui: 
+
+Subapplicaitons only need to add imgui code in Draw functions
+
+See `LandAndWaves` project for more details
+
+```c++
+void XXApp::Draw(const GameTimer& gt)
+{
+	//--------imgui---------------
+	// Start the Dear ImGui frame
+	ImGui_ImplDX12_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+	//--------imgui---------------
+
+...
+
+	//--------imgui---------------
+	ImGui::Render();
+	mCommandList->SetDescriptorHeaps(1, mSrvHeap.GetAddressOf());
+	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), mCommandList.Get());
+	//--------imgui---------------
+
+	...
+
+	//--------imgui---------------
+	//! Note: this line is only necessary if we enable multi viewport, which we have by default
+	ImGui::UpdatePlatformWindows();
+	ImGui::RenderPlatformWindowsDefault(NULL, (void*)mCommandList.Get());
+	//--------imgui---------------
+
+	...
+}
+```
+
+
+
 ## TODO
 
 How does DirectX 12 fit into a well-designed rendering engine? 

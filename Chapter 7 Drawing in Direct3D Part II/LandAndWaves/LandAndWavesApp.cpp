@@ -1,154 +1,12 @@
-//***************************************************************************************
-// LandAndWavesApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
-//
-// Hold down '1' key to view scene in wireframe mode.
-//***************************************************************************************
+#include "LandAndWavesApp.h"
 
-#include "../../Common/d3dApp.h"
-#include "../../Common/MathHelper.h"
-#include "../../Common/UploadBuffer.h"
-#include "../../Common/GeometryGenerator.h"
-#include "FrameResource.h"
-#include "Waves.h"
+
+#include "../../common/imgui_impl_win32.h"
+#include "../../common/imgui_impl_dx12.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace PackedVector;
-
-const int gNumFrameResources = 3;
-
-// Lightweight structure stores parameters to draw a shape.  This will
-// vary from app-to-app.
-struct RenderItem
-{
-	RenderItem() = default;
-
-	// World matrix of the shape that describes the object's local space
-	// relative to the world space, which defines the position, orientation,
-	// and scale of the object in the world.
-	XMFLOAT4X4 World = MathHelper::Identity4x4();
-
-	// Dirty flag indicating the object data has changed and we need to update the constant buffer.
-	// Because we have an object cbuffer for each FrameResource, we have to apply the
-	// update to each FrameResource.  Thus, when we modify obect data we should set 
-	// NumFramesDirty = gNumFrameResources so that each frame resource gets the update.
-	int NumFramesDirty = gNumFrameResources;
-
-	// Index into GPU constant buffer corresponding to the ObjectCB for this render item.
-	UINT ObjCBIndex = -1;
-
-	MeshGeometry* Geo = nullptr;
-
-	// Primitive topology.
-	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-	// DrawIndexedInstanced parameters.
-	UINT IndexCount         = 0;
-	UINT StartIndexLocation = 0;
-	int  BaseVertexLocation = 0;
-};
-
-enum class RenderLayer : int
-{
-	Opaque = 0,
-	Count
-};
-
-class LandAndWavesApp : public D3DApp
-{
-	public:
-		LandAndWavesApp(HINSTANCE hInstance);
-		LandAndWavesApp(const LandAndWavesApp& rhs)            = delete;
-		LandAndWavesApp& operator=(const LandAndWavesApp& rhs) = delete;
-		~LandAndWavesApp() override;
-
-		bool Initialize() override;
-
-	private:
-		void OnResize() override;
-		void Update(const GameTimer& gt) override;
-		void Draw(const GameTimer& gt) override;
-
-		void OnMouseDown(WPARAM btnState, int x, int y) override;
-		void OnMouseUp(WPARAM btnState, int x, int y) override;
-		void OnMouseMove(WPARAM btnState, int x, int y) override;
-
-		void OnKeyboardInput(const GameTimer& gt);
-		void UpdateCamera(const GameTimer& gt);
-		void UpdateObjectCBs(const GameTimer& gt);
-		void UpdateMainPassCB(const GameTimer& gt);
-		void UpdateWaves(const GameTimer& gt);
-
-		void BuildRootSignature();
-		void BuildShadersAndInputLayout();
-		void BuildLandGeometry();
-		void BuildWavesGeometryBuffers();
-		void BuildPSOs();
-		void BuildFrameResources();
-		void BuildRenderItems();
-		void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
-
-		float    GetHillsHeight(float x, float z) const;
-		XMFLOAT3 GetHillsNormal(float x, float z) const;
-
-	private:
-		std::vector<std::unique_ptr<FrameResource>> mFrameResources;
-		FrameResource*                              mCurrFrameResource      = nullptr;
-		int                                         mCurrFrameResourceIndex = 0;
-
-		ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-
-		std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
-		std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
-		std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
-
-		std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
-
-		// save a reference to the wave render item so that we can set its vertex buffer on the fly
-		// we need to do this because its vertex buffer is a dynamic buffer and changes every frame
-		RenderItem*            mWavesRitem = nullptr;
-		std::unique_ptr<Waves> mWaves;
-
-		std::vector<std::unique_ptr<RenderItem>> mAllRitems;                           // List of all the render items.
-		std::vector<RenderItem*>                 mRitemLayer[(int)RenderLayer::Count]; //! Render items divided by PSO. declare an array consisting of "Count" vectors of RenderItem*
-
-		PassConstants mMainPassCB;
-
-		bool mIsWireframe = false;
-
-		XMFLOAT3   mEyePos = {0.0f, 0.0f, 0.0f};
-		XMFLOAT4X4 mView   = MathHelper::Identity4x4();
-		XMFLOAT4X4 mProj   = MathHelper::Identity4x4();
-
-		float mTheta  = 1.5f * XM_PI;
-		float mPhi    = XM_PIDIV2 - 0.1f;
-		float mRadius = 50.0f;
-
-		POINT mLastMousePos;
-};
-
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
-                   PSTR      cmdLine, int         showCmd)
-{
-	// Enable run-time memory check for debug builds.
-	#if defined(DEBUG) | defined(_DEBUG)
-	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	#endif
-
-	try
-	{
-		LandAndWavesApp theApp(hInstance);
-		if (!theApp.Initialize())
-			return 0;
-
-		return theApp.Run();
-	}
-	catch (DxException& e)
-	{
-		MessageBox(nullptr, e.ToString().c_str(), L"HR Failed", MB_OK);
-		return 0;
-	}
-}
 
 LandAndWavesApp::LandAndWavesApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
@@ -223,6 +81,50 @@ void LandAndWavesApp::Update(const GameTimer& gt)
 
 void LandAndWavesApp::Draw(const GameTimer& gt)
 {
+	//--------imgui---------------
+	// Start the Dear ImGui frame
+	ImGui_ImplDX12_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+	//--------imgui---------------
+
+	// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+	if (show_demo_window)
+		ImGui::ShowDemoWindow(&show_demo_window);
+
+	// 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+	{
+		static float f       = 0.0f;
+		static int   counter = 0;
+
+		ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
+
+		ImGui::Text("This is some useful text.");          // Display some text (you can use a format strings too)
+		ImGui::Checkbox("Demo Window", &show_demo_window); // Edit bools storing our window open/close state
+		ImGui::Checkbox("Another Window", &show_another_window);
+
+		ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+		ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+
+		if (ImGui::Button("Button")) // Buttons return true when clicked (most widgets return true when edited/activated)
+			counter++;
+		ImGui::SameLine();
+		ImGui::Text("counter = %d", counter);
+
+		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		ImGui::End();
+	}
+
+	// 3. Show another simple window.
+	if (show_another_window)
+	{
+		ImGui::Begin("Another Window", &show_another_window); // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+		ImGui::Text("Hello from another window!");
+		if (ImGui::Button("Close Me"))
+			show_another_window = false;
+		ImGui::End();
+	}
+
 	auto cmdListAlloc = mCurrFrameResource->CmdListAlloc;
 
 	// Reuse the memory associated with command recording.
@@ -240,12 +142,33 @@ void LandAndWavesApp::Draw(const GameTimer& gt)
 		ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mPSOs["opaque"].Get()));
 	}
 
+	// 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+	{
+		static float f       = 0.0f;
+		static int   counter = 0;
+
+		ImGui::Begin("Hello, world!"); // Create a window called "Hello, world!" and append into it.
+
+		ImGui::Text("This is some useful text."); // Display some text (you can use a format strings too)
+
+		ImGui::SliderFloat("float", &f, 0.0f, 1.0f); // Edit 1 float using a slider from 0.0f to 1.0f
+
+		if (ImGui::Button("Button")) // Buttons return true when clicked (most widgets return true when edited/activated)
+			counter++;
+		ImGui::SameLine();
+		ImGui::Text("counter = %d", counter);
+
+		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+		ImGui::End();
+	}
+
 	mCommandList->RSSetViewports(1, &mScreenViewport);
 	mCommandList->RSSetScissorRects(1, &mScissorRect);
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	                                                                       D3D12_RESOURCE_STATE_PRESENT,
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	// Clear the back buffer and depth buffer.
 	mCommandList->ClearRenderTargetView(CurrentBackBufferView(), Colors::LightSteelBlue, 0, nullptr);
@@ -262,6 +185,12 @@ void LandAndWavesApp::Draw(const GameTimer& gt)
 
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
 
+	//--------imgui---------------
+	ImGui::Render();
+	mCommandList->SetDescriptorHeaps(1, mSrvHeap.GetAddressOf());
+	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), mCommandList.Get());
+	//--------imgui---------------
+
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
 	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -274,9 +203,15 @@ void LandAndWavesApp::Draw(const GameTimer& gt)
 	ID3D12CommandList* cmdsLists[] = {mCommandList.Get()};
 	mCommandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
 
+	//--------imgui---------------
+	//! Note: this line is only necessary if we enable multi viewport, which we have by default
+	ImGui::UpdatePlatformWindows();
+	ImGui::RenderPlatformWindowsDefault(NULL, (void*)mCommandList.Get());
+	//--------imgui---------------
+
 	// Swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
@@ -687,8 +622,8 @@ void LandAndWavesApp::BuildPSOs()
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	opaquePsoDesc.NumRenderTargets      = 1;
 	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.SampleDesc.Count      = 1;
+	opaquePsoDesc.SampleDesc.Quality    = 0;
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 

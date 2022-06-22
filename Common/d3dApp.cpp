@@ -1,9 +1,16 @@
 #include "d3dApp.h"
 #include <WindowsX.h> // for GET_X/Y_LPARAM macros
+#include "imgui_impl_dx12.h"
+#include "imgui_impl_win32.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace std;
 using namespace DirectX;
+
+const int gNumFrameResources = 3;
+
+// Forward declare message handler from imgui_impl_win32.cpp
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 /**
  * \brief Main window procedure where we write the code that we want to execute in response to a message our window receives.
@@ -42,6 +49,10 @@ D3DApp::~D3DApp()
 		// we need to wait until GPU is done processing the commands in the queue before we destroy any resources the GPU is still referencing.
 		// otherwise, the GPU might crash when the application exits
 		FlushCommandQueue();
+
+		// shutdown Imgui
+		ImGui_ImplDX12_Shutdown();
+		ImGui_ImplWin32_Shutdown();
 	}
 }
 
@@ -121,6 +132,13 @@ bool D3DApp::Initialize()
 
 	OnResize();
 
+	ImGui_ImplDX12_Init(md3dDevice.Get(),
+	                    gNumFrameResources,
+	                    DXGI_FORMAT_R8G8B8A8_UNORM,
+	                    mSrvHeap.Get(),
+	                    mSrvHeap->GetCPUDescriptorHandleForHeapStart(),
+	                    mSrvHeap->GetGPUDescriptorHandleForHeapStart());
+
 	return true;
 }
 
@@ -141,6 +159,14 @@ void D3DApp::CreateRtvAndDsvDescriptorHeaps()
 	dsvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	dsvHeapDesc.NodeMask       = 0;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&mDsvHeap)));
+
+	// SRV heap for IMGUI
+	D3D12_DESCRIPTOR_HEAP_DESC srcHeapDesc;
+	srcHeapDesc.NumDescriptors = 1;
+	srcHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	srcHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	srcHeapDesc.NodeMask       = 0;
+	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srcHeapDesc, IID_PPV_ARGS(&mSrvHeap)));
 }
 
 void D3DApp::OnResize()
@@ -276,26 +302,16 @@ void D3DApp::OnResize()
 
 LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
+	// IMGUI (which has the top priority to receive win32 messages) handles the win32 messages here: 
+	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam))
+	{
+		return true;
+	}
+
+	const auto imio = ImGui::GetIO();
+
 	switch (msg)
 	{
-		// WM_ACTIVATE is sent when the window is activated or deactivated.  
-		// We pause the game when the window is deactivated and unpause it 
-		// when it becomes active.  
-		case WM_ACTIVATE:
-			if (LOWORD(wParam) == WA_INACTIVE)
-			{
-				mAppPaused = true;
-				mTimer.Stop();
-				//OutputDebugString(L"Paused!!!");
-			}
-			else
-			{
-				mAppPaused = false;
-				mTimer.Start();
-				//OutputDebugString(L"Unpaused!!!");
-			}
-			return 0;
-
 		// WM_SIZE is sent when the user resizes the window.  
 		case WM_SIZE:
 			// Save the new client area dimensions.
@@ -387,27 +403,52 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		case WM_LBUTTONDOWN:
 		case WM_MBUTTONDOWN:
 		case WM_RBUTTONDOWN:
+			// stifle this mouse message if imgui wants to capture
+			if (imio.WantCaptureMouse)
+			{
+				break;
+			}
 			OnMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // GET_X/Y_LPARAM retrieves the signed x/y-coordinate from LPARAM value
 			return 0;
 		case WM_LBUTTONUP:
 		case WM_MBUTTONUP:
 		case WM_RBUTTONUP:
+			// stifle this mouse message if imgui wants to capture
+			if (imio.WantCaptureMouse)
+			{
+				break;
+			}
 			OnMouseUp(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // GET_X/Y_LPARAM retrieves the signed x/y-coordinate from LPARAM value
 			return 0;
 		case WM_MOUSEMOVE:
+			// stifle this keyboard message if imgui wants to capture
+			if (imio.WantCaptureMouse)
+			{
+				break;
+			}
 			OnMouseMove(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // GET_X/Y_LPARAM retrieves the signed x/y-coordinate from LPARAM value
 			return 0;
 		case WM_KEYUP:
-			if (wParam == VK_ESCAPE)
+			// stifle this keyboard message if imgui wants to capture
+			if (imio.WantCaptureKeyboard)
 			{
-				PostQuitMessage(0);
+				break;
 			}
-			else if ((int)wParam == VK_F2)
+			break;
+		case WM_KEYDOWN:
+			// stifle this keyboard message if imgui wants to capture
+			if (imio.WantCaptureKeyboard)
 			{
-				// Set4xMsaaState(!m4xMsaaState);
+				break;
 			}
-
-			return 0;
+			break;
+		case WM_CHAR:
+			// stifle this keyboard message if imgui wants to capture
+			if (imio.WantCaptureKeyboard)
+			{
+				break;
+			}
+			break;
 	}
 
 	return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -464,6 +505,10 @@ bool D3DApp::InitMainWindow()
 	}
 
 	ShowWindow(mhMainWnd, SW_SHOW);
+
+	// Init ImGui Win32 Impl
+	ImGui_ImplWin32_Init(mhMainWnd);
+
 	UpdateWindow(mhMainWnd); // https://stackoverflow.com/questions/11118443/why-we-need-to-call-updatewindow-following-showwindow
 
 	return true;

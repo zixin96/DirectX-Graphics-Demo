@@ -146,7 +146,10 @@
     <ClCompile Include="..\..\Common\d3dUtil.cpp" />
     <ClCompile Include="..\..\Common\GameTimer.cpp" />
     <ClCompile Include="..\..\Common\GeometryGenerator.cpp" />
+    <ClCompile Include="..\..\Common\ImguiManager.cpp" />
+    <ClCompile Include="..\..\Common\imgui_wrapper.cpp" />
     <ClCompile Include="..\..\Common\MathHelper.cpp" />
+    <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="LandAndWavesApp.cpp" />
     <ClCompile Include="Waves.cpp" />
@@ -157,10 +160,18 @@
     <ClInclude Include="..\..\Common\d3dx12.h" />
     <ClInclude Include="..\..\Common\GameTimer.h" />
     <ClInclude Include="..\..\Common\GeometryGenerator.h" />
+    <ClInclude Include="..\..\Common\ImguiManager.h" />
     <ClInclude Include="..\..\Common\MathHelper.h" />
     <ClInclude Include="..\..\Common\UploadBuffer.h" />
     <ClInclude Include="FrameResource.h" />
+    <ClInclude Include="LandAndWavesApp.h" />
     <ClInclude Include="Waves.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\color.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -105,7 +105,8 @@ void ShapesApp::Draw(const GameTimer& gt)
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	                                                                       D3D12_RESOURCE_STATE_PRESENT,
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	// Clear the back buffer and depth buffer.
 	mCommandList->ClearRenderTargetView(CurrentBackBufferView(), Colors::LightSteelBlue, 0, nullptr);
@@ -128,7 +129,8 @@ void ShapesApp::Draw(const GameTimer& gt)
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET,
+	                                                                       D3D12_RESOURCE_STATE_PRESENT));
 
 	// Done recording commands.
 	ThrowIfFailed(mCommandList->Close());
@@ -322,7 +324,7 @@ void ShapesApp::BuildDescriptors()
 			md3dDevice->CreateConstantBufferView(&cbvDesc, handle);
 
 			// move on to the next descriptor
-			handle.Offset(1, mCbvSrvUavDescriptorSize); 
+			handle.Offset(1, mCbvSrvUavDescriptorSize);
 		}
 	}
 
