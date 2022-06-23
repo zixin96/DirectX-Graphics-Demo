@@ -5,11 +5,11 @@
 #include "../../Common/UploadBuffer.h"
 #include "../../Common/GeometryGenerator.h"
 #include "FrameResource.h"
+#include "Waves.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace DirectX::PackedVector;
-
 
 // Lightweight structure stores parameters to draw a shape.  This will
 // vary from app-to-app.
@@ -21,8 +21,6 @@ struct RenderItem
 	// relative to the world space, which defines the position, orientation,
 	// and scale of the object in the world.
 	XMFLOAT4X4 World = MathHelper::Identity4x4();
-
-	XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
 
 	// Dirty flag indicating the object data has changed and we need to update the constant buffer.
 	// Because we have an object cbuffer for each FrameResource, we have to apply the
@@ -45,13 +43,19 @@ struct RenderItem
 	int  BaseVertexLocation = 0;
 };
 
-class LitColumnsApp : public D3DApp
+enum class RenderLayer : int
+{
+	Opaque = 0,
+	Count
+};
+
+class LitWavesApp : public D3DApp
 {
 public:
-	LitColumnsApp(HINSTANCE hInstance);
-	LitColumnsApp(const LitColumnsApp& rhs)            = delete;
-	LitColumnsApp& operator=(const LitColumnsApp& rhs) = delete;
-	~LitColumnsApp() override;
+	LitWavesApp(HINSTANCE hInstance);
+	LitWavesApp(const LitWavesApp& rhs)            = delete;
+	LitWavesApp& operator=(const LitWavesApp& rhs) = delete;
+	~LitWavesApp() override;
 
 	bool Initialize() override;
 
@@ -66,20 +70,25 @@ private:
 
 	void OnKeyboardInput(const GameTimer& gt);
 	void UpdateCamera(const GameTimer& gt);
-	void AnimateMaterials(const GameTimer& gt);
+	void UpdateLightSource();
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMaterialCBs(const GameTimer& gt);
 	void UpdateMainPassCB(const GameTimer& gt);
+	void UpdateWaves(const GameTimer& gt);
 
 	void BuildRootSignature();
 	void BuildShadersAndInputLayout();
+	void BuildLandGeometry();
+	void BuildWavesGeometryBuffers();
 	void BuildShapeGeometry();
-	void BuildSkullGeometry();
 	void BuildPSOs();
 	void BuildFrameResources();
 	void BuildMaterials();
 	void BuildRenderItems();
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
+
+	float    GetHillsHeight(float x, float z) const;
+	XMFLOAT3 GetHillsNormal(float x, float z) const;
 
 private:
 	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
@@ -89,18 +98,22 @@ private:
 	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 
 	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
-	std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;;
+	std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
 	std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
+	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 
-	ComPtr<ID3D12PipelineState> mOpaquePSO = nullptr;
+	RenderItem* mWavesRitem = nullptr;
+	RenderItem* mLightSourceRitem = nullptr;
 
 	// List of all the render items.
 	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
 
 	// Render items divided by PSO.
-	std::vector<RenderItem*> mOpaqueRitems;
+	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
+
+	std::unique_ptr<Waves> mWaves;
 
 	PassConstants mMainPassCB;
 
@@ -109,8 +122,13 @@ private:
 	XMFLOAT4X4 mProj   = MathHelper::Identity4x4();
 
 	float mTheta  = 1.5f * XM_PI;
-	float mPhi    = 0.2f * XM_PI;
-	float mRadius = 15.0f;
+	float mPhi    = XM_PIDIV2 - 0.1f;
+	float mRadius = 250.0f;
+
+	// track the sun position in spherical coordinates
+	// assume the radius = 1 (it doesn't matter because we assume sun is infinitely far away)
+	float mSunTheta = 1.25f * XM_PI;
+	float mSunPhi   = XM_PIDIV4;
 
 	POINT mLastMousePos;
 };

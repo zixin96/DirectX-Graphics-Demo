@@ -317,8 +317,7 @@ void LitWavesApp::UpdateMainPassCB(const GameTimer& gt)
 	lightDir          = XMVector3Normalize(lightDir);
 
 	XMStoreFloat3(&mMainPassCB.Lights[0].Direction, lightDir);
-	//!? make the light pulse
-	mMainPassCB.Lights[0].Strength = {1.0f * abs(sin(gt.TotalTime())), 0.5f, 0.5f};
+	mMainPassCB.Lights[0].Strength = {1.0f, 1.0f, 1.0f};
 
 	auto currPassCB = mCurrFrameResource->PassCB.get();
 	currPassCB->CopyData(0, mMainPassCB);
