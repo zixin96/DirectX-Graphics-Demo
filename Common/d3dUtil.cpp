@@ -41,6 +41,7 @@ ComPtr<ID3DBlob> d3dUtil::LoadBinary(const std::wstring& filename)
 	return blob;
 }
 
+// Load texture using DirectXTex
 ComPtr<ID3D12Resource> d3dUtil::CreateTexture(ID3D12Device*              device,
                                               ID3D12GraphicsCommandList* cmdList,
                                               const wchar_t*             fileName,
@@ -58,10 +59,9 @@ ComPtr<ID3D12Resource> d3dUtil::CreateTexture(ID3D12Device*              device,
 		              ddsData,
 		              subresources));
 
-	D3D12_RESOURCE_DESC texDesc           = defaultBuffer->GetDesc();
-	const UINT          num2DSubresources = texDesc.DepthOrArraySize * texDesc.MipLevels;
-	const UINT64        uploadBufferSize  = GetRequiredIntermediateSize(defaultBuffer.Get(), 0, num2DSubresources);
-	
+	//! If texture is wrong somehow, check the original texture loading file
+	const UINT64 uploadBufferSize = GetRequiredIntermediateSize(defaultBuffer.Get(), 0, (UINT)subresources.size());
+
 	ThrowIfFailed(device->CreateCommittedResource(
 		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		              D3D12_HEAP_FLAG_NONE,
@@ -69,7 +69,7 @@ ComPtr<ID3D12Resource> d3dUtil::CreateTexture(ID3D12Device*              device,
 		              D3D12_RESOURCE_STATE_GENERIC_READ, // this is the required starting state for an upload heap
 		              nullptr,
 		              IID_PPV_ARGS(&uploadBuffer)));
-	
+
 	UpdateSubresources(cmdList,
 	                   defaultBuffer.Get(),
 	                   uploadBuffer.Get(),

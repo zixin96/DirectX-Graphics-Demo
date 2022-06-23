@@ -366,9 +366,6 @@ struct Texture
 	std::wstring Filename;
 
 	Microsoft::WRL::ComPtr<ID3D12Resource> Resource = nullptr;
-	//std::unique_ptr<uint8_t[]>             DDSData;
-	//std::vector<D3D12_SUBRESOURCE_DATA>    Subresources;
-
 	Microsoft::WRL::ComPtr<ID3D12Resource> UploadHeap = nullptr;
 };
 
