@@ -22,7 +22,7 @@
 #include <sstream>
 #include <cassert>
 #include "d3dx12.h"
-#include "DDSTextureLoader.h"
+#include "DDSTextureLoader12.h"
 #include "MathHelper.h"
 
 extern const int gNumFrameResources;
@@ -128,6 +128,11 @@ public:
 		const void*                             initData,
 		UINT64                                  byteSize,
 		Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
+
+	static Microsoft::WRL::ComPtr<ID3D12Resource> CreateTexture(ID3D12Device*                           device,
+	                                                            ID3D12GraphicsCommandList*              cmdList,
+	                                                            const wchar_t*                          fileName,
+	                                                            Microsoft::WRL::ComPtr<ID3D12Resource>& uploadBuffer);
 
 	static Microsoft::WRL::ComPtr<ID3DBlob> CompileShader(
 		const std::wstring&     filename,
@@ -360,7 +365,10 @@ struct Texture
 
 	std::wstring Filename;
 
-	Microsoft::WRL::ComPtr<ID3D12Resource> Resource   = nullptr;
+	Microsoft::WRL::ComPtr<ID3D12Resource> Resource = nullptr;
+	//std::unique_ptr<uint8_t[]>             DDSData;
+	//std::vector<D3D12_SUBRESOURCE_DATA>    Subresources;
+
 	Microsoft::WRL::ComPtr<ID3D12Resource> UploadHeap = nullptr;
 };
 

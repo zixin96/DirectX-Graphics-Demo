@@ -41,6 +41,50 @@ ComPtr<ID3DBlob> d3dUtil::LoadBinary(const std::wstring& filename)
 	return blob;
 }
 
+ComPtr<ID3D12Resource> d3dUtil::CreateTexture(ID3D12Device*              device,
+                                              ID3D12GraphicsCommandList* cmdList,
+                                              const wchar_t*             fileName,
+                                              ComPtr<ID3D12Resource>&    uploadBuffer)
+{
+	ComPtr<ID3D12Resource> defaultBuffer;
+
+	std::unique_ptr<uint8_t[]>          ddsData;
+	std::vector<D3D12_SUBRESOURCE_DATA> subresources;
+
+	ThrowIfFailed(DirectX::LoadDDSTextureFromFile(
+		              device,
+		              fileName,
+		              defaultBuffer.GetAddressOf(),
+		              ddsData,
+		              subresources));
+
+	D3D12_RESOURCE_DESC texDesc           = defaultBuffer->GetDesc();
+	const UINT          num2DSubresources = texDesc.DepthOrArraySize * texDesc.MipLevels;
+	const UINT64        uploadBufferSize  = GetRequiredIntermediateSize(defaultBuffer.Get(), 0, num2DSubresources);
+	
+	ThrowIfFailed(device->CreateCommittedResource(
+		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		              D3D12_HEAP_FLAG_NONE,
+		              &CD3DX12_RESOURCE_DESC::Buffer(uploadBufferSize),
+		              D3D12_RESOURCE_STATE_GENERIC_READ, // this is the required starting state for an upload heap
+		              nullptr,
+		              IID_PPV_ARGS(&uploadBuffer)));
+	
+	UpdateSubresources(cmdList,
+	                   defaultBuffer.Get(),
+	                   uploadBuffer.Get(),
+	                   0,
+	                   0,
+	                   (UINT)subresources.size(),
+	                   subresources.data());
+
+	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(defaultBuffer.Get(),
+	                                                                  D3D12_RESOURCE_STATE_COPY_DEST,
+	                                                                  D3D12_RESOURCE_STATE_GENERIC_READ));
+
+	return defaultBuffer;
+}
+
 // create a default buffer (GPU access only)
 // data ====> upload buffer ====> GPU-access default buffer
 ComPtr<ID3D12Resource> d3dUtil::CreateDefaultBuffer(ID3D12Device*              device,
