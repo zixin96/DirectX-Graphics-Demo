@@ -80,7 +80,7 @@ ComPtr<ID3D12Resource> d3dUtil::CreateTexture(ID3D12Device*              device,
 
 	cmdList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(defaultBuffer.Get(),
 	                                                                  D3D12_RESOURCE_STATE_COPY_DEST,
-	                                                                  D3D12_RESOURCE_STATE_GENERIC_READ));
+	                                                                  D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 
 	return defaultBuffer;
 }
