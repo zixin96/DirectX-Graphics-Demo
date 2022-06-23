@@ -144,7 +144,9 @@ void XXApp::UpdateXX(const GameTimer& gt)
 
 ---
 
-## 
+Changed to using the latest texture loading code from DirectXTex: https://github.com/microsoft/DirectXTex/tree/main/DDSTextureLoader
+
+---
 
 
 

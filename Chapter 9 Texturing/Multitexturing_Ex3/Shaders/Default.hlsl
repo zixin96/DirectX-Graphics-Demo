@@ -21,6 +21,7 @@
 #include "LightingUtil.hlsl"
 
 Texture2D gDiffuseMap : register(t0);
+Texture2D gDiffuseMap2 : register(t1);
 
 SamplerState gsamPointWrap : register(s0);
 SamplerState gsamPointClamp : register(s1);
@@ -66,9 +67,10 @@ Light gLights[MaxLights];
 
 cbuffer cbMaterial : register(b2)
 {
-float4 gDiffuseAlbedo;
-float3 gFresnelR0;
-float  gRoughness;
+float4   gDiffuseAlbedo;
+float3   gFresnelR0;
+float    gRoughness;
+float4x4 gMatTransform;
 };
 
 struct VertexIn
@@ -100,17 +102,19 @@ VertexOut VS(VertexIn vin)
 	// Transform to homogeneous clip space.
 	vout.PosH = mul(posW, gViewProj);
 
+	// Output vertex attributes for interpolation across triangle.
 	float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), //! to transform the 2D texture coordinates by a 4x4 matrix, we augment it to a 4D vector
 	                  gTexTransform);
-    vout.TexC = texC.xy;
+	vout.TexC = mul(texC, gMatTransform).xy; //! after the nultiplication is done, the resulting 4D vector is cast back to a 2D vector by throwing away the z and w components. 
 
 	return vout;
 }
 
 float4 PS(VertexOut pin) : SV_Target
 {
-	//!? look here: 
-    float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicMirror, pin.TexC) * gDiffuseAlbedo;
+	//!? combine the two textures 
+	float4 diffuseAlbedo = gDiffuseMap2.Sample(gsamAnisotropicClamp, pin.TexC)
+	                       * gDiffuseMap.Sample(gsamAnisotropicClamp, pin.TexC) * gDiffuseAlbedo;
 
 	// Interpolating normal can unnormalize it, so renormalize it.
 	pin.NormalW = normalize(pin.NormalW);

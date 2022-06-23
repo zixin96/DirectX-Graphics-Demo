@@ -99,7 +99,7 @@ void InitDirect3DApp::Draw(const GameTimer& gt)
 
 	//--------imgui---------------
 	ImGui::Render();
-	mCommandList->SetDescriptorHeaps(1, mSrvHeap.GetAddressOf());
+	mCommandList->SetDescriptorHeaps(1, mSrvImGuiHeap.GetAddressOf());
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), mCommandList.Get());
 	//--------imgui---------------
 

@@ -1,166 +1,20 @@
-//***************************************************************************************
-// CrateApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
-//***************************************************************************************
-
-#include "../../Common/d3dApp.h"
-#include "../../Common/MathHelper.h"
-#include "../../Common/UploadBuffer.h"
-#include "../../Common/GeometryGenerator.h"
-#include "FrameResource.h"
-
-using Microsoft::WRL::ComPtr;
-using namespace DirectX;
-using namespace DirectX::PackedVector;
+#include "MultiTexturingApp.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
 
-const int gNumFrameResources = 3;
-
-// Lightweight structure stores parameters to draw a shape.  This will
-// vary from app-to-app.
-struct RenderItem
-{
-	RenderItem() = default;
-
-	// World matrix of the shape that describes the object's local space
-	// relative to the world space, which defines the position, orientation,
-	// and scale of the object in the world.
-	XMFLOAT4X4 World = MathHelper::Identity4x4();
-
-	XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
-
-	// Dirty flag indicating the object data has changed and we need to update the constant buffer.
-	// Because we have an object cbuffer for each FrameResource, we have to apply the
-	// update to each FrameResource.  Thus, when we modify obect data we should set 
-	// NumFramesDirty = gNumFrameResources so that each frame resource gets the update.
-	int NumFramesDirty = gNumFrameResources;
-
-	// Index into GPU constant buffer corresponding to the ObjectCB for this render item.
-	UINT ObjCBIndex = -1;
-
-	Material*     Mat = nullptr;
-	MeshGeometry* Geo = nullptr;
-
-	// Primitive topology.
-	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-	// DrawIndexedInstanced parameters.
-	UINT IndexCount         = 0;
-	UINT StartIndexLocation = 0;
-	int  BaseVertexLocation = 0;
-};
-
-class CrateApp : public D3DApp
-{
-	public:
-		CrateApp(HINSTANCE hInstance);
-		CrateApp(const CrateApp& rhs)            = delete;
-		CrateApp& operator=(const CrateApp& rhs) = delete;
-		~CrateApp() override;
-
-		bool Initialize() override;
-
-	private:
-		void OnResize() override;
-		void Update(const GameTimer& gt) override;
-		void Draw(const GameTimer& gt) override;
-
-		void OnMouseDown(WPARAM btnState, int x, int y) override;
-		void OnMouseUp(WPARAM btnState, int x, int y) override;
-		void OnMouseMove(WPARAM btnState, int x, int y) override;
-
-		void UpdateCamera(const GameTimer& gt);
-		void UpdateObjectCBs(const GameTimer& gt);
-		void UpdateMaterialCBs(const GameTimer& gt);
-		void UpdateMainPassCB(const GameTimer& gt);
-
-		void BuildTextures();
-		void BuildRootSignature();
-		void BuildDescriptorHeaps();
-		void BuildShadersAndInputLayout();
-		void BuildShapeGeometry();
-		void BuildPSOs();
-		void BuildFrameResources();
-		void BuildMaterials();
-		void BuildRenderItems();
-		void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
-
-		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 8> GetStaticSamplers();
-
-	private:
-		std::vector<std::unique_ptr<FrameResource>> mFrameResources;
-		FrameResource*                              mCurrFrameResource      = nullptr;
-		int                                         mCurrFrameResourceIndex = 0;
-
-
-		ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-
-		ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
-
-		std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
-		std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
-		std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
-		std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
-
-		std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
-
-		ComPtr<ID3D12PipelineState> mOpaquePSO = nullptr;
-
-		// List of all the render items.
-		std::vector<std::unique_ptr<RenderItem>> mAllRitems;
-
-		// Render items divided by PSO.
-		std::vector<RenderItem*> mOpaqueRitems;
-
-		PassConstants mMainPassCB;
-
-		XMFLOAT3   mEyePos = {0.0f, 0.0f, 0.0f};
-		XMFLOAT4X4 mView   = MathHelper::Identity4x4();
-		XMFLOAT4X4 mProj   = MathHelper::Identity4x4();
-
-		float mTheta  = 1.3f * XM_PI;
-		float mPhi    = 0.4f * XM_PI;
-		float mRadius = 2.5f;
-
-		POINT mLastMousePos;
-};
-
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
-                   PSTR      cmdLine, int         showCmd)
-{
-	// Enable run-time memory check for debug builds.
-	#if defined(DEBUG) | defined(_DEBUG)
-	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	#endif
-
-	try
-	{
-		CrateApp theApp(hInstance);
-		if (!theApp.Initialize())
-			return 0;
-
-		return theApp.Run();
-	}
-	catch (DxException& e)
-	{
-		MessageBox(nullptr, e.ToString().c_str(), L"HR Failed", MB_OK);
-		return 0;
-	}
-}
-
-CrateApp::CrateApp(HINSTANCE hInstance)
+MultiTexturingApp::MultiTexturingApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
 {
 }
 
-CrateApp::~CrateApp()
+MultiTexturingApp::~MultiTexturingApp()
 {
 	if (md3dDevice != nullptr)
 		FlushCommandQueue();
 }
 
-bool CrateApp::Initialize()
+bool MultiTexturingApp::Initialize()
 {
 	if (!D3DApp::Initialize())
 		return false;
@@ -189,7 +43,7 @@ bool CrateApp::Initialize()
 	return true;
 }
 
-void CrateApp::OnResize()
+void MultiTexturingApp::OnResize()
 {
 	D3DApp::OnResize();
 
@@ -198,7 +52,7 @@ void CrateApp::OnResize()
 	XMStoreFloat4x4(&mProj, P);
 }
 
-void CrateApp::Update(const GameTimer& gt)
+void MultiTexturingApp::Update(const GameTimer& gt)
 {
 	UpdateCamera(gt);
 
@@ -216,12 +70,13 @@ void CrateApp::Update(const GameTimer& gt)
 		CloseHandle(eventHandle);
 	}
 
+	AnimateMaterials(gt);
 	UpdateObjectCBs(gt);
 	UpdateMaterialCBs(gt);
 	UpdateMainPassCB(gt);
 }
 
-void CrateApp::Draw(const GameTimer& gt)
+void MultiTexturingApp::Draw(const GameTimer& gt)
 {
 	auto cmdListAlloc = mCurrFrameResource->CmdListAlloc;
 
@@ -270,7 +125,7 @@ void CrateApp::Draw(const GameTimer& gt)
 
 	// Swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
@@ -281,7 +136,7 @@ void CrateApp::Draw(const GameTimer& gt)
 	mCommandQueue->Signal(mFence.Get(), mCurrentFence);
 }
 
-void CrateApp::OnMouseDown(WPARAM btnState, int x, int y)
+void MultiTexturingApp::OnMouseDown(WPARAM btnState, int x, int y)
 {
 	mLastMousePos.x = x;
 	mLastMousePos.y = y;
@@ -289,12 +144,12 @@ void CrateApp::OnMouseDown(WPARAM btnState, int x, int y)
 	SetCapture(mhMainWnd);
 }
 
-void CrateApp::OnMouseUp(WPARAM btnState, int x, int y)
+void MultiTexturingApp::OnMouseUp(WPARAM btnState, int x, int y)
 {
 	ReleaseCapture();
 }
 
-void CrateApp::OnMouseMove(WPARAM btnState, int x, int y)
+void MultiTexturingApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
 	if ((btnState & MK_LBUTTON) != 0)
 	{
@@ -326,7 +181,7 @@ void CrateApp::OnMouseMove(WPARAM btnState, int x, int y)
 	mLastMousePos.y = y;
 }
 
-void CrateApp::UpdateCamera(const GameTimer& gt)
+void MultiTexturingApp::UpdateCamera(const GameTimer& gt)
 {
 	// Convert Spherical to Cartesian coordinates.
 	mEyePos.x = mRadius * sinf(mPhi) * cosf(mTheta);
@@ -342,7 +197,7 @@ void CrateApp::UpdateCamera(const GameTimer& gt)
 	XMStoreFloat4x4(&mView, view);
 }
 
-void CrateApp::UpdateObjectCBs(const GameTimer& gt)
+void MultiTexturingApp::UpdateObjectCBs(const GameTimer& gt)
 {
 	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 	for (auto& e : mAllRitems)
@@ -366,7 +221,7 @@ void CrateApp::UpdateObjectCBs(const GameTimer& gt)
 	}
 }
 
-void CrateApp::UpdateMaterialCBs(const GameTimer& gt)
+void MultiTexturingApp::UpdateMaterialCBs(const GameTimer& gt)
 {
 	auto currMaterialCB = mCurrFrameResource->MaterialCB.get();
 	for (auto& e : mMaterials)
@@ -376,10 +231,15 @@ void CrateApp::UpdateMaterialCBs(const GameTimer& gt)
 		Material* mat = e.second.get();
 		if (mat->NumFramesDirty > 0)
 		{
+			XMMATRIX matTransform = XMLoadFloat4x4(&mat->MatTransform);
+
 			MaterialConstants matConstants;
 			matConstants.DiffuseAlbedo = mat->DiffuseAlbedo;
 			matConstants.FresnelR0     = mat->FresnelR0;
 			matConstants.Roughness     = mat->Roughness;
+			//!? remember to transpose the matrix before passing into the shader
+			XMStoreFloat4x4(&matConstants.MatTransform, XMMatrixTranspose(matTransform));
+
 			currMaterialCB->CopyData(mat->MatCBIndex, matConstants);
 
 			// Next FrameResource need to be updated too.
@@ -388,7 +248,7 @@ void CrateApp::UpdateMaterialCBs(const GameTimer& gt)
 	}
 }
 
-void CrateApp::UpdateMainPassCB(const GameTimer& gt)
+void MultiTexturingApp::UpdateMainPassCB(const GameTimer& gt)
 {
 	XMMATRIX view = XMLoadFloat4x4(&mView);
 	XMMATRIX proj = XMLoadFloat4x4(&mProj);
@@ -423,28 +283,45 @@ void CrateApp::UpdateMainPassCB(const GameTimer& gt)
 	currPassCB->CopyData(0, mMainPassCB);
 }
 
-void CrateApp::BuildTextures()
+void MultiTexturingApp::AnimateMaterials(const GameTimer& gt)
 {
-	auto woodCrateTex      = std::make_unique<Texture>();
-	woodCrateTex->Name     = "woodCrateTex";
-	woodCrateTex->Filename = L"../../Textures/WoodCrate02.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
-		              md3dDevice.Get(),               // Pointer to the D3D device to create the texture resources
-		              mCommandList.Get(),             // Command list to submit GPU commands (e.g., copying texture data from an upload heap to a default heap)
-		              woodCrateTex->Filename.c_str(), // Filename of the image to load
-		              woodCrateTex->Resource,         // Returns the texture resource with the loaded image data
-		              woodCrateTex->UploadHeap));     // Returns the texture resource that was used as an upload heap to copy the image data into the default heap texture resource.This resource cannot be destroyed until the GPU finished the copy command
+	//!? rotate the fireball texture as a function of time 
+	auto fireball = mMaterials["fireballCrate"].get();
+	//!? note: we want to rotate the texture around the middle point. Thus, move the pivot to the center, rotate, and move it back
+	XMStoreFloat4x4(&fireball->MatTransform, XMMatrixTranslation(-0.5f, -0.5f, 0.0f) * XMMatrixRotationZ(gt.TotalTime()) * XMMatrixTranslation(0.5f, 0.5f, 0.0f));
 
-	mTextures[woodCrateTex->Name] = std::move(woodCrateTex);
+	fireball->NumFramesDirty = gNumFrameResources;
 }
 
-void CrateApp::BuildRootSignature()
+void MultiTexturingApp::BuildTextures()
+{
+	auto flare      = std::make_unique<Texture>();
+	flare->Name     = "flare";
+	flare->Filename = L"../../Textures/flare.dds";
+	flare->Resource = d3dUtil::CreateTexture(md3dDevice.Get(),
+	                                         mCommandList.Get(),
+	                                         flare->Filename.c_str(),
+	                                         flare->UploadHeap);
+
+	auto flareAlpha      = std::make_unique<Texture>();
+	flareAlpha->Name     = "flareAlpha";
+	flareAlpha->Filename = L"../../Textures/flarealpha.dds";
+	flareAlpha->Resource = d3dUtil::CreateTexture(md3dDevice.Get(),
+	                                              mCommandList.Get(),
+	                                              flareAlpha->Filename.c_str(),
+	                                              flareAlpha->UploadHeap);
+
+	mTextures[flare->Name]      = std::move(flare);
+	mTextures[flareAlpha->Name] = std::move(flareAlpha);
+}
+
+void MultiTexturingApp::BuildRootSignature()
 {
 	// Root parameter can be a table, root descriptor or root constants.
 	CD3DX12_ROOT_PARAMETER slotRootParameter[4];
 
 	CD3DX12_DESCRIPTOR_RANGE texTable;
-	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
+	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0); // t0, t1
 
 	// Perfomance TIP: Order from most frequent to least frequent.
 	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
@@ -482,13 +359,13 @@ void CrateApp::BuildRootSignature()
 		              IID_PPV_ARGS(mRootSignature.GetAddressOf())));
 }
 
-void CrateApp::BuildDescriptorHeaps()
+void MultiTexturingApp::BuildDescriptorHeaps()
 {
 	//
 	// Create the SRV heap.
 	//
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors             = 1;
+	srvHeapDesc.NumDescriptors             = 2;
 	srvHeapDesc.Type                       = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags                      = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mSrvDescriptorHeap)));
@@ -498,21 +375,32 @@ void CrateApp::BuildDescriptorHeaps()
 	//
 	CD3DX12_CPU_DESCRIPTOR_HANDLE srvHeapHandle(mSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
-	auto woodCrateTex = mTextures["woodCrateTex"]->Resource;
+	auto flareTex = mTextures["flare"]->Resource;
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-	srvDesc.Format                          = woodCrateTex->GetDesc().Format;
+	srvDesc.Format                          = flareTex->GetDesc().Format;
 	srvDesc.ViewDimension                   = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING; // do not reorder rgba components 
 	// filling in D3D12_TEX2D_SRV for 2D textures:
-	srvDesc.Texture2D.MostDetailedMip     = 0;                                 // index of the most detailed mipmap level to view
-	srvDesc.Texture2D.MipLevels           = woodCrateTex->GetDesc().MipLevels; // # of mipmap levels to view
-	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;                              // all the mipmap levels can be accessed: [0, MipCount - 1] can be accessed
+	srvDesc.Texture2D.MostDetailedMip     = 0;                             // index of the most detailed mipmap level to view
+	srvDesc.Texture2D.MipLevels           = flareTex->GetDesc().MipLevels; // # of mipmap levels to view
+	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;                          // all the mipmap levels can be accessed: [0, MipCount - 1] can be accessed
 
-	md3dDevice->CreateShaderResourceView(woodCrateTex.Get(), &srvDesc, srvHeapHandle);
+	md3dDevice->CreateShaderResourceView(flareTex.Get(), &srvDesc, srvHeapHandle);
+
+	// --------------------------------------------------------------
+
+	srvHeapHandle.Offset(1, mCbvSrvUavDescriptorSize);
+
+	// --------------------------------------------------------------
+
+	auto flareAlphaTex          = mTextures["flareAlpha"]->Resource;
+	srvDesc.Format              = flareAlphaTex->GetDesc().Format;
+	srvDesc.Texture2D.MipLevels = flareAlphaTex->GetDesc().MipLevels;
+	md3dDevice->CreateShaderResourceView(flareAlphaTex.Get(), &srvDesc, srvHeapHandle);
 }
 
-void CrateApp::BuildShadersAndInputLayout()
+void MultiTexturingApp::BuildShadersAndInputLayout()
 {
 	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_0");
 	mShaders["opaquePS"]   = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "PS", "ps_5_0");
@@ -525,7 +413,7 @@ void CrateApp::BuildShadersAndInputLayout()
 	};
 }
 
-void CrateApp::BuildShapeGeometry()
+void MultiTexturingApp::BuildShapeGeometry()
 {
 	GeometryGenerator           geoGen;
 	GeometryGenerator::MeshData box = geoGen.CreateBox(1.0f, 1.0f, 1.0f, 3);
@@ -575,7 +463,7 @@ void CrateApp::BuildShapeGeometry()
 	mGeometries[geo->Name] = std::move(geo);
 }
 
-void CrateApp::BuildPSOs()
+void MultiTexturingApp::BuildPSOs()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 
@@ -602,13 +490,13 @@ void CrateApp::BuildPSOs()
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	opaquePsoDesc.NumRenderTargets      = 1;
 	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.SampleDesc.Count      = 1;
+	opaquePsoDesc.SampleDesc.Quality    = 0;
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mOpaquePSO)));
 }
 
-void CrateApp::BuildFrameResources()
+void MultiTexturingApp::BuildFrameResources()
 {
 	for (int i = 0; i < gNumFrameResources; ++i)
 	{
@@ -619,26 +507,24 @@ void CrateApp::BuildFrameResources()
 	}
 }
 
-void CrateApp::BuildMaterials()
+void MultiTexturingApp::BuildMaterials()
 {
-	auto woodCrate                 = std::make_unique<Material>();
-	woodCrate->Name                = "woodCrate";
-	woodCrate->MatCBIndex          = 0;
-	woodCrate->DiffuseSrvHeapIndex = 0;
-	woodCrate->DiffuseAlbedo       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
-	woodCrate->FresnelR0           = XMFLOAT3(0.05f, 0.05f, 0.05f);
-	woodCrate->Roughness           = 0.2f;
+	auto fireballCrate                 = std::make_unique<Material>();
+	fireballCrate->Name                = "fireballCrate";
+	fireballCrate->MatCBIndex          = 0;
+	fireballCrate->DiffuseSrvHeapIndex = 0;
+	fireballCrate->DiffuseAlbedo       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	fireballCrate->FresnelR0           = XMFLOAT3(0.05f, 0.05f, 0.05f);
+	fireballCrate->Roughness           = 0.2f;
 
-	mMaterials["woodCrate"] = std::move(woodCrate);
+	mMaterials["fireballCrate"] = std::move(fireballCrate);
 }
 
-void CrateApp::BuildRenderItems()
+void MultiTexturingApp::BuildRenderItems()
 {
-	auto boxRitem = std::make_unique<RenderItem>();
-	//!? look here: 
-	XMStoreFloat4x4(&boxRitem->TexTransform, XMMatrixScaling(3.0f, 3.0f, 1.0f) * XMMatrixTranslation(-0.5f, -0.5f, 0.f));
+	auto boxRitem                = std::make_unique<RenderItem>();
 	boxRitem->ObjCBIndex         = 0;
-	boxRitem->Mat                = mMaterials["woodCrate"].get();
+	boxRitem->Mat                = mMaterials["fireballCrate"].get();
 	boxRitem->Geo                = mGeometries["boxGeo"].get();
 	boxRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	boxRitem->IndexCount         = boxRitem->Geo->DrawArgs["box"].IndexCount;
@@ -651,7 +537,7 @@ void CrateApp::BuildRenderItems()
 		mOpaqueRitems.push_back(e.get());
 }
 
-void CrateApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
+void MultiTexturingApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 {
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 	UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
@@ -682,7 +568,7 @@ void CrateApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::ve
 	}
 }
 
-std::array<const CD3DX12_STATIC_SAMPLER_DESC, 8> CrateApp::GetStaticSamplers()
+std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> MultiTexturingApp::GetStaticSamplers()
 {
 	// Applications usually only need a handful of samplers.  So just define them all up front
 	// and keep them available as part of the root signature.  
@@ -733,27 +619,9 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 8> CrateApp::GetStaticSamplers()
 	                                                   0.0f,                             // mipLODBias
 	                                                   8);                               // maxAnisotropy
 
-	const CD3DX12_STATIC_SAMPLER_DESC anisotropicBorder(
-	                                                    6,                                 // shaderRegister
-	                                                    D3D12_FILTER_ANISOTROPIC,          // filter
-	                                                    D3D12_TEXTURE_ADDRESS_MODE_BORDER, // addressU
-	                                                    D3D12_TEXTURE_ADDRESS_MODE_BORDER, // addressV
-	                                                    D3D12_TEXTURE_ADDRESS_MODE_BORDER, // addressW
-	                                                    0.0f,                              // mipLODBias
-	                                                    8);                                // maxAnisotropy
-
-	const CD3DX12_STATIC_SAMPLER_DESC anisotropicMirror(
-	                                                    7,                                 // shaderRegister
-	                                                    D3D12_FILTER_ANISOTROPIC,          // filter
-	                                                    D3D12_TEXTURE_ADDRESS_MODE_MIRROR, // addressU
-	                                                    D3D12_TEXTURE_ADDRESS_MODE_MIRROR, // addressV
-	                                                    D3D12_TEXTURE_ADDRESS_MODE_MIRROR, // addressW
-	                                                    0.0f,                              // mipLODBias
-	                                                    8);                                // maxAnisotropy
-
 	return {
 		pointWrap, pointClamp,
 		linearWrap, linearClamp,
-		anisotropicWrap, anisotropicClamp, anisotropicBorder, anisotropicMirror
+		anisotropicWrap, anisotropicClamp
 	};
 }

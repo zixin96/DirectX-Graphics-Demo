@@ -35,6 +35,7 @@ SamplerState gsamAnisotropicMirror : register(s7);
 cbuffer cbPerObject : register(b0)
 {
 float4x4 gWorld;
+float4x4 gTexTransform;
 };
 
 // Constant data that varies per material.
@@ -100,14 +101,17 @@ VertexOut VS(VertexIn vin)
 	vout.PosH = mul(posW, gViewProj);
 
 	// Output vertex attributes for interpolation across triangle.
-	vout.TexC = vin.TexC;
+	float4 texC = mul(float4(vin.TexC, 0.0f, 1.0f), //! to transform the 2D texture coordinates by a 4x4 matrix, we augment it to a 4D vector
+	                  gTexTransform);
+	vout.TexC = texC.xy;
 
 	return vout;
 }
 
 float4 PS(VertexOut pin) : SV_Target
 {
-	float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) * gDiffuseAlbedo;
+	//!? Change sampler to use different filtering/wrapping mode
+    float4 diffuseAlbedo = gDiffuseMap.Sample(gsamAnisotropicWrap, pin.TexC) * gDiffuseAlbedo;
 
 	// Interpolating normal can unnormalize it, so renormalize it.
 	pin.NormalW = normalize(pin.NormalW);

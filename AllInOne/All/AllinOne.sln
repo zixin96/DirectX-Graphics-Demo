@@ -117,6 +117,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TexColumns", "..\..\Chapter
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Crate", "..\..\Chapter 9 Texturing\Crate\Crate.vcxproj", "{99BAD649-F897-4374-B69D-EEB3F9CAE027}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Multitexturing_Ex3", "..\..\Chapter 9 Texturing\Multitexturing_Ex3\Multitexturing_Ex3.vcxproj", "{E5D49BD5-86C4-488D-B373-19E9964EB9C0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -445,6 +447,14 @@ Global
 		{99BAD649-F897-4374-B69D-EEB3F9CAE027}.Release|x64.Build.0 = Release|x64
 		{99BAD649-F897-4374-B69D-EEB3F9CAE027}.Release|x86.ActiveCfg = Release|Win32
 		{99BAD649-F897-4374-B69D-EEB3F9CAE027}.Release|x86.Build.0 = Release|Win32
+		{E5D49BD5-86C4-488D-B373-19E9964EB9C0}.Debug|x64.ActiveCfg = Debug|x64
+		{E5D49BD5-86C4-488D-B373-19E9964EB9C0}.Debug|x64.Build.0 = Debug|x64
+		{E5D49BD5-86C4-488D-B373-19E9964EB9C0}.Debug|x86.ActiveCfg = Debug|Win32
+		{E5D49BD5-86C4-488D-B373-19E9964EB9C0}.Debug|x86.Build.0 = Debug|Win32
+		{E5D49BD5-86C4-488D-B373-19E9964EB9C0}.Release|x64.ActiveCfg = Release|x64
+		{E5D49BD5-86C4-488D-B373-19E9964EB9C0}.Release|x64.Build.0 = Release|x64
+		{E5D49BD5-86C4-488D-B373-19E9964EB9C0}.Release|x86.ActiveCfg = Release|Win32
+		{E5D49BD5-86C4-488D-B373-19E9964EB9C0}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -490,6 +500,7 @@ Global
 		{0EB5ECAA-3BCB-4B58-9FA9-88176C0E1CFF} = {8957D891-DD93-426A-8918-A7AC290D75FC}
 		{23D47CEE-6F04-46F2-B680-AF36FB5A386A} = {8957D891-DD93-426A-8918-A7AC290D75FC}
 		{99BAD649-F897-4374-B69D-EEB3F9CAE027} = {8957D891-DD93-426A-8918-A7AC290D75FC}
+		{E5D49BD5-86C4-488D-B373-19E9964EB9C0} = {8957D891-DD93-426A-8918-A7AC290D75FC}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {66D88F0D-E298-4B62-8A42-8B68B71961CF}
