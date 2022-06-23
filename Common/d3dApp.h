@@ -128,7 +128,7 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Resource>       mDepthStencilBuffer;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvHeap;
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvImGuiHeap;
 	UINT                                         mRtvDescriptorSize       = 0;
 	UINT                                         mDsvDescriptorSize       = 0;
 	UINT                                         mCbvSrvUavDescriptorSize = 0;

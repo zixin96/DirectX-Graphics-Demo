@@ -1,167 +1,7 @@
-//***************************************************************************************
-// LitWavesApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
-//
-// Use arrow keys to move light positions.
-//
-//***************************************************************************************
-
-#include "../../Common/d3dApp.h"
-#include "../../Common/MathHelper.h"
-#include "../../Common/UploadBuffer.h"
-#include "../../Common/GeometryGenerator.h"
-#include "FrameResource.h"
-#include "Waves.h"
-
-using Microsoft::WRL::ComPtr;
-using namespace DirectX;
-using namespace DirectX::PackedVector;
+#include "LitWavesApp.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
-
-const int gNumFrameResources = 3;
-
-// Lightweight structure stores parameters to draw a shape.  This will
-// vary from app-to-app.
-struct RenderItem
-{
-	RenderItem() = default;
-
-	// World matrix of the shape that describes the object's local space
-	// relative to the world space, which defines the position, orientation,
-	// and scale of the object in the world.
-	XMFLOAT4X4 World = MathHelper::Identity4x4();
-
-	// Dirty flag indicating the object data has changed and we need to update the constant buffer.
-	// Because we have an object cbuffer for each FrameResource, we have to apply the
-	// update to each FrameResource.  Thus, when we modify obect data we should set 
-	// NumFramesDirty = gNumFrameResources so that each frame resource gets the update.
-	int NumFramesDirty = gNumFrameResources;
-
-	// Index into GPU constant buffer corresponding to the ObjectCB for this render item.
-	UINT ObjCBIndex = -1;
-
-	Material*     Mat = nullptr;
-	MeshGeometry* Geo = nullptr;
-
-	// Primitive topology.
-	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-	// DrawIndexedInstanced parameters.
-	UINT IndexCount         = 0;
-	UINT StartIndexLocation = 0;
-	int  BaseVertexLocation = 0;
-};
-
-enum class RenderLayer : int
-{
-	Opaque = 0,
-	Count
-};
-
-class LitWavesApp : public D3DApp
-{
-	public:
-		LitWavesApp(HINSTANCE hInstance);
-		LitWavesApp(const LitWavesApp& rhs)            = delete;
-		LitWavesApp& operator=(const LitWavesApp& rhs) = delete;
-		~LitWavesApp() override;
-
-		bool Initialize() override;
-
-	private:
-		void OnResize() override;
-		void Update(const GameTimer& gt) override;
-		void Draw(const GameTimer& gt) override;
-
-		void OnMouseDown(WPARAM btnState, int x, int y) override;
-		void OnMouseUp(WPARAM btnState, int x, int y) override;
-		void OnMouseMove(WPARAM btnState, int x, int y) override;
-
-		void OnKeyboardInput(const GameTimer& gt);
-		void UpdateCamera(const GameTimer& gt);
-		void UpdateObjectCBs(const GameTimer& gt);
-		void UpdateMaterialCBs(const GameTimer& gt);
-		void UpdateMainPassCB(const GameTimer& gt);
-		void UpdateWaves(const GameTimer& gt);
-
-		void BuildRootSignature();
-		void BuildShadersAndInputLayout();
-		void BuildLandGeometry();
-		void BuildWavesGeometryBuffers();
-		void BuildPSOs();
-		void BuildFrameResources();
-		void BuildMaterials();
-		void BuildRenderItems();
-		void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
-
-		float    GetHillsHeight(float x, float z) const;
-		XMFLOAT3 GetHillsNormal(float x, float z) const;
-
-	private:
-		std::vector<std::unique_ptr<FrameResource>> mFrameResources;
-		FrameResource*                              mCurrFrameResource      = nullptr;
-		int                                         mCurrFrameResourceIndex = 0;
-
-		ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-
-		std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
-		std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials; // For this chapter, we allow material changes at the draw call frequency. To do this, we define the properties of each unique material and put them in a table. 
-		std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
-		std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
-
-		std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
-
-		RenderItem* mWavesRitem = nullptr;
-
-		// List of all the render items.
-		std::vector<std::unique_ptr<RenderItem>> mAllRitems;
-
-		// Render items divided by PSO.
-		std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
-
-		std::unique_ptr<Waves> mWaves;
-
-		PassConstants mMainPassCB;
-
-		XMFLOAT3   mEyePos = {0.0f, 0.0f, 0.0f};
-		XMFLOAT4X4 mView   = MathHelper::Identity4x4();
-		XMFLOAT4X4 mProj   = MathHelper::Identity4x4();
-
-		float mTheta  = 1.5f * XM_PI;
-		float mPhi    = XM_PIDIV2 - 0.1f;
-		float mRadius = 50.0f;
-
-		// track the sun position in spherical coordinates
-		// assume the radius = 1 (it doesn't matter because we assume sun is infinitely far away)
-		float mSunTheta = 1.25f * XM_PI;
-		float mSunPhi   = XM_PIDIV4;
-
-		POINT mLastMousePos;
-};
-
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
-                   PSTR      cmdLine, int         showCmd)
-{
-	// Enable run-time memory check for debug builds.
-	#if defined(DEBUG) | defined(_DEBUG)
-	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	#endif
-
-	try
-	{
-		LitWavesApp theApp(hInstance);
-		if (!theApp.Initialize())
-			return 0;
-
-		return theApp.Run();
-	}
-	catch (DxException& e)
-	{
-		MessageBox(nullptr, e.ToString().c_str(), L"HR Failed", MB_OK);
-		return 0;
-	}
-}
 
 LitWavesApp::LitWavesApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
@@ -188,6 +28,7 @@ bool LitWavesApp::Initialize()
 	BuildShadersAndInputLayout();
 	BuildLandGeometry();
 	BuildWavesGeometryBuffers();
+	BuildShapeGeometry();
 	BuildMaterials();
 	BuildRenderItems();
 	BuildFrameResources();
@@ -217,6 +58,7 @@ void LitWavesApp::Update(const GameTimer& gt)
 {
 	OnKeyboardInput(gt);
 	UpdateCamera(gt);
+	UpdateLightSource();
 
 	// Cycle through the circular frame resource array.
 	mCurrFrameResourceIndex = (mCurrFrameResourceIndex + 1) % gNumFrameResources;
@@ -255,7 +97,8 @@ void LitWavesApp::Draw(const GameTimer& gt)
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	                                                                       D3D12_RESOURCE_STATE_PRESENT,
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	// Clear the back buffer and depth buffer.
 	mCommandList->ClearRenderTargetView(CurrentBackBufferView(), Colors::LightSteelBlue, 0, nullptr);
@@ -273,7 +116,8 @@ void LitWavesApp::Draw(const GameTimer& gt)
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET,
+	                                                                       D3D12_RESOURCE_STATE_PRESENT));
 
 	// Done recording commands.
 	ThrowIfFailed(mCommandList->Close());
@@ -284,7 +128,7 @@ void LitWavesApp::Draw(const GameTimer& gt)
 
 	// Swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
@@ -333,7 +177,7 @@ void LitWavesApp::OnMouseMove(WPARAM btnState, int x, int y)
 		mRadius += dx - dy;
 
 		// Restrict the radius.
-		mRadius = MathHelper::Clamp(mRadius, 5.0f, 150.0f);
+		mRadius = MathHelper::Clamp(mRadius, 5.0f, 350.0f);
 	}
 
 	mLastMousePos.x = x;
@@ -347,16 +191,28 @@ void LitWavesApp::OnKeyboardInput(const GameTimer& gt)
 	// the user can rotate the sun position using left, right ,up, and down arrow keys
 
 	if (GetAsyncKeyState(VK_LEFT) & 0x8000)
+	{
 		mSunTheta -= 1.0f * dt;
+		mLightSourceRitem->NumFramesDirty = gNumFrameResources;
+	}
 
 	if (GetAsyncKeyState(VK_RIGHT) & 0x8000)
+	{
 		mSunTheta += 1.0f * dt;
+		mLightSourceRitem->NumFramesDirty = gNumFrameResources;
+	}
 
 	if (GetAsyncKeyState(VK_UP) & 0x8000)
+	{
 		mSunPhi -= 1.0f * dt;
+		mLightSourceRitem->NumFramesDirty = gNumFrameResources;
+	}
 
 	if (GetAsyncKeyState(VK_DOWN) & 0x8000)
+	{
 		mSunPhi += 1.0f * dt;
+		mLightSourceRitem->NumFramesDirty = gNumFrameResources;
+	}
 
 	mSunPhi = MathHelper::Clamp(mSunPhi, 0.1f, XM_PIDIV2);
 }
@@ -375,6 +231,13 @@ void LitWavesApp::UpdateCamera(const GameTimer& gt)
 
 	XMMATRIX view = XMMatrixLookAtLH(pos, target, up);
 	XMStoreFloat4x4(&mView, view);
+}
+
+void LitWavesApp::UpdateLightSource()
+{
+	XMVECTOR lightPos = MathHelper::SphericalToCartesian(100.0f, mSunTheta, mSunPhi);
+	XMVectorSetW(lightPos, 1.f);
+	XMStoreFloat4x4(&mLightSourceRitem->World, XMMatrixScaling(10.f, 10.f, 10.f) * XMMatrixTranslationFromVector(lightPos));
 }
 
 void LitWavesApp::UpdateObjectCBs(const GameTimer& gt)
@@ -450,7 +313,8 @@ void LitWavesApp::UpdateMainPassCB(const GameTimer& gt)
 	// we only have one directional light served as the sun
 
 	// the direction of light is the negative of the direction towards the sun
-	XMVECTOR lightDir = -MathHelper::SphericalToCartesian(1.0f, mSunTheta, mSunPhi);
+	XMVECTOR lightDir = -MathHelper::SphericalToCartesian(10.0f, mSunTheta, mSunPhi);
+	lightDir          = XMVector3Normalize(lightDir);
 
 	XMStoreFloat3(&mMainPassCB.Lights[0].Direction, lightDir);
 	mMainPassCB.Lights[0].Strength = {1.0f, 1.0f, 0.9f};
@@ -649,6 +513,70 @@ void LitWavesApp::BuildWavesGeometryBuffers()
 	mGeometries["waterGeo"] = std::move(geo);
 }
 
+void LitWavesApp::BuildShapeGeometry()
+{
+	GeometryGenerator           geoGen;
+	GeometryGenerator::MeshData sphere = geoGen.CreateSphere(0.5f, 20, 20);
+
+	SubmeshGeometry sphereSubmesh;
+	sphereSubmesh.IndexCount         = (UINT)sphere.Indices32.size();
+	sphereSubmesh.StartIndexLocation = 0;
+	sphereSubmesh.BaseVertexLocation = 0;
+
+	//
+	// Extract the vertex elements we are interested in and pack the
+	// vertices of all the meshes into one vertex buffer.
+	//
+
+	auto totalVertexCount =
+			sphere.Vertices.size();
+
+	std::vector<Vertex> vertices(totalVertexCount);
+
+	UINT k = 0;
+	for (size_t i = 0; i < sphere.Vertices.size(); ++i, ++k)
+	{
+		vertices[k].Pos    = sphere.Vertices[i].Position;
+		vertices[k].Normal = sphere.Vertices[i].Normal;
+	}
+
+	std::vector<std::uint16_t> indices;
+	indices.insert(indices.end(), std::begin(sphere.GetIndices16()), std::end(sphere.GetIndices16()));
+
+	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
+	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
+
+	auto geo  = std::make_unique<MeshGeometry>();
+	geo->Name = "shapeGeo";
+
+	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
+	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
+
+	ThrowIfFailed(D3DCreateBlob(ibByteSize, &geo->IndexBufferCPU));
+	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
+
+	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
+	                                                    mCommandList.Get(),
+	                                                    vertices.data(),
+	                                                    vbByteSize,
+	                                                    geo->VertexBufferUploader);
+
+	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
+	                                                   mCommandList.Get(),
+	                                                   indices.data(),
+	                                                   ibByteSize,
+	                                                   geo->IndexBufferUploader);
+
+	geo->VertexByteStride     = sizeof(Vertex);
+	geo->VertexBufferByteSize = vbByteSize;
+	geo->IndexFormat          = DXGI_FORMAT_R16_UINT;
+	geo->IndexBufferByteSize  = ibByteSize;
+
+	geo->DrawArgs["sphere"] = sphereSubmesh;
+
+	mGeometries[geo->Name] = std::move(geo);
+}
+
 void LitWavesApp::BuildPSOs()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
@@ -676,8 +604,8 @@ void LitWavesApp::BuildPSOs()
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	opaquePsoDesc.NumRenderTargets      = 1;
 	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.SampleDesc.Count      = 1;
+	opaquePsoDesc.SampleDesc.Quality    = 0;
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 }
@@ -744,8 +672,22 @@ void LitWavesApp::BuildRenderItems()
 
 	mRitemLayer[(int)RenderLayer::Opaque].push_back(gridRitem.get());
 
+	auto lightSourceRitem                = std::make_unique<RenderItem>();
+	lightSourceRitem->World              = MathHelper::Identity4x4();
+	lightSourceRitem->ObjCBIndex         = 2;
+	lightSourceRitem->Mat                = mMaterials["grass"].get(); // dummy material for light source
+	lightSourceRitem->Geo                = mGeometries["shapeGeo"].get();
+	lightSourceRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	lightSourceRitem->IndexCount         = lightSourceRitem->Geo->DrawArgs["sphere"].IndexCount;
+	lightSourceRitem->StartIndexLocation = lightSourceRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
+	lightSourceRitem->BaseVertexLocation = lightSourceRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
+
+	mLightSourceRitem = lightSourceRitem.get();
+	mRitemLayer[(int)RenderLayer::Opaque].push_back(lightSourceRitem.get());
+
 	mAllRitems.push_back(std::move(wavesRitem));
 	mAllRitems.push_back(std::move(gridRitem));
+	mAllRitems.push_back(std::move(lightSourceRitem));
 }
 
 void LitWavesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)

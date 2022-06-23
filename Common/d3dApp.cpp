@@ -135,9 +135,9 @@ bool D3DApp::Initialize()
 	ImGui_ImplDX12_Init(md3dDevice.Get(),
 	                    gNumFrameResources,
 	                    DXGI_FORMAT_R8G8B8A8_UNORM,
-	                    mSrvHeap.Get(),
-	                    mSrvHeap->GetCPUDescriptorHandleForHeapStart(),
-	                    mSrvHeap->GetGPUDescriptorHandleForHeapStart());
+	                    mSrvImGuiHeap.Get(),
+	                    mSrvImGuiHeap->GetCPUDescriptorHandleForHeapStart(),
+	                    mSrvImGuiHeap->GetGPUDescriptorHandleForHeapStart());
 
 	return true;
 }
@@ -166,7 +166,7 @@ void D3DApp::CreateRtvAndDsvDescriptorHeaps()
 	srcHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srcHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	srcHeapDesc.NodeMask       = 0;
-	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srcHeapDesc, IID_PPV_ARGS(&mSrvHeap)));
+	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srcHeapDesc, IID_PPV_ARGS(&mSrvImGuiHeap)));
 }
 
 void D3DApp::OnResize()
