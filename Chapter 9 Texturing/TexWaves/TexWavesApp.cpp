@@ -16,8 +16,6 @@ using namespace DirectX::PackedVector;
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
 
-const int gNumFrameResources = 3;
-
 // Lightweight structure stores parameters to draw a shape.  This will
 // vary from app-to-app.
 struct RenderItem
@@ -60,86 +58,86 @@ enum class RenderLayer : int
 
 class TexWavesApp : public D3DApp
 {
-	public:
-		TexWavesApp(HINSTANCE hInstance);
-		TexWavesApp(const TexWavesApp& rhs)            = delete;
-		TexWavesApp& operator=(const TexWavesApp& rhs) = delete;
-		~TexWavesApp() override;
+public:
+	TexWavesApp(HINSTANCE hInstance);
+	TexWavesApp(const TexWavesApp& rhs)            = delete;
+	TexWavesApp& operator=(const TexWavesApp& rhs) = delete;
+	~TexWavesApp() override;
 
-		bool Initialize() override;
+	bool Initialize() override;
 
-	private:
-		void OnResize() override;
-		void Update(const GameTimer& gt) override;
-		void Draw(const GameTimer& gt) override;
+private:
+	void OnResize() override;
+	void Update(const GameTimer& gt) override;
+	void Draw(const GameTimer& gt) override;
 
-		void OnMouseDown(WPARAM btnState, int x, int y) override;
-		void OnMouseUp(WPARAM btnState, int x, int y) override;
-		void OnMouseMove(WPARAM btnState, int x, int y) override;
+	void OnMouseDown(WPARAM btnState, int x, int y) override;
+	void OnMouseUp(WPARAM btnState, int x, int y) override;
+	void OnMouseMove(WPARAM btnState, int x, int y) override;
 
-		void UpdateCamera(const GameTimer& gt);
-		void AnimateMaterials(const GameTimer& gt);
-		void UpdateObjectCBs(const GameTimer& gt);
-		void UpdateMaterialCBs(const GameTimer& gt);
-		void UpdateMainPassCB(const GameTimer& gt);
-		void UpdateWaves(const GameTimer& gt);
+	void UpdateCamera(const GameTimer& gt);
+	void AnimateMaterials(const GameTimer& gt);
+	void UpdateObjectCBs(const GameTimer& gt);
+	void UpdateMaterialCBs(const GameTimer& gt);
+	void UpdateMainPassCB(const GameTimer& gt);
+	void UpdateWaves(const GameTimer& gt);
 
-		void LoadTextures();
-		void BuildRootSignature();
-		void BuildDescriptorHeaps();
-		void BuildShadersAndInputLayout();
-		void BuildLandGeometry();
-		void BuildWavesGeometry();
-		void BuildBoxGeometry();
-		void BuildPSOs();
-		void BuildFrameResources();
-		void BuildMaterials();
-		void BuildRenderItems();
-		void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
+	void LoadTextures();
+	void BuildRootSignature();
+	void BuildDescriptorHeaps();
+	void BuildShadersAndInputLayout();
+	void BuildLandGeometry();
+	void BuildWavesGeometry();
+	void BuildBoxGeometry();
+	void BuildPSOs();
+	void BuildFrameResources();
+	void BuildMaterials();
+	void BuildRenderItems();
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
 
-		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 
-		float    GetHillsHeight(float x, float z) const;
-		XMFLOAT3 GetHillsNormal(float x, float z) const;
+	float    GetHillsHeight(float x, float z) const;
+	XMFLOAT3 GetHillsNormal(float x, float z) const;
 
-	private:
-		std::vector<std::unique_ptr<FrameResource>> mFrameResources;
-		FrameResource*                              mCurrFrameResource      = nullptr;
-		int                                         mCurrFrameResourceIndex = 0;
+private:
+	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
+	FrameResource*                              mCurrFrameResource      = nullptr;
+	int                                         mCurrFrameResourceIndex = 0;
 
-		ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
+	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 
-		ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
+	ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
 
-		std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
-		std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
-		std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
-		std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
-		std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
+	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
+	std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
+	std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
+	std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
+	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
 
-		std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 
-		RenderItem* mWavesRitem = nullptr;
+	RenderItem* mWavesRitem = nullptr;
 
-		// List of all the render items.
-		std::vector<std::unique_ptr<RenderItem>> mAllRitems;
+	// List of all the render items.
+	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
 
-		// Render items divided by PSO.
-		std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
+	// Render items divided by PSO.
+	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
 
-		std::unique_ptr<Waves> mWaves;
+	std::unique_ptr<Waves> mWaves;
 
-		PassConstants mMainPassCB;
+	PassConstants mMainPassCB;
 
-		XMFLOAT3   mEyePos = {0.0f, 0.0f, 0.0f};
-		XMFLOAT4X4 mView   = MathHelper::Identity4x4();
-		XMFLOAT4X4 mProj   = MathHelper::Identity4x4();
+	XMFLOAT3   mEyePos = {0.0f, 0.0f, 0.0f};
+	XMFLOAT4X4 mView   = MathHelper::Identity4x4();
+	XMFLOAT4X4 mProj   = MathHelper::Identity4x4();
 
-		float mTheta  = 1.5f * XM_PI;
-		float mPhi    = XM_PIDIV2 - 0.1f;
-		float mRadius = 50.0f;
+	float mTheta  = 1.5f * XM_PI;
+	float mPhi    = XM_PIDIV2 - 0.1f;
+	float mRadius = 50.0f;
 
-		POINT mLastMousePos;
+	POINT mLastMousePos;
 };
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
@@ -266,7 +264,8 @@ void TexWavesApp::Draw(const GameTimer& gt)
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	                                                                       D3D12_RESOURCE_STATE_PRESENT,
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	// Clear the back buffer and depth buffer.
 	mCommandList->ClearRenderTargetView(CurrentBackBufferView(), Colors::LightSteelBlue, 0, nullptr);
@@ -287,7 +286,8 @@ void TexWavesApp::Draw(const GameTimer& gt)
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET,
+	                                                                       D3D12_RESOURCE_STATE_PRESENT));
 
 	// Done recording commands.
 	ThrowIfFailed(mCommandList->Close());
@@ -298,7 +298,7 @@ void TexWavesApp::Draw(const GameTimer& gt)
 
 	// Swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
@@ -521,32 +521,27 @@ void TexWavesApp::LoadTextures()
 	auto grassTex      = std::make_unique<Texture>();
 	grassTex->Name     = "grassTex";
 	grassTex->Filename = L"../../Textures/grasssnow01.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
-		              md3dDevice.Get(),
-		              mCommandList.Get(),
-		              grassTex->Filename.c_str(),
-		              grassTex->Resource,
-		              grassTex->UploadHeap));
+	grassTex->Resource = d3dUtil::CreateTexture(md3dDevice.Get(),
+	                                            mCommandList.Get(),
+	                                            grassTex->Filename.c_str(),
+	                                            grassTex->UploadHeap);
+
 
 	auto waterTex      = std::make_unique<Texture>();
 	waterTex->Name     = "waterTex";
 	waterTex->Filename = L"../../Textures/water1.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
-		              md3dDevice.Get(),
-		              mCommandList.Get(),
-		              waterTex->Filename.c_str(),
-		              waterTex->Resource,
-		              waterTex->UploadHeap));
+	waterTex->Resource = d3dUtil::CreateTexture(md3dDevice.Get(),
+	                                            mCommandList.Get(),
+	                                            waterTex->Filename.c_str(),
+	                                            waterTex->UploadHeap);
 
 	auto fenceTex      = std::make_unique<Texture>();
 	fenceTex->Name     = "fenceTex";
 	fenceTex->Filename = L"../../Textures/WoodCrate01.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
-		              md3dDevice.Get(),
-		              mCommandList.Get(),
-		              fenceTex->Filename.c_str(),
-		              fenceTex->Resource,
-		              fenceTex->UploadHeap));
+	fenceTex->Resource = d3dUtil::CreateTexture(md3dDevice.Get(),
+	                                            mCommandList.Get(),
+	                                            fenceTex->Filename.c_str(),
+	                                            fenceTex->UploadHeap);
 
 	mTextures[grassTex->Name] = std::move(grassTex);
 	mTextures[waterTex->Name] = std::move(waterTex);
@@ -843,8 +838,8 @@ void TexWavesApp::BuildPSOs()
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	opaquePsoDesc.NumRenderTargets      = 1;
 	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.SampleDesc.Count      = 1;
+	opaquePsoDesc.SampleDesc.Quality    = 0;
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 }
