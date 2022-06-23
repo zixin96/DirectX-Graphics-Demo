@@ -16,9 +16,6 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{3f98b838-7ef0-4073-ad99-0be3db81ac64}</UniqueIdentifier>
     </Filter>
-    <Filter Include="imgui">
-      <UniqueIdentifier>{b032edd8-f592-4b6b-8c76-961f50b0abd0}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\Common\d3dApp.cpp">
@@ -44,12 +41,6 @@
     </ClCompile>
     <ClCompile Include="LitColumnsApp.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Common\ImguiManager.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Common\imgui_wrapper.cpp">
-      <Filter>imgui</Filter>
     </ClCompile>
     <ClCompile Include="EntryPoint.cpp">
       <Filter>Source Files</Filter>
@@ -82,9 +73,6 @@
     </ClInclude>
     <ClInclude Include="FrameResource.h">
       <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Common\ImguiManager.h">
-      <Filter>imgui</Filter>
     </ClInclude>
     <ClInclude Include="LitColumnsApp.h">
       <Filter>Header Files</Filter>
