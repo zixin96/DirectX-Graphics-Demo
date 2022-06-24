@@ -92,14 +92,15 @@ void BlendApp::Draw(const GameTimer& gt)
 
 	// A command list can be reset after it has been added to the command queue via ExecuteCommandList.
 	// Reusing the command list reuses memory.
-	ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mPSOs["opaque"].Get()));
+	ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), nullptr)); // Initial PSO is nullptr to avoid PIX "initial PSO not using" warning
 
 	mCommandList->RSSetViewports(1, &mScreenViewport);
 	mCommandList->RSSetScissorRects(1, &mScissorRect);
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	                                                                       D3D12_RESOURCE_STATE_PRESENT,
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	// Clear the back buffer and depth buffer.
 	mCommandList->ClearRenderTargetView(CurrentBackBufferView(), (float*)&mMainPassCB.FogColor, 0, nullptr);
@@ -116,20 +117,30 @@ void BlendApp::Draw(const GameTimer& gt)
 	auto passCB = mCurrFrameResource->PassCB->Resource();
 	mCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
 
-	// draw opaque objects first (using the default PSO)
+
+	mCommandList->SetPipelineState(mPSOs["opaque"].Get());
+	// draw opaque objects. (using the default PSO)
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
 
-	// for alpha tested objects, draw order doesn't matter (using alphaTested PSO)
+	// draw alpha tested objects. (using alphaTested PSO)
 	mCommandList->SetPipelineState(mPSOs["alphaTested"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::AlphaTested]);
 
-	// draw transparent objects back to front (may also need to disable depth writing while doing so) (use transparent PSO)
+	// lastly, draw transparent objects back to front (use transparent PSO)
+	//!? If drawing water first, the pixel color of water texture will be blended with the default color in the back buffer (which we set to the fog color initially)
+	//!? Thus, the Lake will apear to be washed out. 
 	mCommandList->SetPipelineState(mPSOs["transparent"].Get());
+
+	//!? Disable color writes to the red and green color channels
+	const FLOAT disableRGBlendFactor[4] = {0.f, 0.f, 1.f, 0.f};
+	mCommandList->OMSetBlendFactor(disableRGBlendFactor);
+
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Transparent]);
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET,
+	                                                                       D3D12_RESOURCE_STATE_PRESENT));
 
 	// Done recording commands.
 	ThrowIfFailed(mCommandList->Close());
@@ -144,7 +155,6 @@ void BlendApp::Draw(const GameTimer& gt)
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
-
 
 	// Add an instruction to the command queue to set a new fence point. 
 	// Because we are on the GPU timeline, the new fence point won't be 
@@ -379,6 +389,7 @@ void BlendApp::LoadTextures()
 	auto fenceTex      = std::make_unique<Texture>();
 	fenceTex->Name     = "fenceTex";
 	fenceTex->Filename = L"../../Textures/WireFence.dds";
+	//fenceTex->Filename = L"../../Textures/WoodCrate02.dds";
 
 	mTextures[grassTex->Name] = std::move(grassTex);
 	mTextures[waterTex->Name] = std::move(waterTex);
@@ -537,10 +548,16 @@ void BlendApp::BuildLandGeometry()
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                    mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+	                                                    mCommandList.Get(),
+	                                                    vertices.data(),
+	                                                    vbByteSize,
+	                                                    geo->VertexBufferUploader);
 
 	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                   mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+	                                                   mCommandList.Get(),
+	                                                   indices.data(),
+	                                                   ibByteSize,
+	                                                   geo->IndexBufferUploader);
 
 	geo->VertexByteStride     = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
@@ -596,7 +613,10 @@ void BlendApp::BuildWavesGeometry()
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                   mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+	                                                   mCommandList.Get(),
+	                                                   indices.data(),
+	                                                   ibByteSize,
+	                                                   geo->IndexBufferUploader);
 
 	geo->VertexByteStride     = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
@@ -642,10 +662,16 @@ void BlendApp::BuildBoxGeometry()
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                    mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+	                                                    mCommandList.Get(),
+	                                                    vertices.data(),
+	                                                    vbByteSize,
+	                                                    geo->VertexBufferUploader);
 
 	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                   mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+	                                                   mCommandList.Get(),
+	                                                   indices.data(),
+	                                                   ibByteSize,
+	                                                   geo->IndexBufferUploader);
 
 	geo->VertexByteStride     = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
@@ -703,11 +729,35 @@ void BlendApp::BuildPSOs()
 
 	// specify how blending is done for a render target 
 	D3D12_RENDER_TARGET_BLEND_DESC transparencyBlendDesc;
-	transparencyBlendDesc.BlendEnable           = true;  // either use blend or logic op. Cannot use both
-	transparencyBlendDesc.LogicOpEnable         = false; // either use blend or logic op. Cannot use both
-	transparencyBlendDesc.SrcBlend              = D3D12_BLEND_SRC_ALPHA;
-	transparencyBlendDesc.DestBlend             = D3D12_BLEND_INV_SRC_ALPHA;
-	transparencyBlendDesc.BlendOp               = D3D12_BLEND_OP_ADD;
+	transparencyBlendDesc.BlendEnable   = true;  // either use blend or logic op. Cannot use both
+	transparencyBlendDesc.LogicOpEnable = false; // either use blend or logic op. Cannot use both
+
+	//!? Experiment with different blending modes 
+	// transparency:
+	transparencyBlendDesc.SrcBlend  = D3D12_BLEND_SRC_ALPHA;
+	transparencyBlendDesc.DestBlend = D3D12_BLEND_INV_SRC_ALPHA;
+	transparencyBlendDesc.BlendOp   = D3D12_BLEND_OP_ADD;
+
+	// adding source and destination color
+	// transparencyBlendDesc.SrcBlend  = D3D12_BLEND_ONE;
+	// transparencyBlendDesc.DestBlend = D3D12_BLEND_ONE;
+	// transparencyBlendDesc.BlendOp   = D3D12_BLEND_OP_ADD;
+
+	// subtracting source color from destination color
+	// transparencyBlendDesc.SrcBlend  = D3D12_BLEND_ONE;
+	// transparencyBlendDesc.DestBlend = D3D12_BLEND_ONE;
+	// transparencyBlendDesc.BlendOp   = D3D12_BLEND_OP_SUBTRACT;
+
+	// no color writes (lake disappears)
+	// transparencyBlendDesc.SrcBlend  = D3D12_BLEND_ZERO;
+	// transparencyBlendDesc.DestBlend = D3D12_BLEND_ONE;
+	// transparencyBlendDesc.BlendOp   = D3D12_BLEND_OP_ADD;
+
+	//!? Disable color writes to the red and green color channels
+	transparencyBlendDesc.SrcBlend  = D3D12_BLEND_BLEND_FACTOR;
+	transparencyBlendDesc.DestBlend = D3D12_BLEND_INV_BLEND_FACTOR;
+	transparencyBlendDesc.BlendOp   = D3D12_BLEND_OP_ADD;
+
 	transparencyBlendDesc.SrcBlendAlpha         = D3D12_BLEND_ONE;
 	transparencyBlendDesc.DestBlendAlpha        = D3D12_BLEND_ZERO;
 	transparencyBlendDesc.BlendOpAlpha          = D3D12_BLEND_OP_ADD;
