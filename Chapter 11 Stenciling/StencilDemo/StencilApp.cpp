@@ -431,6 +431,8 @@ void StencilApp::OnKeyboardInput(const GameTimer& gt)
 	XMVECTOR toMainLight   = -XMLoadFloat3(&mMainPassCB.Lights[0].Direction);
 	XMMATRIX S             = XMMatrixShadow(shadowPlane, toMainLight);
 	XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, 0.001f, 0.0f); // offset the projected shadow mesh along the y-axis by a small amount to prevent z-fighting
+	//!? Ex 12: Remove vertical offset to see "acne" effect
+	// XMStoreFloat4x4(&mShadowedSkullRitem->World, skullWorld * S);
 	XMStoreFloat4x4(&mShadowedSkullRitem->World, skullWorld * S * shadowOffsetY);
 
 	mSkullRitem->NumFramesDirty          = gNumFrameResources;
@@ -939,9 +941,9 @@ void StencilApp::BuildPSOs()
 		reinterpret_cast<BYTE*>(mShaders["opaquePS"]->GetBufferPointer()),
 		mShaders["opaquePS"]->GetBufferSize()
 	};
-	opaquePsoDesc.RasterizerState       = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.DepthStencilState     = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.RasterizerState   = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.BlendState        = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 
 	opaquePsoDesc.SampleMask            = UINT_MAX;
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -1049,7 +1051,7 @@ void StencilApp::BuildPSOs()
 	reflectionsDSS.BackFace.StencilPassOp      = D3D12_STENCIL_OP_KEEP;
 	reflectionsDSS.BackFace.StencilFunc        = D3D12_COMPARISON_FUNC_EQUAL;
 
-	drawReflectionsPsoDesc.DepthStencilState                     = reflectionsDSS;
+	drawReflectionsPsoDesc.DepthStencilState = reflectionsDSS;
 	//!? Ex6: what if we don't reverse the triangle winding order? 
 	// drawReflectionsPsoDesc.RasterizerState.FrontCounterClockwise = false;
 	drawReflectionsPsoDesc.RasterizerState.FrontCounterClockwise = true; // we need to reverse the winding order convention. When the object is reflected, outward facing normals become inward facing ones. To correct this, we reverse the winding order convention, otherwise, we will cull the wrong triangles
@@ -1075,7 +1077,7 @@ void StencilApp::BuildPSOs()
 	//!? stencil test will discard it. In order to show the acne, we will keep the stencil value at 0 all the time, so that stencil test will awlays pass when we draw overlapping triangles
 	// shadowDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
 	// increment the stencil buffer entry 
-	shadowDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR; 
+	shadowDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR;
 	shadowDSS.FrontFace.StencilFunc   = D3D12_COMPARISON_FUNC_EQUAL;
 
 	// We are not rendering backfacing polygons, so these settings do not matter.

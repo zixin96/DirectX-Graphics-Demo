@@ -1,4 +1,4 @@
-//***************************************************************************************
+﻿//***************************************************************************************
 // StencilApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
 //***************************************************************************************
 
@@ -14,8 +14,6 @@ using namespace DirectX::PackedVector;
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
-
-const int gNumFrameResources = 3;
 
 // Lightweight structure stores parameters to draw a shape.  This will
 // vary from app-to-app.
@@ -56,6 +54,7 @@ enum class RenderLayer : int
 	Opaque = 0,
 	Mirrors,
 	Reflected,
+	//!? We need a layer for reflected shadow b/c we cannot use the regular reflected PSO. Instead, we need to use shadow PSO to solve double blending
 	ReflectedShadow,
 	Transparent,
 	Shadow,
@@ -64,90 +63,92 @@ enum class RenderLayer : int
 
 class StencilApp : public D3DApp
 {
-	public:
-		StencilApp(HINSTANCE hInstance);
-		StencilApp(const StencilApp& rhs)            = delete;
-		StencilApp& operator=(const StencilApp& rhs) = delete;
-		~StencilApp() override;
+public:
+	StencilApp(HINSTANCE hInstance);
+	StencilApp(const StencilApp& rhs)            = delete;
+	StencilApp& operator=(const StencilApp& rhs) = delete;
+	~StencilApp() override;
 
-		bool Initialize() override;
+	bool Initialize() override;
 
-	private:
-		void OnResize() override;
-		void Update(const GameTimer& gt) override;
-		void Draw(const GameTimer& gt) override;
+private:
+	void OnResize() override;
+	void Update(const GameTimer& gt) override;
+	void Draw(const GameTimer& gt) override;
 
-		void OnMouseDown(WPARAM btnState, int x, int y) override;
-		void OnMouseUp(WPARAM btnState, int x, int y) override;
-		void OnMouseMove(WPARAM btnState, int x, int y) override;
+	void OnMouseDown(WPARAM btnState, int x, int y) override;
+	void OnMouseUp(WPARAM btnState, int x, int y) override;
+	void OnMouseMove(WPARAM btnState, int x, int y) override;
 
-		void OnKeyboardInput(const GameTimer& gt);
-		void UpdateCamera(const GameTimer& gt);
-		void AnimateMaterials(const GameTimer& gt);
-		void UpdateObjectCBs(const GameTimer& gt);
-		void UpdateMaterialCBs(const GameTimer& gt);
-		void UpdateMainPassCB(const GameTimer& gt);
-		void UpdateReflectedPassCB(const GameTimer& gt);
+	void OnKeyboardInput(const GameTimer& gt);
+	void UpdateCamera(const GameTimer& gt);
+	void AnimateMaterials(const GameTimer& gt);
+	void UpdateObjectCBs(const GameTimer& gt);
+	void UpdateMaterialCBs(const GameTimer& gt);
+	void UpdateMainPassCB(const GameTimer& gt);
+	void UpdateReflectedPassCB(const GameTimer& gt);
 
-		void LoadTextures();
-		void BuildRootSignature();
-		void BuildDescriptorHeaps();
-		void BuildShadersAndInputLayout();
-		void BuildRoomGeometry();
-		void BuildSkullGeometry();
-		void BuildPSOs();
-		void BuildFrameResources();
-		void BuildMaterials();
-		void BuildRenderItems();
-		void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
+	void LoadTextures();
+	void BuildRootSignature();
+	void BuildDescriptorHeaps();
+	void BuildShadersAndInputLayout();
+	void BuildRoomGeometry();
+	void BuildSkullGeometry();
+	void BuildPSOs();
+	void BuildFrameResources();
+	void BuildMaterials();
+	void BuildRenderItems();
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
 
-		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 
-	private:
-		std::vector<std::unique_ptr<FrameResource>> mFrameResources;
-		FrameResource*                              mCurrFrameResource      = nullptr;
-		int                                         mCurrFrameResourceIndex = 0;
+private:
+	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
+	FrameResource*                              mCurrFrameResource      = nullptr;
+	int                                         mCurrFrameResourceIndex = 0;
 
-		ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
+	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 
-		ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
+	ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
 
-		std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
-		std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
-		std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
-		std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
-		std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
+	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
+	std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
+	std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
+	std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
+	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
 
-		std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 
-		// Cache render items of interest.
-		RenderItem* mSkullRitem                  = nullptr;
-		RenderItem* mReflectedSkullRitem         = nullptr;
-		RenderItem* mShadowedSkullReflectedRitem = nullptr;
-		RenderItem* mShadowedSkullRitem          = nullptr;
+	// Cache render items of interest.
+	RenderItem* mSkullRitem = nullptr;
 
-		// List of all the render items.
-		std::vector<std::unique_ptr<RenderItem>> mAllRitems;
+	RenderItem* mReflectedSkullRitem         = nullptr;
+	RenderItem* mReflectedShadowedSkullRitem = nullptr;
 
-		// Render items divided by PSO.
-		std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
+	RenderItem* mShadowedSkullRitem = nullptr;
 
-		PassConstants mMainPassCB;
-		PassConstants mReflectedPassCB;
+	// List of all the render items.
+	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
 
-		XMFLOAT3 mSkullTranslation = {0.0f, 1.0f, -5.0f};
+	// Render items divided by PSO.
+	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
 
-		bool mIsWireframe = false;
+	PassConstants mMainPassCB;
+	PassConstants mReflectedPassCB; // per-pass cb for reflected geometry
 
-		XMFLOAT3   mEyePos = {0.0f, 0.0f, 0.0f};
-		XMFLOAT4X4 mView   = MathHelper::Identity4x4();
-		XMFLOAT4X4 mProj   = MathHelper::Identity4x4();
+	XMFLOAT3 mSkullTranslation = {0.0f, 1.0f, -5.0f};
 
-		float mTheta  = 1.24f * XM_PI;
-		float mPhi    = 0.42f * XM_PI;
-		float mRadius = 12.0f;
+	bool mIsWireframe = false;
 
-		POINT mLastMousePos;
+	XMFLOAT3   mEyePos = {0.0f, 0.0f, 0.0f};
+	XMFLOAT4X4 mView   = MathHelper::Identity4x4();
+	XMFLOAT4X4 mProj   = MathHelper::Identity4x4();
+
+	float mTheta  = 1.24f * XM_PI;
+	float mPhi    = 0.42f * XM_PI;
+	float mRadius = 12.0f;
+
+	POINT mLastMousePos;
 };
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
@@ -257,14 +258,7 @@ void StencilApp::Draw(const GameTimer& gt)
 	// We can only reset when the associated command lists have finished execution on the GPU.
 	ThrowIfFailed(cmdListAlloc->Reset());
 
-	if (mIsWireframe)
-	{
-		ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mPSOs["opaque_wireframe"].Get())); // note: this will only affect opaque objects
-	}
-	else
-	{
-		ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mPSOs["opaque"].Get()));
-	}
+	ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), nullptr));
 
 	mCommandList->RSSetViewports(1, &mScreenViewport);
 	mCommandList->RSSetScissorRects(1, &mScissorRect);
@@ -300,6 +294,7 @@ void StencilApp::Draw(const GameTimer& gt)
 	// Draw opaque items--floors, walls, skull.
 	auto passCB = mCurrFrameResource->PassCB->Resource();
 	mCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
+	mCommandList->SetPipelineState(mPSOs["opaque"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
 
 	// Mark the visible mirror pixels in the stencil buffer with the value 1
@@ -308,13 +303,15 @@ void StencilApp::Draw(const GameTimer& gt)
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Mirrors]);
 
 	// Draw the reflection into the mirror only (only for pixels where the stencil buffer is 1).
-	mCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress() + 1 * passCBByteSize); // Note that we must supply a different per-pass constant buffer--one with the lights reflected.
+	// Note that we must supply a different per-pass constant buffer--one with the lights reflected.
+	mCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress() + 1 * passCBByteSize);
 	mCommandList->SetPipelineState(mPSOs["drawStencilReflections"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Reflected]);
 
-	// Draw the shadow reflection into the mirror only (only for pixels where the stencil buffer is 1).
-	// This needs a special PSO
-	mCommandList->SetPipelineState(mPSOs["drawStencilShadowReflections"].Get());
+	//!? Draw the shadow reflection into the mirror
+	//!? Notice that we need shadow PSO fro reflected shadow to solve double blending issues.
+	//!? Assume the stencil buffer pixels where the reflected shadow will be rendered have been cleared to 1 (which is what we did when we mark the mirror location)
+	mCommandList->SetPipelineState(mPSOs["shadow"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::ReflectedShadow]);
 
 	// Restore main pass constants and stencil ref.
@@ -343,7 +340,7 @@ void StencilApp::Draw(const GameTimer& gt)
 
 	// Swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
@@ -435,7 +432,7 @@ void StencilApp::OnKeyboardInput(const GameTimer& gt)
 	XMMATRIX skullWorld  = skullRotate * skullScale * skullOffset;
 	XMStoreFloat4x4(&mSkullRitem->World, skullWorld);
 
-	// Update reflection world matrix for the plane.
+	// Update reflection world matrix.
 	XMVECTOR mirrorPlane = XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f); // xy plane
 	XMMATRIX R           = XMMatrixReflect(mirrorPlane);
 	XMStoreFloat4x4(&mReflectedSkullRitem->World, skullWorld * R);
@@ -447,13 +444,14 @@ void StencilApp::OnKeyboardInput(const GameTimer& gt)
 	XMMATRIX shadowOffsetY = XMMatrixTranslation(0.0f, 0.001f, 0.0f); // offset the projected shadow mesh along the y-axis by a small amount to prevent z-fighting
 	XMStoreFloat4x4(&mShadowedSkullRitem->World, skullWorld * S * shadowOffsetY);
 
-	// Update reflection world matrix for the skull shadow.
-	XMStoreFloat4x4(&mShadowedSkullReflectedRitem->World, XMLoadFloat4x4(&mShadowedSkullRitem->World) * R);
+	//!? Update reflection world matrix for the skull shadow.
+	XMStoreFloat4x4(&mReflectedShadowedSkullRitem->World, XMLoadFloat4x4(&mShadowedSkullRitem->World) * R);
 
-	mSkullRitem->NumFramesDirty                  = gNumFrameResources;
-	mReflectedSkullRitem->NumFramesDirty         = gNumFrameResources;
-	mShadowedSkullRitem->NumFramesDirty          = gNumFrameResources;
-	mShadowedSkullReflectedRitem->NumFramesDirty = gNumFrameResources;
+	mSkullRitem->NumFramesDirty          = gNumFrameResources;
+	mReflectedSkullRitem->NumFramesDirty = gNumFrameResources;
+	mShadowedSkullRitem->NumFramesDirty  = gNumFrameResources;
+
+	mReflectedShadowedSkullRitem->NumFramesDirty = gNumFrameResources;
 }
 
 void StencilApp::UpdateCamera(const GameTimer& gt)
@@ -587,47 +585,31 @@ void StencilApp::LoadTextures()
 	auto bricksTex      = std::make_unique<Texture>();
 	bricksTex->Name     = "bricksTex";
 	bricksTex->Filename = L"../../Textures/bricks3.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
-		              md3dDevice.Get(),
-		              mCommandList.Get(),
-		              bricksTex->Filename.c_str(),
-		              bricksTex->Resource,
-		              bricksTex->UploadHeap));
 
 	auto checkboardTex      = std::make_unique<Texture>();
 	checkboardTex->Name     = "checkboardTex";
 	checkboardTex->Filename = L"../../Textures/checkboard.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
-		              md3dDevice.Get(),
-		              mCommandList.Get(),
-		              checkboardTex->Filename.c_str(),
-		              checkboardTex->Resource,
-		              checkboardTex->UploadHeap));
 
 	auto iceTex      = std::make_unique<Texture>();
 	iceTex->Name     = "iceTex";
 	iceTex->Filename = L"../../Textures/ice.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
-		              md3dDevice.Get(),
-		              mCommandList.Get(),
-		              iceTex->Filename.c_str(),
-		              iceTex->Resource,
-		              iceTex->UploadHeap));
 
 	auto white1x1Tex      = std::make_unique<Texture>();
 	white1x1Tex->Name     = "white1x1Tex";
 	white1x1Tex->Filename = L"../../Textures/white1x1.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
-		              md3dDevice.Get(),
-		              mCommandList.Get(),
-		              white1x1Tex->Filename.c_str(),
-		              white1x1Tex->Resource,
-		              white1x1Tex->UploadHeap));
 
 	mTextures[bricksTex->Name]     = std::move(bricksTex);
 	mTextures[checkboardTex->Name] = std::move(checkboardTex);
 	mTextures[iceTex->Name]        = std::move(iceTex);
 	mTextures[white1x1Tex->Name]   = std::move(white1x1Tex);
+
+	for (auto& tex : mTextures)
+	{
+		tex.second->Resource = d3dUtil::CreateTexture(md3dDevice.Get(),
+		                                              mCommandList.Get(),
+		                                              tex.second->Filename.c_str(),
+		                                              tex.second->UploadHeap);
+	}
 }
 
 void StencilApp::BuildRootSignature()
@@ -973,15 +955,16 @@ void StencilApp::BuildPSOs()
 		reinterpret_cast<BYTE*>(mShaders["opaquePS"]->GetBufferPointer()),
 		mShaders["opaquePS"]->GetBufferSize()
 	};
-	opaquePsoDesc.RasterizerState       = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-	opaquePsoDesc.DepthStencilState     = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.RasterizerState   = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.BlendState        = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	opaquePsoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+
 	opaquePsoDesc.SampleMask            = UINT_MAX;
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	opaquePsoDesc.NumRenderTargets      = 1;
 	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.SampleDesc.Count      = 1;
+	opaquePsoDesc.SampleDesc.Quality    = 0;
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 
@@ -1015,12 +998,11 @@ void StencilApp::BuildPSOs()
 
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&transparentPsoDesc, IID_PPV_ARGS(&mPSOs["transparent"])));
 
-	//
-	// PSO for marking stencil mirrors.
-	// Draw calls associated with this PSO will only be used for marking mirror pixels
-	// We do not write to depth and back buffer. Only write to stencil buffer.
+	//  PSO for marking stencil mirrors:
+	// ❌ Write to Back buffer
+	// ❌ Write to Depth buffer
+	// ✔️ Write to Stencil buffer
 	// Essentially, this PSO is used to mark the visible pixels of the mirror in the stencil buffer 
-	//
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC markMirrorsPsoDesc = opaquePsoDesc;
 
@@ -1039,21 +1021,51 @@ void StencilApp::BuildPSOs()
 	mirrorDSS.StencilWriteMask = 0xff; // default write mask
 
 	// how the stencil buffer works for front facing triangles: 
-	mirrorDSS.FrontFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;        // how the stencil buffer should be updated when the stencil test fails for a pixel fragment: keep the current value. N/A here because we set stencil test always pass
-	mirrorDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;        // how the stencil buffer should be updated when the stencil test passes, but the depth test fails for a pixel fragment: keep the current value. This can happen if the skull obscures part of the mirror: in this case, we do not want to mark the part of the mirror that is obscured
-	mirrorDSS.FrontFace.StencilPassOp      = D3D12_STENCIL_OP_REPLACE;     // how the stencil buffer should be updated when the stencil test and depth test both pass for a pixel fragment: replace the stencil buffer entry with the stencil-reference value (1 in this case). This only happens if the mirror is not being obscured by any objects 
+	mirrorDSS.FrontFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;        // N/A here because we set stencil test always pass
+	mirrorDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;        // if the depth test fails (skull is in front of the mirror) and stencil test passes, we do not update the stencil value
+	mirrorDSS.FrontFace.StencilPassOp      = D3D12_STENCIL_OP_REPLACE;     // when the stencil test and depth test both pass for a pixel fragment, replace the stencil buffer entry with the stencil-reference value
 	mirrorDSS.FrontFace.StencilFunc        = D3D12_COMPARISON_FUNC_ALWAYS; // the stencil test always passes
 
 	// how the stencil buffer works for back facing triangles: 
 	// If we are not rendering backfacing polygons, these settings do not matter.
-	mirrorDSS.BackFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;        // how the stencil buffer should be updated when the stencil test fails for a pixel fragment: keep the current value
-	mirrorDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;        // how the stencil buffer should be updated when the stencil test passes, but the depth test fails for a pixel fragment: keep the current value
-	mirrorDSS.BackFace.StencilPassOp      = D3D12_STENCIL_OP_REPLACE;     // how the stencil buffer should be updated when the stencil test and detph test both pass for a pixel fragment: replace the stencil buffer entry with the stencil-reference value 
-	mirrorDSS.BackFace.StencilFunc        = D3D12_COMPARISON_FUNC_ALWAYS; // the stencil test always passes
+	mirrorDSS.BackFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
+	mirrorDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	mirrorDSS.BackFace.StencilPassOp      = D3D12_STENCIL_OP_REPLACE;
+	mirrorDSS.BackFace.StencilFunc        = D3D12_COMPARISON_FUNC_ALWAYS;
 
 	markMirrorsPsoDesc.BlendState        = mirrorBlendState;
 	markMirrorsPsoDesc.DepthStencilState = mirrorDSS;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&markMirrorsPsoDesc, IID_PPV_ARGS(&mPSOs["markStencilMirrors"])));
+
+	//
+	// PSO for stencil reflections.
+	//
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC drawReflectionsPsoDesc = opaquePsoDesc;
+
+	D3D12_DEPTH_STENCIL_DESC reflectionsDSS;
+	reflectionsDSS.DepthEnable    = true;
+	reflectionsDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL; // enable writes to the depth buffer. New depth will be written provided the depth and stencil test both pass
+	reflectionsDSS.DepthFunc      = D3D12_COMPARISON_FUNC_LESS;
+
+	reflectionsDSS.StencilEnable    = true;
+	reflectionsDSS.StencilReadMask  = 0xff;
+	reflectionsDSS.StencilWriteMask = 0xff;
+
+	reflectionsDSS.FrontFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.FrontFace.StencilPassOp      = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.FrontFace.StencilFunc        = D3D12_COMPARISON_FUNC_EQUAL;
+
+	// We are not rendering backfacing polygons, so these settings do not matter.
+	reflectionsDSS.BackFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.BackFace.StencilPassOp      = D3D12_STENCIL_OP_KEEP;
+	reflectionsDSS.BackFace.StencilFunc        = D3D12_COMPARISON_FUNC_EQUAL;
+
+	drawReflectionsPsoDesc.DepthStencilState                     = reflectionsDSS;
+	drawReflectionsPsoDesc.RasterizerState.FrontCounterClockwise = true; // we need to reverse the winding order convention. When the object is reflected, outward facing normals become inward facing ones. To correct this, we reverse the winding order convention, otherwise, we will cull the wrong triangles
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&drawReflectionsPsoDesc, IID_PPV_ARGS(&mPSOs["drawStencilReflections"])));
 
 	//
 	// PSO for shadow objects
@@ -1071,8 +1083,9 @@ void StencilApp::BuildPSOs()
 
 	shadowDSS.FrontFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
 	shadowDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	shadowDSS.FrontFace.StencilPassOp      = D3D12_STENCIL_OP_INCR; // increment the stencil buffer entry 
-	shadowDSS.FrontFace.StencilFunc        = D3D12_COMPARISON_FUNC_EQUAL;
+	// increment the stencil buffer entry 
+	shadowDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR;
+	shadowDSS.FrontFace.StencilFunc   = D3D12_COMPARISON_FUNC_EQUAL;
 
 	// We are not rendering backfacing polygons, so these settings do not matter.
 	shadowDSS.BackFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
@@ -1082,46 +1095,6 @@ void StencilApp::BuildPSOs()
 
 	shadowPsoDesc.DepthStencilState = shadowDSS;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&shadowPsoDesc, IID_PPV_ARGS(&mPSOs["shadow"])));
-
-	//
-	// PSO for stencil reflections (with blending. If you dont' need blending, you can inherit from opaquePsoDesc 
-	// Note: When we use this PSO, mirror has not been drawn yet. 
-	//
-
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC drawReflectionsPsoDesc = transparentPsoDesc;
-
-	D3D12_DEPTH_STENCIL_DESC reflectionsDSS;
-	reflectionsDSS.DepthEnable    = true;                       // enable the depth buffering 
-	reflectionsDSS.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL; // enable writes to the depth buffer. New depth will be written provided the depth and stencil test both pass
-	reflectionsDSS.DepthFunc      = D3D12_COMPARISON_FUNC_LESS; // a pixel fragment is accepted provided its depth value is LESS than the depth of the previous pixel written to the back buffer
-
-	reflectionsDSS.StencilEnable    = true; // enable stencil test
-	reflectionsDSS.StencilReadMask  = 0xff;
-	reflectionsDSS.StencilWriteMask = 0xff;
-
-	reflectionsDSS.FrontFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.FrontFace.StencilPassOp      = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.FrontFace.StencilFunc        = D3D12_COMPARISON_FUNC_EQUAL;
-
-	// We are not rendering backfacing polygons, so these settings do not matter.
-	reflectionsDSS.BackFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.BackFace.StencilPassOp      = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.BackFace.StencilFunc        = D3D12_COMPARISON_FUNC_EQUAL;
-
-	drawReflectionsPsoDesc.DepthStencilState                     = reflectionsDSS;
-	drawReflectionsPsoDesc.RasterizerState.CullMode              = D3D12_CULL_MODE_BACK;
-	drawReflectionsPsoDesc.RasterizerState.FrontCounterClockwise = true; // we need to reverse the winding order convention. When the object is reflected, outward facing normals become inward facing ones. To correct this, we reverse the winding order convention. Page 431
-	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&drawReflectionsPsoDesc, IID_PPV_ARGS(&mPSOs["drawStencilReflections"])));
-
-	//
-	// PSO for shadow stencil reflections (This PSO needs a special stencil buffer for solving double blending issue)
-	//
-	D3D12_GRAPHICS_PIPELINE_STATE_DESC drawReflectionsShadowPsoDesc    = shadowPsoDesc;
-	drawReflectionsShadowPsoDesc.RasterizerState.CullMode              = D3D12_CULL_MODE_BACK;
-	drawReflectionsShadowPsoDesc.RasterizerState.FrontCounterClockwise = true;
-	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&drawReflectionsShadowPsoDesc, IID_PPV_ARGS(&mPSOs["drawStencilShadowReflections"])));
 }
 
 void StencilApp::BuildFrameResources()
@@ -1173,7 +1146,7 @@ void StencilApp::BuildMaterials()
 	shadowMat->Name                = "shadowMat";
 	shadowMat->MatCBIndex          = 4;
 	shadowMat->DiffuseSrvHeapIndex = 3;                                // also apply a dummy white texture for the shadow material
-	shadowMat->DiffuseAlbedo       = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.5f); // specify a black material at 50% transparency
+	shadowMat->DiffuseAlbedo       = XMFLOAT4(0.0f, 0.0f, 0.0f, 0.5f); //! specify a black material at 50% transparency
 	shadowMat->FresnelR0           = XMFLOAT3(0.001f, 0.001f, 0.001f);
 	shadowMat->Roughness           = 0.0f;
 
@@ -1251,7 +1224,7 @@ void StencilApp::BuildRenderItems()
 	mRitemLayer[(int)RenderLayer::Mirrors].push_back(mirrorRitem.get());     // Mirror in the Mirrors layer is used to mark pixels with mirror location
 	mRitemLayer[(int)RenderLayer::Transparent].push_back(mirrorRitem.get()); // The same Mirror in the Transparent layer is used to draw the actual transparent mirror
 
-	//!? look here: Add a reflected floor
+	//!? Add a reflected floor
 	auto reflectedfloorRitem = std::make_unique<RenderItem>();
 	*reflectedfloorRitem     = *floorRitem;
 	// Update the reflected floor world matrix (don't need to update per frame since the floor is not moving)
@@ -1261,25 +1234,30 @@ void StencilApp::BuildRenderItems()
 	reflectedfloorRitem->ObjCBIndex = 6;
 	mRitemLayer[(int)RenderLayer::Reflected].push_back(reflectedfloorRitem.get());
 
-	//!? look here: Add a reflected skull shadow
+	//!? Add a reflected skull shadow
 	auto reflectedSkullShadowRitem        = std::make_unique<RenderItem>();
 	*reflectedSkullShadowRitem            = *shadowedSkullRitem;
 	reflectedSkullShadowRitem->ObjCBIndex = 7;
-	mShadowedSkullReflectedRitem          = reflectedSkullShadowRitem.get();
+	mReflectedShadowedSkullRitem          = reflectedSkullShadowRitem.get();
 	mRitemLayer[(int)RenderLayer::ReflectedShadow].push_back(reflectedSkullShadowRitem.get());
 
 	mAllRitems.push_back(std::move(floorRitem));
 	mAllRitems.push_back(std::move(wallsRitem));
 	mAllRitems.push_back(std::move(skullRitem));
-	mAllRitems.push_back(std::move(reflectedSkullRitem));
 	mAllRitems.push_back(std::move(shadowedSkullRitem));
 	mAllRitems.push_back(std::move(mirrorRitem));
+
+	mAllRitems.push_back(std::move(reflectedSkullRitem));
 	mAllRitems.push_back(std::move(reflectedfloorRitem));
 	mAllRitems.push_back(std::move(reflectedSkullShadowRitem));
 }
 
 void StencilApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 {
+	if (mIsWireframe)
+	{
+		mCommandList->SetPipelineState(mPSOs["opaque_wireframe"].Get());
+	}
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
 	UINT matCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(MaterialConstants));
 
