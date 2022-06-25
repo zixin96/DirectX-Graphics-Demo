@@ -117,8 +117,6 @@ private:
 
 	RenderItem* mWavesRitem = nullptr;
 
-	UINT mBoltFrameIndex = 0; //!? keep track of bolt frame index
-
 	// List of all the render items.
 	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
 

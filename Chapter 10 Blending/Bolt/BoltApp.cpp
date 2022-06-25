@@ -245,7 +245,6 @@ void BoltApp::AnimateMaterials(const GameTimer& gt)
 
 	//!? Update bolt material
 	auto boltMat = mMaterials["bolt"].get();
-	// Change two things:
 	// 1. which animation texture to use for this frame 
 	static float t          = 0.0f;
 	int&         botlSrvIdx = boltMat->DiffuseSrvHeapIndex;
