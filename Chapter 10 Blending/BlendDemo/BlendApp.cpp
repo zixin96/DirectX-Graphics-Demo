@@ -754,9 +754,9 @@ void BlendApp::BuildPSOs()
 	// transparencyBlendDesc.BlendOp   = D3D12_BLEND_OP_ADD;
 
 	//!? Disable color writes to the red and green color channels
-	transparencyBlendDesc.SrcBlend  = D3D12_BLEND_BLEND_FACTOR;
-	transparencyBlendDesc.DestBlend = D3D12_BLEND_INV_BLEND_FACTOR;
-	transparencyBlendDesc.BlendOp   = D3D12_BLEND_OP_ADD;
+	// transparencyBlendDesc.SrcBlend  = D3D12_BLEND_BLEND_FACTOR;
+	// transparencyBlendDesc.DestBlend = D3D12_BLEND_INV_BLEND_FACTOR;
+	// transparencyBlendDesc.BlendOp   = D3D12_BLEND_OP_ADD;
 
 	transparencyBlendDesc.SrcBlendAlpha         = D3D12_BLEND_ONE;
 	transparencyBlendDesc.DestBlendAlpha        = D3D12_BLEND_ZERO;
