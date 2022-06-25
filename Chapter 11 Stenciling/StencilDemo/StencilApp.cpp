@@ -942,6 +942,7 @@ void StencilApp::BuildPSOs()
 	opaquePsoDesc.RasterizerState       = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	opaquePsoDesc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	opaquePsoDesc.DepthStencilState     = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+
 	opaquePsoDesc.SampleMask            = UINT_MAX;
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	opaquePsoDesc.NumRenderTargets      = 1;
@@ -1038,7 +1039,9 @@ void StencilApp::BuildPSOs()
 	reflectionsDSS.FrontFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
 	reflectionsDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
 	reflectionsDSS.FrontFace.StencilPassOp      = D3D12_STENCIL_OP_KEEP;
-	reflectionsDSS.FrontFace.StencilFunc        = D3D12_COMPARISON_FUNC_EQUAL;
+	//!? Ex3: we make it so that stencil test passes all the time. In this way, the skull will render as long as it passes the depth test
+	// reflectionsDSS.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+	reflectionsDSS.FrontFace.StencilFunc = D3D12_COMPARISON_FUNC_EQUAL;
 
 	// We are not rendering backfacing polygons, so these settings do not matter.
 	reflectionsDSS.BackFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
@@ -1047,6 +1050,8 @@ void StencilApp::BuildPSOs()
 	reflectionsDSS.BackFace.StencilFunc        = D3D12_COMPARISON_FUNC_EQUAL;
 
 	drawReflectionsPsoDesc.DepthStencilState                     = reflectionsDSS;
+	//!? Ex6: what if we don't reverse the triangle winding order? 
+	// drawReflectionsPsoDesc.RasterizerState.FrontCounterClockwise = false;
 	drawReflectionsPsoDesc.RasterizerState.FrontCounterClockwise = true; // we need to reverse the winding order convention. When the object is reflected, outward facing normals become inward facing ones. To correct this, we reverse the winding order convention, otherwise, we will cull the wrong triangles
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&drawReflectionsPsoDesc, IID_PPV_ARGS(&mPSOs["drawStencilReflections"])));
 
@@ -1066,8 +1071,12 @@ void StencilApp::BuildPSOs()
 
 	shadowDSS.FrontFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
 	shadowDSS.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	shadowDSS.FrontFace.StencilPassOp      = D3D12_STENCIL_OP_INCR; // increment the stencil buffer entry 
-	shadowDSS.FrontFace.StencilFunc        = D3D12_COMPARISON_FUNC_EQUAL;
+	//!? Ex4: originally, we increment the stencil value if stencil and depth test passes so that the second time we draw to the same pixel,
+	//!? stencil test will discard it. In order to show the acne, we will keep the stencil value at 0 all the time, so that stencil test will awlays pass when we draw overlapping triangles
+	// shadowDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_KEEP;
+	// increment the stencil buffer entry 
+	shadowDSS.FrontFace.StencilPassOp = D3D12_STENCIL_OP_INCR; 
+	shadowDSS.FrontFace.StencilFunc   = D3D12_COMPARISON_FUNC_EQUAL;
 
 	// We are not rendering backfacing polygons, so these settings do not matter.
 	shadowDSS.BackFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
