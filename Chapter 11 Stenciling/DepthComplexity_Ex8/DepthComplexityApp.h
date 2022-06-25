@@ -92,7 +92,6 @@ private:
 	void BuildFrameResources();
 	void BuildMaterials();
 	void BuildRenderItems();
-	void BuildComplexityMap();
 	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
@@ -114,7 +113,6 @@ private:
 	std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
 	std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
 	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
-	std::unordered_map<int, XMCOLOR>                               mDepthComplexityMap;
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 

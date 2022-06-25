@@ -36,8 +36,6 @@ bool DepthComplexityApp::Initialize()
 	BuildFrameResources();
 	BuildPSOs();
 
-	BuildComplexityMap();
-
 	// Execute the initialization commands.
 	ThrowIfFailed(mCommandList->Close());
 	ID3D12CommandList* cmdsLists[] = {mCommandList.Get()};
@@ -119,7 +117,6 @@ void DepthComplexityApp::Draw(const GameTimer& gt)
 	auto passCB = mCurrFrameResource->PassCB->Resource();
 	mCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
 
-
 	mCommandList->SetPipelineState(mPSOs["opaqueCounter"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
 
@@ -129,15 +126,18 @@ void DepthComplexityApp::Draw(const GameTimer& gt)
 	mCommandList->SetPipelineState(mPSOs["transparentCounter"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Transparent]);
 
-	//!? draw the depth complexity of the scene 
-	// mCommandList->SetPipelineState(mPSOs["drawStencil"].Get());
-	// for (auto& level : mDepthComplexityMap)
-	// {
-	// 	mCommandList->OMSetStencilRef(level);
-	// 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
-	// 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::AlphaTested]);
-	// 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Transparent]);
-	// }
+	//!? draw the depth complexity of the scene
+	mCommandList->SetPipelineState(mPSOs["drawing"].Get());
+	for (int i = 0; i < 5; i++) //! Notice that we hardcode 5 here: we have 5 complexity levels defined in the shader
+	{
+		mCommandList->OMSetStencilRef(i);
+		mCommandList->SetGraphicsRoot32BitConstant(4, i, 0);
+		mCommandList->IASetVertexBuffers(0, 0, nullptr);
+		mCommandList->IASetIndexBuffer(nullptr);
+		mCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		mCommandList->DrawInstanced(6, 1, 0, 0);
+	}
+
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
 	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET,
@@ -411,18 +411,19 @@ void DepthComplexityApp::BuildRootSignature()
 	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0);
 
 	// Root parameter can be a table, root descriptor or root constants.
-	CD3DX12_ROOT_PARAMETER slotRootParameter[4];
+	CD3DX12_ROOT_PARAMETER slotRootParameter[5];
 
 	// Perfomance TIP: Order from most frequent to least frequent.
 	slotRootParameter[0].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL);
 	slotRootParameter[1].InitAsConstantBufferView(0);
 	slotRootParameter[2].InitAsConstantBufferView(1);
 	slotRootParameter[3].InitAsConstantBufferView(2);
+	slotRootParameter[4].InitAsConstants(1, 3);
 
 	auto staticSamplers = GetStaticSamplers();
 
 	// A root signature is an array of root parameters.
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(4, slotRootParameter,
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(5, slotRootParameter,
 	                                        (UINT)staticSamplers.size(), staticSamplers.data(),
 	                                        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -504,6 +505,9 @@ void DepthComplexityApp::BuildShadersAndInputLayout()
 	mShaders["standardVS"]    = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_0");
 	mShaders["opaquePS"]      = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", defines, "PS", "ps_5_0");
 	mShaders["alphaTestedPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_0"); // alpha tested shaders are used when drawing objects where pixels are either completely opaque or completely transparent
+
+	mShaders["colorQuadVS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VSColorQuad", "vs_5_0");
+	mShaders["colorQuadPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "PSColorQuad", "ps_5_0");
 
 	mInputLayout =
 	{
@@ -759,40 +763,73 @@ void DepthComplexityApp::BuildPSOs()
 	alphaTestedPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE; // disable back face culling for alpha tested objects (because we can now see through the objects with alpha-enabled textures)
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&alphaTestedPsoDesc, IID_PPV_ARGS(&mPSOs["alphaTested"])));
 
-	//!? Create a stencil marker for accumulating depth complexity
-	D3D12_DEPTH_STENCIL_DESC stencilMarker;
+	//!? Create DEPTH_STENCIL_DESC for accumulating depth complexity
+	D3D12_DEPTH_STENCIL_DESC counterDepthStencilDesc;
 	//!? Set DepthEnable = false to obtain depth complexity: indicates how many triangles overlapped each pixel, regardless of sorting or z process
-	stencilMarker.DepthEnable      = false;
+	counterDepthStencilDesc.DepthEnable = false;
 	//!? Set DepthEnable = true to obtain overdraw: indicates how many pixels were shaded and written to the framebuffer after passing the depth test
 	// stencilMarker.DepthEnable      = true;
-	stencilMarker.DepthFunc        = D3D12_COMPARISON_FUNC_LESS;
-	stencilMarker.DepthWriteMask   = D3D12_DEPTH_WRITE_MASK_ALL;
-	stencilMarker.StencilEnable    = TRUE;
-	stencilMarker.StencilReadMask  = 0xff; //! Note: this is 0xff, not true or false. Be mindful of copy-paste error!
-	stencilMarker.StencilWriteMask = 0xff;
+	counterDepthStencilDesc.DepthFunc        = D3D12_COMPARISON_FUNC_LESS;
+	counterDepthStencilDesc.DepthWriteMask   = D3D12_DEPTH_WRITE_MASK_ALL;
+	counterDepthStencilDesc.StencilEnable    = TRUE;
+	counterDepthStencilDesc.StencilReadMask  = 0xff; //! Note: this is 0xff, not true or false. Be mindful of copy-paste error!
+	counterDepthStencilDesc.StencilWriteMask = 0xff;
 
-	stencilMarker.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	stencilMarker.FrontFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
-	stencilMarker.FrontFace.StencilPassOp      = D3D12_STENCIL_OP_INCR;
-	stencilMarker.FrontFace.StencilFunc        = D3D12_COMPARISON_FUNC_ALWAYS;
+	counterDepthStencilDesc.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	counterDepthStencilDesc.FrontFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
+	counterDepthStencilDesc.FrontFace.StencilPassOp      = D3D12_STENCIL_OP_INCR;
+	counterDepthStencilDesc.FrontFace.StencilFunc        = D3D12_COMPARISON_FUNC_ALWAYS;
 
-	stencilMarker.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
-	stencilMarker.BackFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
-	stencilMarker.BackFace.StencilPassOp      = D3D12_STENCIL_OP_INCR;
-	stencilMarker.BackFace.StencilFunc        = D3D12_COMPARISON_FUNC_ALWAYS;
+	counterDepthStencilDesc.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	counterDepthStencilDesc.BackFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
+	counterDepthStencilDesc.BackFace.StencilPassOp      = D3D12_STENCIL_OP_INCR;
+	counterDepthStencilDesc.BackFace.StencilFunc        = D3D12_COMPARISON_FUNC_ALWAYS;
 
 	//!? create verions of PSO that populate stencil buffer with depth compelxity
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaqueCounter = opaquePsoDesc;
-	opaqueCounter.DepthStencilState                  = stencilMarker;
+	opaqueCounter.DepthStencilState                  = counterDepthStencilDesc;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaqueCounter, IID_PPV_ARGS(&mPSOs["opaqueCounter"])));
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC transparentCounter = transparentPsoDesc;
-	transparentCounter.DepthStencilState                  = stencilMarker;
+	transparentCounter.DepthStencilState                  = counterDepthStencilDesc;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&transparentCounter, IID_PPV_ARGS(&mPSOs["transparentCounter"])));
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC alphaTestedCounter = alphaTestedPsoDesc;
-	alphaTestedCounter.DepthStencilState                  = stencilMarker;
+	alphaTestedCounter.DepthStencilState                  = counterDepthStencilDesc;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&alphaTestedCounter, IID_PPV_ARGS(&mPSOs["alphaTestedCounter"])));
+
+	//!? Create DEPTH_STENCIL_DESC for drawing depth complexity
+	D3D12_DEPTH_STENCIL_DESC drawingDepthStencilDesc;
+	drawingDepthStencilDesc.DepthEnable      = false;
+	drawingDepthStencilDesc.DepthFunc        = D3D12_COMPARISON_FUNC_LESS;
+	drawingDepthStencilDesc.DepthWriteMask   = D3D12_DEPTH_WRITE_MASK_ALL;
+	drawingDepthStencilDesc.StencilEnable    = TRUE;
+	drawingDepthStencilDesc.StencilReadMask  = 0xff; //! Note: this is 0xff, not true or false. Be mindful of copy-paste error!
+	drawingDepthStencilDesc.StencilWriteMask = 0xff;
+
+	drawingDepthStencilDesc.FrontFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	drawingDepthStencilDesc.FrontFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
+	drawingDepthStencilDesc.FrontFace.StencilPassOp      = D3D12_STENCIL_OP_KEEP;
+	drawingDepthStencilDesc.FrontFace.StencilFunc        = D3D12_COMPARISON_FUNC_EQUAL;
+
+	drawingDepthStencilDesc.BackFace.StencilDepthFailOp = D3D12_STENCIL_OP_KEEP;
+	drawingDepthStencilDesc.BackFace.StencilFailOp      = D3D12_STENCIL_OP_KEEP;
+	drawingDepthStencilDesc.BackFace.StencilPassOp      = D3D12_STENCIL_OP_KEEP;
+	drawingDepthStencilDesc.BackFace.StencilFunc        = D3D12_COMPARISON_FUNC_EQUAL;
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC drawingPsoDesc = opaquePsoDesc;
+	drawingPsoDesc.VS                                 =
+	{
+		reinterpret_cast<BYTE*>(mShaders["colorQuadVS"]->GetBufferPointer()),
+		mShaders["colorQuadVS"]->GetBufferSize()
+	};
+	drawingPsoDesc.PS =
+	{
+		reinterpret_cast<BYTE*>(mShaders["colorQuadPS"]->GetBufferPointer()),
+		mShaders["colorQuadPS"]->GetBufferSize()
+	};
+	drawingPsoDesc.DepthStencilState = drawingDepthStencilDesc;
+	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&drawingPsoDesc, IID_PPV_ARGS(&mPSOs["drawing"])));
 
 	// //!?  PSO for drawing depth complexity:
 	// D3D12_GRAPHICS_PIPELINE_STATE_DESC drawDepthComplexPsoDesc = opaquePsoDesc;
@@ -916,16 +953,6 @@ void DepthComplexityApp::BuildRenderItems()
 	mAllRitems.push_back(std::move(boxRitem));
 }
 
-void DepthComplexityApp::BuildComplexityMap()
-{
-	float c = 0.f;
-	//!? hardcode the number of supported complexity to a max of 15
-	for (int i = 0; i < 15; i++)
-	{
-		c                      = (float)i / 15.f;
-		mDepthComplexityMap[i] = XMCOLOR(c, c, c, 1.f);
-	}
-}
 
 void DepthComplexityApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 {

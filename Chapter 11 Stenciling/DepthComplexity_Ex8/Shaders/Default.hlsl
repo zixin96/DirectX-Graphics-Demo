@@ -130,7 +130,7 @@ float4 PS(VertexOut pin) : SV_Target
 	// Vector from point being lit to eye. 
 	float3 toEyeW    = gEyePosW - pin.PosW;
 	float  distToEye = length(toEyeW); // precompute the length of distToEye 
-	toEyeW /= distToEye; // normalize
+	toEyeW /= distToEye;               // normalize
 
 	// Light terms.
 	float4 ambient = gAmbientLight * diffuseAlbedo;
@@ -152,4 +152,51 @@ float4 PS(VertexOut pin) : SV_Target
 	litColor.a = diffuseAlbedo.a;
 
 	return litColor;
+}
+
+//!? The following code is used to render a screen quad
+
+static const float2 gTexCoords[6] =
+{
+	float2(0.0f, 1.0f),
+	float2(0.0f, 0.0f),
+	float2(1.0f, 0.0f),
+	float2(0.0f, 1.0f),
+	float2(1.0f, 0.0f),
+	float2(1.0f, 1.0f)
+};
+
+cbuffer cbStencil : register(b3)
+{
+uint gStencil;
+};
+
+VertexOut VSColorQuad(uint vid : SV_VertexID)
+{
+	VertexOut vout = (VertexOut)0.0f;;
+
+	vout.TexC = gTexCoords[vid];
+	vout.PosH = float4(2.0f * vout.TexC.x - 1.0f, 1.0f - 2.0f * vout.TexC.y, 0.0f, 1.0f);
+
+	return vout;
+}
+
+float4 PSColorQuad(VertexOut pin) : SV_Target
+{
+	float4 green  = float4(0.48, 0.94, 0.41, 1.0);
+	float4 blue   = float4(0.38, 0.84, 1.0, 1.0);
+	float4 orange = float4(0.96, 0.60, 0.05, 1.0);
+	float4 red    = float4(0.96, 0.25, 0.38, 1.0);
+	float4 purple = float4(0.73, 0.53, 0.95, 1.0);
+
+	if (gStencil == 0)
+		return green;
+	else if (gStencil == 1)
+		return blue;
+	else if (gStencil == 2)
+		return orange;
+	else if (gStencil == 3)
+		return red;
+	else
+		return purple;
 }
