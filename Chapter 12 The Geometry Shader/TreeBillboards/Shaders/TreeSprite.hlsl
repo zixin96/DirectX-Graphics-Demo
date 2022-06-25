@@ -81,7 +81,9 @@ struct VertexIn
 
 struct VertexOut
 {
+	// a point representing the center position of the billboard in world space
 	float3 CenterW : POSITION;
+	// the width/height of the billboard scaled to world space units
 	float2 SizeW : SIZE;
 };
 
@@ -115,11 +117,13 @@ void GS(point VertexOut              gin[1],
 	//
 	// Compute the local coordinate system of the sprite relative to the world
 	// space such that the billboard is aligned with the y-axis and faces the eye.
+	// These computation follows p. 452
 	//
 
+	//! since we stipulate that the billboards will be aligned with the y-axis, up vector is fixed to be (0,1,0)
 	float3 up    = float3(0.0f, 1.0f, 0.0f);
 	float3 look  = gEyePosW - gin[0].CenterW;
-	look.y       = 0.0f; // y-axis aligned, so project to xz-plane
+	look.y       = 0.0f; //! y-axis aligned, so project to xz-plane
 	look         = normalize(look);
 	float3 right = cross(up, look);
 
@@ -129,18 +133,13 @@ void GS(point VertexOut              gin[1],
 	float halfWidth  = 0.5f * gin[0].SizeW.x;
 	float halfHeight = 0.5f * gin[0].SizeW.y;
 
-	// see page 452
 	float4 v[4];
 	v[0] = float4(gin[0].CenterW + halfWidth * right - halfHeight * up, 1.0f);
 	v[1] = float4(gin[0].CenterW + halfWidth * right + halfHeight * up, 1.0f);
 	v[2] = float4(gin[0].CenterW - halfWidth * right - halfHeight * up, 1.0f);
 	v[3] = float4(gin[0].CenterW - halfWidth * right + halfHeight * up, 1.0f);
 
-	//
-	// Transform quad vertices to world space and output 
-	// them as a triangle strip.
-	//
-
+	// Specify the texture coordinate of the quad
 	float2 texC[4] =
 	{
 		float2(0.0f, 1.0f),
@@ -149,6 +148,7 @@ void GS(point VertexOut              gin[1],
 		float2(1.0f, 0.0f)
 	};
 
+	// Generate a quad from the above vertices as a triangle strip.
 	GeoOut gout;
 	[unroll]
 	for (int i = 0; i < 4; ++i)
@@ -165,7 +165,9 @@ void GS(point VertexOut              gin[1],
 
 float4 PS(GeoOut pin) : SV_Target
 {
-	float3 uvw           = float3(pin.TexC, pin.PrimID % 4); // pixel shader use primitive ID (passed in by geometry shader) to index into the texture array. In total, we have 3 texture in our texture array
+	// pixel shader use primitive ID (passed in by geometry shader) to index into the texture array.
+	// In total, we have 4 texture in our texture array
+	float3 uvw           = float3(pin.TexC, pin.PrimID % 4);
 	float4 diffuseAlbedo = gTreeMapArray.Sample(gsamAnisotropicWrap, uvw) * gDiffuseAlbedo;
 
 	#ifdef ALPHA_TEST

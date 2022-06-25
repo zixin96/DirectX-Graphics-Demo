@@ -16,8 +16,6 @@ using namespace DirectX::PackedVector;
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
 
-const int gNumFrameResources = 3;
-
 // Lightweight structure stores parameters to draw a shape.  This will
 // vary from app-to-app.
 struct RenderItem
@@ -63,89 +61,89 @@ enum class RenderLayer : int
 
 class TreeBillboardsApp : public D3DApp
 {
-	public:
-		TreeBillboardsApp(HINSTANCE hInstance);
-		TreeBillboardsApp(const TreeBillboardsApp& rhs)            = delete;
-		TreeBillboardsApp& operator=(const TreeBillboardsApp& rhs) = delete;
-		~TreeBillboardsApp() override;
+public:
+	TreeBillboardsApp(HINSTANCE hInstance);
+	TreeBillboardsApp(const TreeBillboardsApp& rhs)            = delete;
+	TreeBillboardsApp& operator=(const TreeBillboardsApp& rhs) = delete;
+	~TreeBillboardsApp() override;
 
-		bool Initialize() override;
+	bool Initialize() override;
 
-	private:
-		void OnResize() override;
-		void Update(const GameTimer& gt) override;
-		void Draw(const GameTimer& gt) override;
+private:
+	void OnResize() override;
+	void Update(const GameTimer& gt) override;
+	void Draw(const GameTimer& gt) override;
 
-		void OnMouseDown(WPARAM btnState, int x, int y) override;
-		void OnMouseUp(WPARAM btnState, int x, int y) override;
-		void OnMouseMove(WPARAM btnState, int x, int y) override;
+	void OnMouseDown(WPARAM btnState, int x, int y) override;
+	void OnMouseUp(WPARAM btnState, int x, int y) override;
+	void OnMouseMove(WPARAM btnState, int x, int y) override;
 
-		void OnKeyboardInput(const GameTimer& gt);
-		void UpdateCamera(const GameTimer& gt);
-		void AnimateMaterials(const GameTimer& gt);
-		void UpdateObjectCBs(const GameTimer& gt);
-		void UpdateMaterialCBs(const GameTimer& gt);
-		void UpdateMainPassCB(const GameTimer& gt);
-		void UpdateWaves(const GameTimer& gt);
+	void OnKeyboardInput(const GameTimer& gt);
+	void UpdateCamera(const GameTimer& gt);
+	void AnimateMaterials(const GameTimer& gt);
+	void UpdateObjectCBs(const GameTimer& gt);
+	void UpdateMaterialCBs(const GameTimer& gt);
+	void UpdateMainPassCB(const GameTimer& gt);
+	void UpdateWaves(const GameTimer& gt);
 
-		void LoadTextures();
-		void BuildRootSignature();
-		void BuildDescriptorHeaps();
-		void BuildShadersAndInputLayouts();
-		void BuildLandGeometry();
-		void BuildWavesGeometry();
-		void BuildBoxGeometry();
-		void BuildTreeSpritesGeometry();
-		void BuildPSOs();
-		void BuildFrameResources();
-		void BuildMaterials();
-		void BuildRenderItems();
-		void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
+	void LoadTextures();
+	void BuildRootSignature();
+	void BuildDescriptorHeaps();
+	void BuildShadersAndInputLayouts();
+	void BuildLandGeometry();
+	void BuildWavesGeometry();
+	void BuildBoxGeometry();
+	void BuildTreeSpritesGeometry();
+	void BuildPSOs();
+	void BuildFrameResources();
+	void BuildMaterials();
+	void BuildRenderItems();
+	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
 
-		std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
+	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 
-		float    GetHillsHeight(float x, float z) const;
-		XMFLOAT3 GetHillsNormal(float x, float z) const;
+	float    GetHillsHeight(float x, float z) const;
+	XMFLOAT3 GetHillsNormal(float x, float z) const;
 
-	private:
-		std::vector<std::unique_ptr<FrameResource>> mFrameResources;
-		FrameResource*                              mCurrFrameResource      = nullptr;
-		int                                         mCurrFrameResourceIndex = 0;
+private:
+	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
+	FrameResource*                              mCurrFrameResource      = nullptr;
+	int                                         mCurrFrameResourceIndex = 0;
 
-		ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
+	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
 
-		ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
+	ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
 
-		std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
-		std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
-		std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
-		std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
-		std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
+	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
+	std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
+	std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
+	std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
+	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
 
-		std::vector<D3D12_INPUT_ELEMENT_DESC> mStdInputLayout;
-		std::vector<D3D12_INPUT_ELEMENT_DESC> mTreeSpriteInputLayout;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> mStdInputLayout;
+	std::vector<D3D12_INPUT_ELEMENT_DESC> mTreeSpriteInputLayout;
 
-		RenderItem* mWavesRitem = nullptr;
+	RenderItem* mWavesRitem = nullptr;
 
-		// List of all the render items.
-		std::vector<std::unique_ptr<RenderItem>> mAllRitems;
+	// List of all the render items.
+	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
 
-		// Render items divided by PSO.
-		std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
+	// Render items divided by PSO.
+	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
 
-		std::unique_ptr<Waves> mWaves;
+	std::unique_ptr<Waves> mWaves;
 
-		PassConstants mMainPassCB;
+	PassConstants mMainPassCB;
 
-		XMFLOAT3   mEyePos = {0.0f, 0.0f, 0.0f};
-		XMFLOAT4X4 mView   = MathHelper::Identity4x4();
-		XMFLOAT4X4 mProj   = MathHelper::Identity4x4();
+	XMFLOAT3   mEyePos = {0.0f, 0.0f, 0.0f};
+	XMFLOAT4X4 mView   = MathHelper::Identity4x4();
+	XMFLOAT4X4 mProj   = MathHelper::Identity4x4();
 
-		float mTheta  = 1.5f * XM_PI;
-		float mPhi    = XM_PIDIV2 - 0.1f;
-		float mRadius = 50.0f;
+	float mTheta  = 1.5f * XM_PI;
+	float mPhi    = XM_PIDIV2 - 0.1f;
+	float mRadius = 50.0f;
 
-		POINT mLastMousePos;
+	POINT mLastMousePos;
 };
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
@@ -268,11 +266,17 @@ void TreeBillboardsApp::Draw(const GameTimer& gt)
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	                                                                       D3D12_RESOURCE_STATE_PRESENT,
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	// Clear the back buffer and depth buffer.
 	mCommandList->ClearRenderTargetView(CurrentBackBufferView(), (float*)&mMainPassCB.FogColor, 0, nullptr);
-	mCommandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+	mCommandList->ClearDepthStencilView(DepthStencilView(),
+	                                    D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
+	                                    1.0f,
+	                                    0,
+	                                    0,
+	                                    nullptr);
 
 	// Specify the buffers we are going to render to.
 	mCommandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
@@ -298,7 +302,8 @@ void TreeBillboardsApp::Draw(const GameTimer& gt)
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET,
+	                                                                       D3D12_RESOURCE_STATE_PRESENT));
 
 	// Done recording commands.
 	ThrowIfFailed(mCommandList->Close());
@@ -309,7 +314,7 @@ void TreeBillboardsApp::Draw(const GameTimer& gt)
 
 	// Swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
@@ -358,7 +363,7 @@ void TreeBillboardsApp::OnMouseMove(WPARAM btnState, int x, int y)
 		mRadius += dx - dy;
 
 		// Restrict the radius.
-		mRadius = MathHelper::Clamp(mRadius, 5.0f, 150.0f);
+		mRadius = MathHelper::Clamp(mRadius, 5.0f, 550.0f);
 	}
 
 	mLastMousePos.x = x;
@@ -539,35 +544,31 @@ void TreeBillboardsApp::LoadTextures()
 	auto grassTex      = std::make_unique<Texture>();
 	grassTex->Name     = "grassTex";
 	grassTex->Filename = L"../../Textures/grass.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), grassTex->Filename.c_str(),
-		              grassTex->Resource, grassTex->UploadHeap));
 
 	auto waterTex      = std::make_unique<Texture>();
 	waterTex->Name     = "waterTex";
 	waterTex->Filename = L"../../Textures/water1.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), waterTex->Filename.c_str(),
-		              waterTex->Resource, waterTex->UploadHeap));
 
 	auto fenceTex      = std::make_unique<Texture>();
 	fenceTex->Name     = "fenceTex";
 	fenceTex->Filename = L"../../Textures/WireFence.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), fenceTex->Filename.c_str(),
-		              fenceTex->Resource, fenceTex->UploadHeap));
 
 	auto treeArrayTex      = std::make_unique<Texture>();
 	treeArrayTex->Name     = "treeArrayTex";
 	treeArrayTex->Filename = L"../../Textures/treeArrayCorrect.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), treeArrayTex->Filename.c_str(),
-		              treeArrayTex->Resource, treeArrayTex->UploadHeap));
 
 	mTextures[grassTex->Name]     = std::move(grassTex);
 	mTextures[waterTex->Name]     = std::move(waterTex);
 	mTextures[fenceTex->Name]     = std::move(fenceTex);
 	mTextures[treeArrayTex->Name] = std::move(treeArrayTex);
+
+	for (auto& tex : mTextures)
+	{
+		tex.second->Resource = d3dUtil::CreateTexture(md3dDevice.Get(),
+		                                              mCommandList.Get(),
+		                                              tex.second->Filename.c_str(),
+		                                              tex.second->UploadHeap);
+	}
 }
 
 void TreeBillboardsApp::BuildRootSignature()
@@ -667,24 +668,24 @@ void TreeBillboardsApp::BuildShadersAndInputLayouts()
 {
 	const D3D_SHADER_MACRO defines[] =
 	{
-		"FOG", "1",
+		//"FOG", "1",
 		NULL, NULL
 	};
 
 	const D3D_SHADER_MACRO alphaTestDefines[] =
 	{
-		"FOG", "1",
+		//"FOG", "1",
 		"ALPHA_TEST", "1",
 		NULL, NULL
 	};
 
-	mShaders["standardVS"]    = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_0");
-	mShaders["opaquePS"]      = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", defines, "PS", "ps_5_0");
-	mShaders["alphaTestedPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_0");
+	mShaders["standardVS"]    = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["opaquePS"]      = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", defines, "PS", "ps_5_1");
+	mShaders["alphaTestedPS"] = d3dUtil::CompileShader(L"Shaders\\Default.hlsl", alphaTestDefines, "PS", "ps_5_1");
 
-	mShaders["treeSpriteVS"] = d3dUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", nullptr, "VS", "vs_5_0");
-	mShaders["treeSpriteGS"] = d3dUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", nullptr, "GS", "gs_5_0");
-	mShaders["treeSpritePS"] = d3dUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", alphaTestDefines, "PS", "ps_5_0");
+	mShaders["treeSpriteVS"] = d3dUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["treeSpriteGS"] = d3dUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", nullptr, "GS", "gs_5_1");
+	mShaders["treeSpritePS"] = d3dUtil::CompileShader(L"Shaders\\TreeSprite.hlsl", alphaTestDefines, "PS", "ps_5_1");
 
 	mStdInputLayout =
 	{
@@ -863,16 +864,20 @@ void TreeBillboardsApp::BuildBoxGeometry()
 
 void TreeBillboardsApp::BuildTreeSpritesGeometry()
 {
-	// Each TreeSpriteVertex has its own position and size, allowing us to have billboards of different sizes
-	// This information is also provided to the geometry shader so that it knows how large the billboard should be after expansion
+	// Notice that each TreeSpriteVertex is a point primitive
+
 	struct TreeSpriteVertex
 	{
-		XMFLOAT3 Pos;  // This vertex stores a point which represents the center position of the billboard in world space
-		XMFLOAT2 Size; // It also includes a size member, which stores the width/height of the billboard (scaled to world space units)
+		// This vertex stores a point which represents the center position of the billboard in world space
+		XMFLOAT3 Pos;
+		// It also includes a size member, which stores the width/height of the billboard (scaled to world space units)
+		XMFLOAT2 Size;
 	};
 
-	static const int                 treeCount = 16;
-	std::array<TreeSpriteVertex, 16> vertices;
+	static constexpr int treeCount = 16;
+
+	std::array<TreeSpriteVertex, treeCount> vertices;
+
 	for (UINT i = 0; i < treeCount; ++i)
 	{
 		// the location of the billboards on the ground plane
@@ -881,6 +886,7 @@ void TreeBillboardsApp::BuildTreeSpritesGeometry()
 
 		// the vertical location of the billboards on the y-axis
 		float y = GetHillsHeight(x, z);
+
 		// Move tree slightly above land height.
 		y += 8.0f;
 
@@ -888,7 +894,7 @@ void TreeBillboardsApp::BuildTreeSpritesGeometry()
 		vertices[i].Size = XMFLOAT2(20.0f, 20.0f);
 	}
 
-	std::array<std::uint16_t, 16> indices =
+	std::array<std::uint16_t, treeCount> indices =
 	{
 		0, 1, 2, 3, 4, 5, 6, 7,
 		8, 9, 10, 11, 12, 13, 14, 15
@@ -960,8 +966,8 @@ void TreeBillboardsApp::BuildPSOs()
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	opaquePsoDesc.NumRenderTargets      = 1;
 	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.SampleDesc.Count      = 1;
+	opaquePsoDesc.SampleDesc.Quality    = 0;
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 
@@ -1003,7 +1009,8 @@ void TreeBillboardsApp::BuildPSOs()
 	// PSO for tree sprites
 	//
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC treeSpritePsoDesc = opaquePsoDesc;
-	treeSpritePsoDesc.VS                                 =
+
+	treeSpritePsoDesc.VS =
 	{
 		reinterpret_cast<BYTE*>(mShaders["treeSpriteVS"]->GetBufferPointer()),
 		mShaders["treeSpriteVS"]->GetBufferSize()
@@ -1018,9 +1025,9 @@ void TreeBillboardsApp::BuildPSOs()
 		reinterpret_cast<BYTE*>(mShaders["treeSpritePS"]->GetBufferPointer()),
 		mShaders["treeSpritePS"]->GetBufferSize()
 	};
-	treeSpritePsoDesc.PrimitiveTopologyType    = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT;
+	treeSpritePsoDesc.PrimitiveTopologyType    = D3D12_PRIMITIVE_TOPOLOGY_TYPE_POINT; //! tree sprites are represented by point primitives
 	treeSpritePsoDesc.InputLayout              = {mTreeSpriteInputLayout.data(), (UINT)mTreeSpriteInputLayout.size()};
-	treeSpritePsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	treeSpritePsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE; //! disable back facing culling: we want to see the back face of the sprites
 
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&treeSpritePsoDesc, IID_PPV_ARGS(&mPSOs["treeSprites"])));
 }
