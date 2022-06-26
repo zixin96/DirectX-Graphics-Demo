@@ -403,8 +403,8 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinder(float bottomRadius
 {
 	MeshData cylNoCap = CreateCylinderNoCap(bottomRadius, topRadius, height, sliceCount, stackCount);
 
-	BuildCylinderTopCap(bottomRadius, topRadius, height, sliceCount, stackCount, cylNoCap);
-	BuildCylinderBottomCap(bottomRadius, topRadius, height, sliceCount, stackCount, cylNoCap);
+	BuildCylinderTopCap(topRadius, height, sliceCount, cylNoCap);
+	BuildCylinderBottomCap(bottomRadius, height, sliceCount, cylNoCap);
 
 	return cylNoCap;
 }
@@ -514,13 +514,14 @@ GeometryGenerator::MeshData GeometryGenerator::CreateCylinderNoCap(float bottomR
 	return meshData;
 }
 
-void GeometryGenerator::BuildCylinderTopCap(float  bottomRadius, float topRadius, float      height,
-                                            uint32 sliceCount, uint32  stackCount, MeshData& meshData)
+void GeometryGenerator::BuildCylinderTopCap(float     topRadius,
+                                            float     height,
+                                            uint32    sliceCount,
+                                            MeshData& meshData)
 {
 	uint32 baseIndex = (uint32)meshData.Vertices.size();
-
-	float y      = 0.5f * height;
-	float dTheta = 2.0f * XM_PI / sliceCount;
+	float  y         = 0.5f * height;
+	float  dTheta    = 2.0f * XM_PI / sliceCount;
 
 	// Duplicate cap ring vertices because the texture coordinates and normals differ.
 	for (uint32 i = 0; i <= sliceCount; ++i)
@@ -550,18 +551,15 @@ void GeometryGenerator::BuildCylinderTopCap(float  bottomRadius, float topRadius
 	}
 }
 
-void GeometryGenerator::BuildCylinderBottomCap(float  bottomRadius, float topRadius, float      height,
-                                               uint32 sliceCount, uint32  stackCount, MeshData& meshData)
+void GeometryGenerator::BuildCylinderBottomCap(float     bottomRadius,
+                                               float     height,
+                                               uint32    sliceCount,
+                                               MeshData& meshData)
 {
-	// 
-	// Build bottom cap.
-	//
-
 	uint32 baseIndex = (uint32)meshData.Vertices.size();
 	float  y         = -0.5f * height;
+	float  dTheta    = 2.0f * XM_PI / sliceCount;
 
-	// vertices of ring
-	float dTheta = 2.0f * XM_PI / sliceCount;
 	for (uint32 i = 0; i <= sliceCount; ++i)
 	{
 		float x = bottomRadius * cosf(i * dTheta);
@@ -693,6 +691,27 @@ GeometryGenerator::MeshData GeometryGenerator::CreateQuad(float x, float y, floa
 	meshData.Indices32[3] = 0;
 	meshData.Indices32[4] = 2;
 	meshData.Indices32[5] = 3;
+
+	return meshData;
+}
+
+GeometryGenerator::MeshData GeometryGenerator::CreateCycle(uint32 numSubdivisions, float radius)
+{
+	MeshData meshData;
+	float    dTheta = 2.0f * XM_PI / numSubdivisions;
+	for (uint32 j = 0; j < numSubdivisions; ++j)
+	{
+		Vertex vertex;
+
+		float c = cosf(j * dTheta);
+		float s = sinf(j * dTheta);
+
+		// position on the ring can be presented by coordinates on a circle with radius
+		vertex.Position = XMFLOAT3(radius * c, 0.f, radius * s);
+
+		meshData.Vertices.push_back(vertex);
+		meshData.Indices32.push_back(j);
+	}
 
 	return meshData;
 }
