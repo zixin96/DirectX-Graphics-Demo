@@ -36,13 +36,13 @@ struct RenderItem
 	int NumFramesDirty = gNumFrameResources;
 };
 
-class ShapesApp : public D3DApp
+class LODIcoApp : public D3DApp
 {
 public:
-	ShapesApp(HINSTANCE hInstance);
-	ShapesApp(const ShapesApp& rhs)            = delete;
-	ShapesApp& operator=(const ShapesApp& rhs) = delete;
-	~ShapesApp() override;
+	LODIcoApp(HINSTANCE hInstance);
+	LODIcoApp(const LODIcoApp& rhs)            = delete;
+	LODIcoApp& operator=(const LODIcoApp& rhs) = delete;
+	~LODIcoApp() override;
 
 	bool Initialize() override;
 
@@ -102,7 +102,7 @@ private:
 
 	float mTheta  = 1.5f * DirectX::XM_PI;
 	float mPhi    = 0.2f * DirectX::XM_PI;
-	float mRadius = 15.0f;
+	float mRadius = 10.0f; //! move camera closer, do not set it to 15.0f, which will coincide with the subdivision boundary and introduce flickering
 
 	POINT mLastMousePos;
 };

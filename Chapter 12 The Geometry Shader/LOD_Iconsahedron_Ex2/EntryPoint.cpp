@@ -1,4 +1,4 @@
-#include "ShapesApp.h"
+#include "LODIcoApp.h"
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
                    PSTR      cmdLine, int         showCmd)
@@ -10,7 +10,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
 
 	try
 	{
-		ShapesApp theApp(hInstance);
+		LODIcoApp theApp(hInstance);
 		if (!theApp.Initialize())
 			return 0;
 

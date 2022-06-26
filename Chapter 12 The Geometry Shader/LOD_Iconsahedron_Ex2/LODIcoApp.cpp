@@ -1,21 +1,21 @@
-#include "ShapesApp.h"
+#include "LODIcoApp.h"
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
 using namespace PackedVector;
 
-ShapesApp::ShapesApp(HINSTANCE hInstance)
+LODIcoApp::LODIcoApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
 {
 }
 
-ShapesApp::~ShapesApp()
+LODIcoApp::~LODIcoApp()
 {
 	if (md3dDevice != nullptr)
 		FlushCommandQueue();
 }
 
-bool ShapesApp::Initialize()
+bool LODIcoApp::Initialize()
 {
 	if (!D3DApp::Initialize())
 		return false;
@@ -43,7 +43,7 @@ bool ShapesApp::Initialize()
 	return true;
 }
 
-void ShapesApp::OnResize()
+void LODIcoApp::OnResize()
 {
 	D3DApp::OnResize();
 
@@ -52,7 +52,7 @@ void ShapesApp::OnResize()
 	XMStoreFloat4x4(&mProj, P);
 }
 
-void ShapesApp::Update(const GameTimer& gt)
+void LODIcoApp::Update(const GameTimer& gt)
 {
 	OnKeyboardInput(gt);
 	UpdateCamera(gt);
@@ -78,7 +78,7 @@ void ShapesApp::Update(const GameTimer& gt)
 	UpdateMainPassCB(gt);
 }
 
-void ShapesApp::Draw(const GameTimer& gt)
+void LODIcoApp::Draw(const GameTimer& gt)
 {
 	// build and submit command lists for the current frame:
 
@@ -153,7 +153,7 @@ void ShapesApp::Draw(const GameTimer& gt)
 	// but that is OK, because we are not touching any frame resources associated with those frames. 
 }
 
-void ShapesApp::OnMouseDown(WPARAM btnState, int x, int y)
+void LODIcoApp::OnMouseDown(WPARAM btnState, int x, int y)
 {
 	mLastMousePos.x = x;
 	mLastMousePos.y = y;
@@ -161,12 +161,12 @@ void ShapesApp::OnMouseDown(WPARAM btnState, int x, int y)
 	SetCapture(mhMainWnd);
 }
 
-void ShapesApp::OnMouseUp(WPARAM btnState, int x, int y)
+void LODIcoApp::OnMouseUp(WPARAM btnState, int x, int y)
 {
 	ReleaseCapture();
 }
 
-void ShapesApp::OnMouseMove(WPARAM btnState, int x, int y)
+void LODIcoApp::OnMouseMove(WPARAM btnState, int x, int y)
 {
 	if ((btnState & MK_LBUTTON) != 0)
 	{
@@ -198,7 +198,7 @@ void ShapesApp::OnMouseMove(WPARAM btnState, int x, int y)
 	mLastMousePos.y = y;
 }
 
-void ShapesApp::OnKeyboardInput(const GameTimer& gt)
+void LODIcoApp::OnKeyboardInput(const GameTimer& gt)
 {
 	if (GetAsyncKeyState('1') & 0x8000)
 		mIsWireframe = true;
@@ -206,7 +206,7 @@ void ShapesApp::OnKeyboardInput(const GameTimer& gt)
 		mIsWireframe = false;
 }
 
-void ShapesApp::UpdateCamera(const GameTimer& gt)
+void LODIcoApp::UpdateCamera(const GameTimer& gt)
 {
 	// Convert Spherical to Cartesian coordinates.
 	mEyePos.x = mRadius * sinf(mPhi) * cosf(mTheta);
@@ -223,7 +223,7 @@ void ShapesApp::UpdateCamera(const GameTimer& gt)
 }
 
 // only need to be updated when an object's world matrix changes
-void ShapesApp::UpdateObjectCBs(const GameTimer& gt)
+void LODIcoApp::UpdateObjectCBs(const GameTimer& gt)
 {
 	auto currObjectCB = mCurrFrameResource->ObjectCB.get();
 	for (auto& e : mAllRenderItems)
@@ -246,7 +246,7 @@ void ShapesApp::UpdateObjectCBs(const GameTimer& gt)
 }
 
 // need to be called once per rendering pass
-void ShapesApp::UpdateMainPassCB(const GameTimer& gt)
+void LODIcoApp::UpdateMainPassCB(const GameTimer& gt)
 {
 	XMMATRIX view = XMLoadFloat4x4(&mView);
 	XMMATRIX proj = XMLoadFloat4x4(&mProj);
@@ -275,7 +275,7 @@ void ShapesApp::UpdateMainPassCB(const GameTimer& gt)
 }
 
 // See Notability
-void ShapesApp::BuildDescriptorHeaps()
+void LODIcoApp::BuildDescriptorHeaps()
 {
 	//
 	// Create the CBV heap.
@@ -299,7 +299,7 @@ void ShapesApp::BuildDescriptorHeaps()
 }
 
 // See Notability
-void ShapesApp::BuildDescriptors()
+void LODIcoApp::BuildDescriptors()
 {
 	UINT objCount      = (UINT)mOpaqueRitems.size();
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
@@ -345,7 +345,7 @@ void ShapesApp::BuildDescriptors()
 	}
 }
 
-void ShapesApp::BuildRootSignature()
+void LODIcoApp::BuildRootSignature()
 {
 	// root signature takes 2 root parameters of descriptor-tables type 
 	CD3DX12_ROOT_PARAMETER slotRootParameter[2];
@@ -398,9 +398,10 @@ void ShapesApp::BuildRootSignature()
 		              IID_PPV_ARGS(mRootSignature.GetAddressOf())));
 }
 
-void ShapesApp::BuildShadersAndInputLayout()
+void LODIcoApp::BuildShadersAndInputLayout()
 {
 	mShaders["standardVS"] = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "VS", "vs_5_1");
+	mShaders["standardGS"] = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "GS", "gs_5_1");
 	mShaders["opaquePS"]   = d3dUtil::CompileShader(L"Shaders\\color.hlsl", nullptr, "PS", "ps_5_1");
 
 	// corresponds to Vertex struct in FrameResource.h
@@ -411,113 +412,40 @@ void ShapesApp::BuildShadersAndInputLayout()
 	};
 }
 
-void ShapesApp::BuildShapeGeometry()
+void LODIcoApp::BuildShapeGeometry()
 {
 	// we place all scene geometry in one big vertex and index buffer
 
 	GeometryGenerator           geoGen;
-	GeometryGenerator::MeshData box  = geoGen.CreateBox(1.5f, 0.5f, 1.5f, 3);
-	GeometryGenerator::MeshData grid = geoGen.CreateGrid(20.0f, 30.0f, 60, 40);
-
-	GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(0.5f, 0.3f, 3.0f, 20, 20);
-	//GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(1.0f, 0.5f, 10.0f, 8, 2);
-
-	//!? Experiment with GeoSphere
-	//GeometryGenerator::MeshData sphere = geoGen.CreateSphere(0.5f, 20, 20);
-	//GeometryGenerator::MeshData sphere = geoGen.CreateGeosphere(0.5f, 0);
-	//GeometryGenerator::MeshData sphere = geoGen.CreateGeosphere(0.5f, 1);
-	//GeometryGenerator::MeshData geoSphere = geoGen.CreateGeosphere(0.5f, 2);
-	GeometryGenerator::MeshData sphere = geoGen.CreateGeosphere(0.5f, 1);
-	//GeometryGenerator::MeshData sphere = geoGen.CreateGeosphere(0.5f, 4);
-	//
-	// define the regions in the buffer each submesh covers.
-	//
-
-	// Cache the vertex offsets to each object in the concatenated vertex buffer.
-	UINT boxVertexOffset      = 0;
-	UINT gridVertexOffset     = (UINT)box.Vertices.size();
-	UINT sphereVertexOffset   = gridVertexOffset + (UINT)grid.Vertices.size();
-	UINT cylinderVertexOffset = sphereVertexOffset + (UINT)sphere.Vertices.size();
-
-	// Cache the starting index for each object in the concatenated index buffer.
-	UINT boxIndexOffset      = 0;
-	UINT gridIndexOffset     = (UINT)box.Indices32.size();
-	UINT sphereIndexOffset   = gridIndexOffset + (UINT)grid.Indices32.size();
-	UINT cylinderIndexOffset = sphereIndexOffset + (UINT)sphere.Indices32.size();
-
-	// Define the SubmeshGeometry that cover different 
-	// regions of the vertex/index buffers.
-
-	SubmeshGeometry boxSubmesh;
-	boxSubmesh.IndexCount         = (UINT)box.Indices32.size();
-	boxSubmesh.StartIndexLocation = boxIndexOffset;
-	boxSubmesh.BaseVertexLocation = boxVertexOffset;
-
-	SubmeshGeometry gridSubmesh;
-	gridSubmesh.IndexCount         = (UINT)grid.Indices32.size();
-	gridSubmesh.StartIndexLocation = gridIndexOffset;
-	gridSubmesh.BaseVertexLocation = gridVertexOffset;
+	GeometryGenerator::MeshData sphere = geoGen.CreateGeosphere(3.0f, 0);
 
 	SubmeshGeometry sphereSubmesh;
 	sphereSubmesh.IndexCount         = (UINT)sphere.Indices32.size();
-	sphereSubmesh.StartIndexLocation = sphereIndexOffset;
-	sphereSubmesh.BaseVertexLocation = sphereVertexOffset;
+	sphereSubmesh.StartIndexLocation = 0;
+	sphereSubmesh.BaseVertexLocation = 0;
 
-	SubmeshGeometry cylinderSubmesh;
-	cylinderSubmesh.IndexCount         = (UINT)cylinder.Indices32.size();
-	cylinderSubmesh.StartIndexLocation = cylinderIndexOffset;
-	cylinderSubmesh.BaseVertexLocation = cylinderVertexOffset;
-
-	auto geo                  = std::make_unique<MeshGeometry>();
-	geo->Name                 = "shapeGeo";
-	geo->DrawArgs["box"]      = boxSubmesh;
-	geo->DrawArgs["grid"]     = gridSubmesh;
-	geo->DrawArgs["sphere"]   = sphereSubmesh;
-	geo->DrawArgs["cylinder"] = cylinderSubmesh;
+	auto geo                = std::make_unique<MeshGeometry>();
+	geo->Name               = "shapeGeo";
+	geo->DrawArgs["sphere"] = sphereSubmesh;
 
 	//
 	// Extract the vertex elements we are interested in and pack the
 	// vertices of all the meshes into one vertex buffer.
 	//
 
-	auto totalVertexCount =
-			box.Vertices.size() +
-			grid.Vertices.size() +
-			sphere.Vertices.size() +
-			cylinder.Vertices.size();
+	auto totalVertexCount = sphere.Vertices.size();
 
 	std::vector<Vertex> vertices(totalVertexCount);
 
 	UINT k = 0;
-	for (size_t i = 0; i < box.Vertices.size(); ++i, ++k)
-	{
-		vertices[k].Pos   = box.Vertices[i].Position;
-		vertices[k].Color = XMFLOAT4(Colors::DarkGreen);
-	}
-
-	for (size_t i = 0; i < grid.Vertices.size(); ++i, ++k)
-	{
-		vertices[k].Pos   = grid.Vertices[i].Position;
-		vertices[k].Color = XMFLOAT4(Colors::ForestGreen);
-	}
-
 	for (size_t i = 0; i < sphere.Vertices.size(); ++i, ++k)
 	{
 		vertices[k].Pos   = sphere.Vertices[i].Position;
 		vertices[k].Color = XMFLOAT4(Colors::Crimson);
 	}
 
-	for (size_t i = 0; i < cylinder.Vertices.size(); ++i, ++k)
-	{
-		vertices[k].Pos   = cylinder.Vertices[i].Position;
-		vertices[k].Color = XMFLOAT4(Colors::SteelBlue);
-	}
-
 	std::vector<std::uint16_t> indices;
-	indices.insert(indices.end(), std::begin(box.GetIndices16()), std::end(box.GetIndices16()));
-	indices.insert(indices.end(), std::begin(grid.GetIndices16()), std::end(grid.GetIndices16()));
 	indices.insert(indices.end(), std::begin(sphere.GetIndices16()), std::end(sphere.GetIndices16()));
-	indices.insert(indices.end(), std::begin(cylinder.GetIndices16()), std::end(cylinder.GetIndices16()));
 
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
@@ -548,7 +476,7 @@ void ShapesApp::BuildShapeGeometry()
 	mGeometries[geo->Name] = std::move(geo);
 }
 
-void ShapesApp::BuildPSOs()
+void LODIcoApp::BuildPSOs()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 
@@ -562,6 +490,11 @@ void ShapesApp::BuildPSOs()
 	{
 		reinterpret_cast<BYTE*>(mShaders["standardVS"]->GetBufferPointer()),
 		mShaders["standardVS"]->GetBufferSize()
+	};
+	opaquePsoDesc.GS =
+	{
+		reinterpret_cast<BYTE*>(mShaders["standardGS"]->GetBufferPointer()),
+		mShaders["standardGS"]->GetBufferSize()
 	};
 	opaquePsoDesc.PS =
 	{
@@ -590,7 +523,7 @@ void ShapesApp::BuildPSOs()
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaqueWireframePsoDesc, IID_PPV_ARGS(&mPSOs["opaque_wireframe"])));
 }
 
-void ShapesApp::BuildFrameResources()
+void LODIcoApp::BuildFrameResources()
 {
 	for (int i = 0; i < gNumFrameResources; ++i)
 	{
@@ -600,81 +533,17 @@ void ShapesApp::BuildFrameResources()
 	}
 }
 
-void ShapesApp::BuildRenderItems()
+void LODIcoApp::BuildRenderItems()
 {
-	// observe that our render items share the same MeshGeometry and store information about sub regions of index and vertex buffers
-
-	auto boxRitem = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&boxRitem->World, XMMatrixScaling(2.0f, 2.0f, 2.0f) * XMMatrixTranslation(0.0f, 0.5f, 0.0f));
-	boxRitem->ObjCBIndex         = 0;
-	boxRitem->Geo                = mGeometries["shapeGeo"].get();
-	boxRitem->PrimitiveType      = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	boxRitem->IndexCount         = boxRitem->Geo->DrawArgs["box"].IndexCount;
-	boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["box"].StartIndexLocation;
-	boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["box"].BaseVertexLocation;
-	mAllRenderItems.push_back(std::move(boxRitem));
-
-	auto gridRitem                = std::make_unique<RenderItem>();
-	gridRitem->World              = MathHelper::Identity4x4();
-	gridRitem->ObjCBIndex         = 1;
-	gridRitem->Geo                = mGeometries["shapeGeo"].get();
-	gridRitem->PrimitiveType      = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	gridRitem->IndexCount         = gridRitem->Geo->DrawArgs["grid"].IndexCount;
-	gridRitem->StartIndexLocation = gridRitem->Geo->DrawArgs["grid"].StartIndexLocation;
-	gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
-	mAllRenderItems.push_back(std::move(gridRitem));
-
-	UINT objCBIndex = 2;
-	for (int i = 0; i < 5; ++i)
-	{
-		auto leftCylRitem     = std::make_unique<RenderItem>();
-		auto rightCylRitem    = std::make_unique<RenderItem>();
-		auto leftSphereRitem  = std::make_unique<RenderItem>();
-		auto rightSphereRitem = std::make_unique<RenderItem>();
-
-		XMMATRIX leftCylWorld  = XMMatrixTranslation(-5.0f, 1.5f, -10.0f + i * 5.0f);
-		XMMATRIX rightCylWorld = XMMatrixTranslation(+5.0f, 1.5f, -10.0f + i * 5.0f);
-
-		XMMATRIX leftSphereWorld  = XMMatrixTranslation(-5.0f, 3.5f, -10.0f + i * 5.0f);
-		XMMATRIX rightSphereWorld = XMMatrixTranslation(+5.0f, 3.5f, -10.0f + i * 5.0f);
-
-		XMStoreFloat4x4(&leftCylRitem->World, rightCylWorld);
-		leftCylRitem->ObjCBIndex         = objCBIndex++;
-		leftCylRitem->Geo                = mGeometries["shapeGeo"].get();
-		leftCylRitem->PrimitiveType      = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		leftCylRitem->IndexCount         = leftCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
-		leftCylRitem->StartIndexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
-		leftCylRitem->BaseVertexLocation = leftCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
-
-		XMStoreFloat4x4(&rightCylRitem->World, leftCylWorld);
-		rightCylRitem->ObjCBIndex         = objCBIndex++;
-		rightCylRitem->Geo                = mGeometries["shapeGeo"].get();
-		rightCylRitem->PrimitiveType      = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		rightCylRitem->IndexCount         = rightCylRitem->Geo->DrawArgs["cylinder"].IndexCount;
-		rightCylRitem->StartIndexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].StartIndexLocation;
-		rightCylRitem->BaseVertexLocation = rightCylRitem->Geo->DrawArgs["cylinder"].BaseVertexLocation;
-
-		XMStoreFloat4x4(&leftSphereRitem->World, leftSphereWorld);
-		leftSphereRitem->ObjCBIndex         = objCBIndex++;
-		leftSphereRitem->Geo                = mGeometries["shapeGeo"].get();
-		leftSphereRitem->PrimitiveType      = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		leftSphereRitem->IndexCount         = leftSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
-		leftSphereRitem->StartIndexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
-		leftSphereRitem->BaseVertexLocation = leftSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
-
-		XMStoreFloat4x4(&rightSphereRitem->World, rightSphereWorld);
-		rightSphereRitem->ObjCBIndex         = objCBIndex++;
-		rightSphereRitem->Geo                = mGeometries["shapeGeo"].get();
-		rightSphereRitem->PrimitiveType      = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-		rightSphereRitem->IndexCount         = rightSphereRitem->Geo->DrawArgs["sphere"].IndexCount;
-		rightSphereRitem->StartIndexLocation = rightSphereRitem->Geo->DrawArgs["sphere"].StartIndexLocation;
-		rightSphereRitem->BaseVertexLocation = rightSphereRitem->Geo->DrawArgs["sphere"].BaseVertexLocation;
-
-		mAllRenderItems.push_back(std::move(leftCylRitem));
-		mAllRenderItems.push_back(std::move(rightCylRitem));
-		mAllRenderItems.push_back(std::move(leftSphereRitem));
-		mAllRenderItems.push_back(std::move(rightSphereRitem));
-	}
+	auto geoSphere = std::make_unique<RenderItem>();
+	XMStoreFloat4x4(&geoSphere->World, XMMatrixScaling(1.f, 1.f, 1.f));
+	geoSphere->ObjCBIndex         = 0;
+	geoSphere->Geo                = mGeometries["shapeGeo"].get();
+	geoSphere->PrimitiveType      = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
+	geoSphere->IndexCount         = geoSphere->Geo->DrawArgs["sphere"].IndexCount;
+	geoSphere->StartIndexLocation = geoSphere->Geo->DrawArgs["sphere"].StartIndexLocation;
+	geoSphere->BaseVertexLocation = geoSphere->Geo->DrawArgs["sphere"].BaseVertexLocation;
+	mAllRenderItems.push_back(std::move(geoSphere));
 
 	// All the render items are opaque.
 	for (auto& e : mAllRenderItems)
@@ -683,7 +552,7 @@ void ShapesApp::BuildRenderItems()
 	}
 }
 
-void ShapesApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
+void LODIcoApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 {
 	// draw one render object at a time (as the world matrix needs to be changed between objects)
 	for (size_t i = 0; i < ritems.size(); ++i)

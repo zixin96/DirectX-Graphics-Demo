@@ -148,7 +148,17 @@ Changed to using the latest texture loading code from DirectXTex: https://github
 
 ---
 
+In HLSL, `operator*` is **component-wise!**
 
+```c++
+gout[i].PosH  = mul(float4(v[i].PosW, 1.f), gWorld * gViewProj);
+```
+
+`gWorld * gViewProj` is done component-wise!. **If `gWorld` is the identify matrix, it will corrupt your `gViewProj`**!
+
+ **in GLSL ‘*’ operator between matrices, is the standar linear algebra matrix multiplication, while in HLSL is a component wise multiplication.** 
+
+---
 
 ## TODO
 
