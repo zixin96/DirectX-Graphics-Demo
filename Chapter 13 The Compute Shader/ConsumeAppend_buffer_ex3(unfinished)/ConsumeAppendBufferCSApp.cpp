@@ -15,9 +15,14 @@ using namespace DirectX::PackedVector;
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
 
-struct Data
+struct InputData
 {
-	XMFLOAT3 v1;
+	XMFLOAT3 v;
+};
+
+struct OutputData
+{
+	float v;
 };
 
 // Lightweight structure stores parameters to draw a shape.  This will
@@ -88,6 +93,7 @@ private:
 	void BuildShadersAndInputLayout();
 	void BuildPSOs();
 	void BuildFrameResources();
+	void BuildDescriptorHeaps();
 
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 
@@ -106,6 +112,8 @@ private:
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
 
+	ComPtr<ID3D12DescriptorHeap> mCbvSrvUavDescriptorHeap = nullptr;
+
 	// List of all the render items.
 	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
 
@@ -116,6 +124,9 @@ private:
 
 	ComPtr<ID3D12Resource> mInputBufferA       = nullptr;
 	ComPtr<ID3D12Resource> mInputUploadBufferA = nullptr;
+
+	ComPtr<ID3D12Resource> mInputCounter  = nullptr;
+	ComPtr<ID3D12Resource> mOutputCounter = nullptr;
 
 	ComPtr<ID3D12Resource> mOutputBuffer   = nullptr; // the buffer that our compute shader will write to 
 	ComPtr<ID3D12Resource> mReadBackBuffer = nullptr; // the buffer where we will copy the GPU resource to (which will later be read by CPU)
@@ -132,6 +143,12 @@ private:
 
 	POINT mLastMousePos;
 };
+
+static inline UINT AlignForUavCounter(UINT bufferSize)
+{
+	const UINT alignment = D3D12_UAV_COUNTER_PLACEMENT_ALIGNMENT;
+	return (bufferSize + (alignment - 1)) & ~(alignment - 1);
+}
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
                    PSTR      cmdLine, int         showCmd)
@@ -176,6 +193,7 @@ bool ConsumeAppendBufferCSApp::Initialize()
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
 	BuildBuffers();
+	BuildDescriptorHeaps();
 	BuildRootSignature();
 	BuildShadersAndInputLayout();
 	BuildFrameResources();
@@ -192,6 +210,36 @@ bool ConsumeAppendBufferCSApp::Initialize()
 	DoComputeWork();
 
 	return true;
+}
+
+void ConsumeAppendBufferCSApp::BuildDescriptorHeaps()
+{
+	//
+	// Create the SRV heap.
+	//
+	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
+	srvHeapDesc.NumDescriptors             = 2;
+	srvHeapDesc.Type                       = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	srvHeapDesc.Flags                      = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mCbvSrvUavDescriptorHeap)));
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mCbvSrvUavDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.Format                           = DXGI_FORMAT_UNKNOWN;
+	uavDesc.ViewDimension                    = D3D12_UAV_DIMENSION_BUFFER;
+	uavDesc.Buffer.FirstElement              = 0;
+	uavDesc.Buffer.NumElements               = mNumDataElements;
+	uavDesc.Buffer.StructureByteStride       = sizeof(InputData);
+	uavDesc.Buffer.CounterOffsetInBytes      = 0;
+	md3dDevice->CreateUnorderedAccessView(mInputBufferA.Get(), mInputCounter.Get(), &uavDesc, hDescriptor);
+
+	// next descriptor
+	hDescriptor.Offset(1, mCbvSrvUavDescriptorSize);
+
+	uavDesc.Buffer.StructureByteStride  = sizeof(OutputData);
+	uavDesc.Buffer.CounterOffsetInBytes = 0;
+	md3dDevice->CreateUnorderedAccessView(mOutputBuffer.Get(), mOutputCounter.Get(), &uavDesc, hDescriptor);
 }
 
 void ConsumeAppendBufferCSApp::OnResize()
@@ -327,10 +375,15 @@ void ConsumeAppendBufferCSApp::DoComputeWork()
 	// Reusing the command list reuses memory.
 	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), mPSOs["AppendBuffer"].Get()));
 
+	ID3D12DescriptorHeap* descriptorHeaps[] = {mCbvSrvUavDescriptorHeap.Get()};
+	mCommandList->SetDescriptorHeaps(_countof(descriptorHeaps), descriptorHeaps);
+
 	mCommandList->SetComputeRootSignature(mRootSignature.Get());
 
-	mCommandList->SetComputeRootUnorderedAccessView(0, mInputBufferA->GetGPUVirtualAddress());
-	mCommandList->SetComputeRootUnorderedAccessView(1, mOutputBuffer->GetGPUVirtualAddress());
+	CD3DX12_GPU_DESCRIPTOR_HANDLE tex(mCbvSrvUavDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+	mCommandList->SetComputeRootDescriptorTable(0, tex);
+	tex.Offset(1, mCbvSrvUavDescriptorSize);
+	mCommandList->SetComputeRootDescriptorTable(1, tex);
 
 	mCommandList->Dispatch(1, 1, 1);
 
@@ -357,14 +410,14 @@ void ConsumeAppendBufferCSApp::DoComputeWork()
 	FlushCommandQueue();
 
 	// Map the data so we can read it on CPU.
-	float* mappedData = nullptr;
+	OutputData* mappedData = nullptr;
 	ThrowIfFailed(mReadBackBuffer->Map(0, nullptr, reinterpret_cast<void**>(&mappedData)));
 
 	std::ofstream fout("results.txt");
 
 	for (int i = 0; i < mNumDataElements; ++i)
 	{
-		fout << "(" << mappedData[i] << ")" << std::endl;
+		fout << "(" << mappedData[i].v << ")" << std::endl;
 	}
 
 	mReadBackBuffer->Unmap(0, nullptr);
@@ -373,15 +426,15 @@ void ConsumeAppendBufferCSApp::DoComputeWork()
 void ConsumeAppendBufferCSApp::BuildBuffers()
 {
 	// Generate some data.
-	std::vector<Data> dataA(mNumDataElements);
+	std::vector<InputData> dataA(mNumDataElements);
 	for (int i = 0; i < mNumDataElements; ++i)
 	{
 		XMVECTOR randUnitVec = MathHelper::RandUnitVec3();
-		XMStoreFloat3(&dataA[i].v1, randUnitVec * MathHelper::RandF(1.0f, 10.f));
+		XMStoreFloat3(&dataA[i].v, randUnitVec * MathHelper::RandF(1.0f, 10.f));
 	}
 
-	UINT64 inputyteSize   = dataA.size() * sizeof(Data);
-	UINT64 outputByteSize = dataA.size() * sizeof(float);
+	UINT64 inputByteSize  = dataA.size() * sizeof(InputData);
+	UINT64 outputByteSize = dataA.size() * sizeof(OutputData);
 
 	//!? for consume and append buffers, both need to be viewed using UAV
 
@@ -389,7 +442,7 @@ void ConsumeAppendBufferCSApp::BuildBuffers()
 	mInputBufferA = d3dUtil::CreateDefaultBufferUAV(md3dDevice.Get(),
 	                                                mCommandList.Get(),
 	                                                dataA.data(),
-	                                                inputyteSize,
+	                                                inputByteSize,
 	                                                mInputUploadBufferA);
 
 	// Create the buffer that will be a UAV.
@@ -409,16 +462,38 @@ void ConsumeAppendBufferCSApp::BuildBuffers()
 		              D3D12_RESOURCE_STATE_COPY_DEST, //! Initial state is copy destination b/c we will use ID3D12GraphicsCommandList::CopyResource to copy the GPU resource to this resource
 		              nullptr,
 		              IID_PPV_ARGS(&mReadBackBuffer)));
+
+	ThrowIfFailed(md3dDevice->CreateCommittedResource(
+		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		              D3D12_HEAP_FLAG_NONE,
+		              &CD3DX12_RESOURCE_DESC::Buffer(4, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS), //! This resource will be accessed by UAV 
+		              D3D12_RESOURCE_STATE_UNORDERED_ACCESS,                                         //! This resource is in UAV access state by default                                                
+		              nullptr,
+		              IID_PPV_ARGS(&mInputCounter)));
+
+	ThrowIfFailed(md3dDevice->CreateCommittedResource(
+		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		              D3D12_HEAP_FLAG_NONE,
+		              &CD3DX12_RESOURCE_DESC::Buffer(4, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS), //! This resource will be accessed by UAV 
+		              D3D12_RESOURCE_STATE_UNORDERED_ACCESS,                                         //! This resource is in UAV access state by default                                                
+		              nullptr,
+		              IID_PPV_ARGS(&mOutputCounter)));
 }
 
 void ConsumeAppendBufferCSApp::BuildRootSignature()
 {
+	CD3DX12_DESCRIPTOR_RANGE uavTable;
+	uavTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0);
+
+	CD3DX12_DESCRIPTOR_RANGE uavTable2;
+	uavTable2.Init(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1);
+
 	// Root parameter can be a table, root descriptor or root constants.
 	CD3DX12_ROOT_PARAMETER slotRootParameter[2];
 
 	// Perfomance TIP: Order from most frequent to least frequent.
-	slotRootParameter[0].InitAsUnorderedAccessView(0);
-	slotRootParameter[1].InitAsUnorderedAccessView(1);
+	slotRootParameter[0].InitAsDescriptorTable(1, &uavTable, D3D12_SHADER_VISIBILITY_ALL);
+	slotRootParameter[1].InitAsDescriptorTable(1, &uavTable2, D3D12_SHADER_VISIBILITY_ALL);
 
 	// A root signature is an array of root parameters.
 	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(2,
@@ -448,7 +523,7 @@ void ConsumeAppendBufferCSApp::BuildRootSignature()
 
 void ConsumeAppendBufferCSApp::BuildShadersAndInputLayout()
 {
-	mShaders["AppendBufferCS"] = d3dUtil::CompileShader(L"Shaders\\ConsumeAppendBuffer.hlsl", nullptr, "CS", "cs_5_1");
+	mShaders["AppendBufferCS"] = d3dUtil::CompileShader(L"Shaders\\ConsumeAppendBuffer.hlsl", nullptr, "CS", "cs_5_0");
 }
 
 void ConsumeAppendBufferCSApp::BuildPSOs()
