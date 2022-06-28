@@ -14,10 +14,8 @@
 class BlurFilter
 {
 public:
-	///<summary>
-	/// The width and height should match the dimensions of the input texture to blur.
-	/// Recreate when the screen is resized. 
-	///</summary>
+	// The width and height should match the dimensions of the input texture to blur.
+	//! Recreate when the screen is resized. 
 	BlurFilter(ID3D12Device* device,
 	           UINT          width,
 	           UINT          height,
@@ -35,9 +33,7 @@ public:
 
 	void OnResize(UINT newWidth, UINT newHeight);
 
-	///<summary>
-	/// Blurs the input texture blurCount times.
-	///</summary>
+	// Blurs the input texture blurCount times.
 	void Execute(ID3D12GraphicsCommandList* cmdList,
 	             ID3D12RootSignature*       rootSig,
 	             ID3D12PipelineState*       horzBlurPSO,

@@ -197,7 +197,7 @@ bool BlurApp::Initialize()
 	mBlurFilter = std::make_unique<BlurFilter>(md3dDevice.Get(),
 	                                           mClientWidth,
 	                                           mClientHeight,
-	                                           DXGI_FORMAT_R8G8B8A8_UNORM); // this is the same as mBackBufferFormat
+	                                           mBackBufferFormat);
 
 	LoadTextures();
 	BuildRootSignature();
@@ -298,6 +298,7 @@ void BlurApp::Draw(const GameTimer& gt)
 
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
+	// Draw scene as usual to the back buffer
 	auto passCB = mCurrFrameResource->PassCB->Resource();
 	mCommandList->SetGraphicsRootConstantBufferView(2, passCB->GetGPUVirtualAddress());
 
@@ -309,6 +310,7 @@ void BlurApp::Draw(const GameTimer& gt)
 	mCommandList->SetPipelineState(mPSOs["transparent"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Transparent]);
 
+	// copyResource from the back buffer to a off-screen texture and blur the off-screen texture using a compute shader program
 	mBlurFilter->Execute(mCommandList.Get(),
 	                     mPostProcessRootSignature.Get(),
 	                     mPSOs["horzBlur"].Get(),
@@ -683,10 +685,9 @@ void BlurApp::BuildDescriptorHeaps()
 	// Create the SRV heap.
 	//
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors             = textureDescriptorCount +
-	                                         blurDescriptorCount;
-	srvHeapDesc.Type  = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
-	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	srvHeapDesc.NumDescriptors             = textureDescriptorCount + blurDescriptorCount;
+	srvHeapDesc.Type                       = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	srvHeapDesc.Flags                      = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mCbvSrvUavDescriptorHeap)));
 
 	//
@@ -994,7 +995,7 @@ void BlurApp::BuildPSOs()
 	// PSO for horizontal blur
 	//
 	D3D12_COMPUTE_PIPELINE_STATE_DESC horzBlurPSO = {};
-	horzBlurPSO.pRootSignature                    = mPostProcessRootSignature.Get(); // set compute root signature
+	horzBlurPSO.pRootSignature                    = mPostProcessRootSignature.Get();
 	horzBlurPSO.CS                                =
 	{
 		reinterpret_cast<BYTE*>(mShaders["horzBlurCS"]->GetBufferPointer()),

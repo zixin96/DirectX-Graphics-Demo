@@ -46,14 +46,6 @@ void HorzBlurCS(int3 groupThreadID : SV_GroupThreadID,
 	// due to the blur radius.
 	//
 
-	// See D3D3
-
-	// This thread group runs N threads.  To get the extra 2*BlurRadius pixels, 
-	// have 2*BlurRadius threads sample an extra pixel.
-
-	// These following two if statement will make some threads on extra work
-
-	// For thread 0, 1, 2, ..., (gBlurRadius - 1), do this: 
 	if (groupThreadID.x < gBlurRadius)
 	{
 		// Clamp out of bound samples that occur at image borders.
@@ -61,7 +53,6 @@ void HorzBlurCS(int3 groupThreadID : SV_GroupThreadID,
 		gCache[groupThreadID.x] = gInput[int2(x, dispatchThreadID.y)];
 	}
 
-	// For thread N - gBlurRadius, N - gBlurRadius + 1, ..., N - 1, do this: 
 	if (groupThreadID.x >= N - gBlurRadius)
 	{
 		// Clamp out of bound samples that occur at image borders.

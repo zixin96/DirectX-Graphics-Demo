@@ -155,14 +155,13 @@ void BlurFilter::Execute(ID3D12GraphicsCommandList* cmdList,
 
 std::vector<float> BlurFilter::CalcGaussWeights(float sigma)
 {
-	//d3d2
-	float twoSigma2 = 2.0f * sigma * sigma;
+	// using the formula at the bottom of page 490:
 
+	float twoSigma2 = 2.0f * sigma * sigma;
 	// Estimate the blur radius based on sigma since sigma controls the "width" of the bell curve.
-	// For example, for sigma = 3, the width of the bell curve is 
 	int blurRadius = (int)ceil(2.0f * sigma);
 
-	assert(blurRadius <= MaxBlurRadius);
+	assert(blurRadius <= MAX_BLUR_RADIUS);
 
 	std::vector<float> weights;
 	weights.resize(2 * blurRadius + 1);
@@ -197,10 +196,9 @@ void BlurFilter::BuildDescriptors()
 	srvDesc.Texture2D.MipLevels             = 1;
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-
-	uavDesc.Format             = mFormat;
-	uavDesc.ViewDimension      = D3D12_UAV_DIMENSION_TEXTURE2D;
-	uavDesc.Texture2D.MipSlice = 0;
+	uavDesc.Format                           = mFormat;
+	uavDesc.ViewDimension                    = D3D12_UAV_DIMENSION_TEXTURE2D;
+	uavDesc.Texture2D.MipSlice               = 0;
 
 	md3dDevice->CreateShaderResourceView(mBlurMap0.Get(), &srvDesc, mBlur0CpuSrv);
 	md3dDevice->CreateUnorderedAccessView(mBlurMap0.Get(), nullptr, &uavDesc, mBlur0CpuUav);
