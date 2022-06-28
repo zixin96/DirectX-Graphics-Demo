@@ -48,7 +48,7 @@ private:
 	void BuildResources();
 
 private:
-	const int MaxBlurRadius = 5;
+	const int MAX_BLUR_RADIUS = 5;
 
 	ID3D12Device* md3dDevice = nullptr;
 
