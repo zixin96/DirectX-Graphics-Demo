@@ -15,8 +15,6 @@ using namespace DirectX::PackedVector;
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
 
-const int gNumFrameResources = 3;
-
 // Lightweight structure stores parameters to draw a shape.  This will
 // vary from app-to-app.
 struct RenderItem
@@ -278,7 +276,7 @@ void BezierPatchApp::Draw(const GameTimer& gt)
 
 	// Swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
@@ -446,14 +444,17 @@ void BezierPatchApp::UpdateMainPassCB(const GameTimer& gt)
 
 void BezierPatchApp::LoadTextures()
 {
-	auto white1x1Tex      = std::make_unique<Texture>();
-	white1x1Tex->Name     = "white1x1Tex";
-	white1x1Tex->Filename = L"../../Textures/white1x1.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), white1x1Tex->Filename.c_str(),
-		              white1x1Tex->Resource, white1x1Tex->UploadHeap));
-
+	auto white1x1Tex             = std::make_unique<Texture>();
+	white1x1Tex->Name            = "white1x1Tex";
+	white1x1Tex->Filename        = L"../../Textures/white1x1.dds";
 	mTextures[white1x1Tex->Name] = std::move(white1x1Tex);
+	for (auto& tex : mTextures)
+	{
+		tex.second->Resource = d3dUtil::CreateTexture(md3dDevice.Get(),
+		                                              mCommandList.Get(),
+		                                              tex.second->Filename.c_str(),
+		                                              tex.second->UploadHeap);
+	}
 }
 
 void BezierPatchApp::BuildRootSignature()
@@ -651,8 +652,8 @@ void BezierPatchApp::BuildPSOs()
 	opaquePsoDesc.PrimitiveTopologyType    = D3D12_PRIMITIVE_TOPOLOGY_TYPE_PATCH;
 	opaquePsoDesc.NumRenderTargets         = 1;
 	opaquePsoDesc.RTVFormats[0]            = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count         = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality       = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.SampleDesc.Count         = 1;
+	opaquePsoDesc.SampleDesc.Quality       = 0;
 	opaquePsoDesc.DSVFormat                = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 }

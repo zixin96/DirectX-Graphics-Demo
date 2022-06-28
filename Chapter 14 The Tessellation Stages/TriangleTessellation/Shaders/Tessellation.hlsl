@@ -82,8 +82,8 @@ VertexOut VS(VertexIn vin)
 
 struct PatchTess
 {
-	float EdgeTess[3] : SV_TessFactor;      // output: tessellation factors: Defines the tessellation amount on each edge of a patch
-	float InsideTess : SV_InsideTessFactor; // output: tessellation factors: Defines the tessellation amount within a patch surface
+	float EdgeTess[3] : SV_TessFactor; //!? we are tessellating triangle patch, so change this to match triangle mesh 
+	float InsideTess : SV_InsideTessFactor;
 };
 
 // Reminder: constant hull shader is evaluated per patch
@@ -125,18 +125,17 @@ struct HullOut
 	float3 PosL : POSITION;
 };
 
-[domain("tri")]                                                  // the patch type
-[partitioning("integer")]                                        // the subdivision mode
-[outputtopology("triangle_cw")]                                  // the winding order of the triangles created via subdivision
-[outputcontrolpoints(3)]                                         // # of times the hull shader executes, outputting one control point each time
-[patchconstantfunc("ConstantHS")]                                // a string specifying the constant hull shader function name
-[maxtessfactor(64.0f)]                                           // a hint to the driver specifying the max tessellation factor your shader uses
-HullOut HS(InputPatch<VertexOut, 3> p,                           // input: all of the control points of the patch
-           uint                     i : SV_OutputControlPointID, // an index identifying the output control point the hull shader is working on 
-           uint                     patchId : SV_PrimitiveID)    // The ID that identifies the patch
+[domain("tri")] //!? the patch type will change to "tri"
+[partitioning("integer")]
+[outputtopology("triangle_cw")]
+[outputcontrolpoints(3)]
+[patchconstantfunc("ConstantHS")]
+[maxtessfactor(64.0f)]
+HullOut HS(InputPatch<VertexOut, 3> p, //!? triangle has 3 control points
+           uint                     i : SV_OutputControlPointID,
+           uint                     patchId : SV_PrimitiveID)
 {
 	// in this demo, the control point hull shader is a pass-through shader
-
 	HullOut hout;
 
 	// pass the control point through unmodified
@@ -153,17 +152,13 @@ struct DomainOut
 // The domain shader is called for every vertex created by the tessellator.  
 // It is like the vertex shader after tessellation.
 [domain("tri")]
-DomainOut DS(PatchTess                     patchTess,               // input: the tessellation factors
-             float3                        uvw : SV_DomainLocation, // the parametric coordinates of the tessellated vertex positions
-             const OutputPatch<HullOut, 3> tri)                     // all the patch control points output from the control point hull shader
+DomainOut DS(PatchTess                     patchTess,
+             float3                        uvw : SV_DomainLocation, //!? UVW are barycentric coordinates
+             const OutputPatch<HullOut, 3> tri)
 {
-	// Simply tessellating is not enough to add detail, as the new triangles just lie on the patch that was subdivided.
-	// We must offset those extra vertices in some way to better approximate the shape of the object we are modeling
-	// In order to do this, we offset the y-coord by the "hills" functions in the domain shader
-
 	DomainOut dout;
 
-	// Bilinear interpolation.
+	//!? follow equation on page 791
 	float3 v1 = tri[0].PosL * uvw.x;
 	float3 v2 = tri[1].PosL * uvw.y;
 	float3 v3 = tri[2].PosL * uvw.z;

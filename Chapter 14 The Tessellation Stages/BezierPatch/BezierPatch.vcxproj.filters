@@ -16,6 +16,9 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{1faa54b0-220a-4eaf-beba-1735a77d6d72}</UniqueIdentifier>
     </Filter>
+    <Filter Include="imgui">
+      <UniqueIdentifier>{1f4ad7bd-ad80-46ca-9c78-cbf86def3dce}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="BezierPatchApp.cpp">
@@ -30,9 +33,6 @@
     <ClCompile Include="..\..\Common\d3dUtil.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\DDSTextureLoader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Common\GameTimer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -40,6 +40,15 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Common\MathHelper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\ImguiManager.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\imgui_wrapper.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\DDSTextureLoader12.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -56,9 +65,6 @@
     <ClInclude Include="..\..\Common\d3dx12.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\DDSTextureLoader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Common\GameTimer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -69,6 +75,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Common\UploadBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\ImguiManager.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\DDSTextureLoader12.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
