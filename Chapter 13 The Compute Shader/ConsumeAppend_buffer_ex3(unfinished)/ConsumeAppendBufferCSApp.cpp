@@ -325,7 +325,7 @@ void ConsumeAppendBufferCSApp::DoComputeWork()
 
 	// A command list can be reset after it has been added to the command queue via ExecuteCommandList.
 	// Reusing the command list reuses memory.
-	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), mPSOs["StructBuffer"].Get()));
+	ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), mPSOs["AppendBuffer"].Get()));
 
 	mCommandList->SetComputeRootSignature(mRootSignature.Get());
 
@@ -448,7 +448,7 @@ void ConsumeAppendBufferCSApp::BuildRootSignature()
 
 void ConsumeAppendBufferCSApp::BuildShadersAndInputLayout()
 {
-	mShaders["StructBufferCS"] = d3dUtil::CompileShader(L"Shaders\\ConsumeAppendBuffer.hlsl", nullptr, "CS", "cs_5_0");
+	mShaders["AppendBufferCS"] = d3dUtil::CompileShader(L"Shaders\\ConsumeAppendBuffer.hlsl", nullptr, "CS", "cs_5_1");
 }
 
 void ConsumeAppendBufferCSApp::BuildPSOs()
@@ -457,11 +457,11 @@ void ConsumeAppendBufferCSApp::BuildPSOs()
 	computePsoDesc.pRootSignature                    = mRootSignature.Get();
 	computePsoDesc.CS                                =
 	{
-		reinterpret_cast<BYTE*>(mShaders["StructBufferCS"]->GetBufferPointer()),
-		mShaders["StructBufferCS"]->GetBufferSize()
+		reinterpret_cast<BYTE*>(mShaders["AppendBufferCS"]->GetBufferPointer()),
+		mShaders["AppendBufferCS"]->GetBufferSize()
 	};
 	computePsoDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
-	ThrowIfFailed(md3dDevice->CreateComputePipelineState(&computePsoDesc, IID_PPV_ARGS(&mPSOs["StructBuffer"])));
+	ThrowIfFailed(md3dDevice->CreateComputePipelineState(&computePsoDesc, IID_PPV_ARGS(&mPSOs["AppendBuffer"])));
 }
 
 void ConsumeAppendBufferCSApp::BuildFrameResources()
