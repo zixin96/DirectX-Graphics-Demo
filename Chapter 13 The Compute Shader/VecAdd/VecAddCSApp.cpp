@@ -15,8 +15,6 @@ using namespace DirectX::PackedVector;
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
 
-const int gNumFrameResources = 3;
-
 struct Data
 {
 	XMFLOAT3 v1;
@@ -88,7 +86,6 @@ private:
 
 	void BuildBuffers();
 	void BuildRootSignature();
-	void BuildDescriptorHeaps();
 	void BuildShadersAndInputLayout();
 	void BuildPSOs();
 	void BuildFrameResources();
@@ -116,7 +113,7 @@ private:
 	// Render items divided by PSO.
 	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
 
-	const int NumDataElements = 32;
+	const int mNumDataElements = 32;
 
 	ComPtr<ID3D12Resource> mInputBufferA       = nullptr;
 	ComPtr<ID3D12Resource> mInputUploadBufferA = nullptr;
@@ -184,7 +181,6 @@ bool VecAddCSApp::Initialize()
 
 	BuildBuffers();
 	BuildRootSignature();
-	BuildDescriptorHeaps();
 	BuildShadersAndInputLayout();
 	BuildFrameResources();
 	BuildPSOs();
@@ -269,7 +265,7 @@ void VecAddCSApp::Draw(const GameTimer& gt)
 
 	// Swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
@@ -371,7 +367,7 @@ void VecAddCSApp::DoComputeWork()
 
 	std::ofstream fout("results.txt");
 
-	for (int i = 0; i < NumDataElements; ++i)
+	for (int i = 0; i < mNumDataElements; ++i)
 	{
 		fout << "(" << mappedData[i].v1.x << ", " << mappedData[i].v1.y << ", " << mappedData[i].v1.z <<
 				", " << mappedData[i].v2.x << ", " << mappedData[i].v2.y << ")" << std::endl;
@@ -383,9 +379,9 @@ void VecAddCSApp::DoComputeWork()
 void VecAddCSApp::BuildBuffers()
 {
 	// Generate some data.
-	std::vector<Data> dataA(NumDataElements);
-	std::vector<Data> dataB(NumDataElements);
-	for (int i = 0; i < NumDataElements; ++i)
+	std::vector<Data> dataA(mNumDataElements);
+	std::vector<Data> dataB(mNumDataElements);
+	for (int i = 0; i < mNumDataElements; ++i)
 	{
 		dataA[i].v1 = XMFLOAT3(i, i, i);
 		dataA[i].v2 = XMFLOAT2(i, 0);
@@ -413,16 +409,17 @@ void VecAddCSApp::BuildBuffers()
 	ThrowIfFailed(md3dDevice->CreateCommittedResource(
 		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
 		              D3D12_HEAP_FLAG_NONE,
-		              &CD3DX12_RESOURCE_DESC::Buffer(byteSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS), // if a resource is going to be bound as UAV, then it must be created with D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS
-		              D3D12_RESOURCE_STATE_UNORDERED_ACCESS,                                                // it's a good practice to put it in the D3D12_RESOURCE_STATE_UNORDERED_ACCESS state 
+		              &CD3DX12_RESOURCE_DESC::Buffer(byteSize, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS), //! This resource will be accessed by UAV 
+		              D3D12_RESOURCE_STATE_UNORDERED_ACCESS,                                                //! This resource is in UAV access state by default                                                
 		              nullptr,
 		              IID_PPV_ARGS(&mOutputBuffer)));
 
+	// create the buffer that will be read by CPU 
 	ThrowIfFailed(md3dDevice->CreateCommittedResource(
-		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK), // this resource will be read by CPU
+		              &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_READBACK), //! "readback" buffer
 		              D3D12_HEAP_FLAG_NONE,
 		              &CD3DX12_RESOURCE_DESC::Buffer(byteSize),
-		              D3D12_RESOURCE_STATE_COPY_DEST, // we will use ID3D12GraphicsCommandList::CopyResource to copy the GPU resource to this resource
+		              D3D12_RESOURCE_STATE_COPY_DEST, //! Initial state is copy destination b/c we will use ID3D12GraphicsCommandList::CopyResource to copy the GPU resource to this resource
 		              nullptr,
 		              IID_PPV_ARGS(&mReadBackBuffer)));
 }
@@ -461,10 +458,6 @@ void VecAddCSApp::BuildRootSignature()
 		              serializedRootSig->GetBufferPointer(),
 		              serializedRootSig->GetBufferSize(),
 		              IID_PPV_ARGS(mRootSignature.GetAddressOf())));
-}
-
-void VecAddCSApp::BuildDescriptorHeaps()
-{
 }
 
 void VecAddCSApp::BuildShadersAndInputLayout()
