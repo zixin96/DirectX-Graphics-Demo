@@ -86,7 +86,7 @@ Light gLights[MaxLights];
 StructuredBuffer<MaterialData> gMaterialData : register(t0, space1); // Put in space1, so the texture array does not overlap with these resources. 
 
 // This texture array will be populated on a per frame basis
-Texture2D gDiffuseMap[4] : register(t0); // The texture array will occupy registers t0, t1, ..., t3 in space0.
+Texture2D gDiffuseMap[4] : register(t0, space0); // The texture array will occupy registers t0, t1, ..., t3 in space0.
 
 SamplerState gsamPointWrap : register(s0);
 SamplerState gsamPointClamp : register(s1);

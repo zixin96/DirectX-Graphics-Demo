@@ -16,6 +16,9 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{e8db5f2a-0da3-48d3-bc10-acfcfb65cd9f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="imgui">
+      <UniqueIdentifier>{6a8b64cb-4f93-4761-a299-0181916ecb94}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CameraAndDynamicIndexingApp.cpp">
@@ -33,9 +36,6 @@
     <ClCompile Include="..\..\Common\d3dUtil.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\DDSTextureLoader.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Common\GameTimer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -43,6 +43,18 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\Common\MathHelper.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\ImguiManager.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\imgui_wrapper.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Common\DDSTextureLoader12.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="EntryPoint.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -62,9 +74,6 @@
     <ClInclude Include="..\..\Common\d3dx12.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\DDSTextureLoader.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\Common\GameTimer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -75,6 +84,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\Common\UploadBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\ImguiManager.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\Common\DDSTextureLoader12.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="CameraAndDynamicIndexingApp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

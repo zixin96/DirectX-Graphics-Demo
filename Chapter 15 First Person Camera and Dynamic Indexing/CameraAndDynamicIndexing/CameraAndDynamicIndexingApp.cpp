@@ -1,150 +1,7 @@
-//***************************************************************************************
-// CameraAndDynamicIndexingApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
-//***************************************************************************************
-
-#include "../../Common/d3dApp.h"
-#include "../../Common/MathHelper.h"
-#include "../../Common/UploadBuffer.h"
-#include "../../Common/GeometryGenerator.h"
-#include "../../Common/Camera.h"
-#include "FrameResource.h"
-
-using Microsoft::WRL::ComPtr;
-using namespace DirectX;
-using namespace DirectX::PackedVector;
+#include "CameraAndDynamicIndexingApp.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
-
-const int gNumFrameResources = 3;
-
-// Lightweight structure stores parameters to draw a shape.  This will
-// vary from app-to-app.
-struct RenderItem
-{
-	RenderItem()                      = default;
-	RenderItem(const RenderItem& rhs) = delete;
-
-	// World matrix of the shape that describes the object's local space
-	// relative to the world space, which defines the position, orientation,
-	// and scale of the object in the world.
-	XMFLOAT4X4 World = MathHelper::Identity4x4();
-
-	XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
-
-	// Dirty flag indicating the object data has changed and we need to update the constant buffer.
-	// Because we have an object cbuffer for each FrameResource, we have to apply the
-	// update to each FrameResource.  Thus, when we modify obect data we should set 
-	// NumFramesDirty = gNumFrameResources so that each frame resource gets the update.
-	int NumFramesDirty = gNumFrameResources;
-
-	// Index into GPU constant buffer corresponding to the ObjectCB for this render item.
-	UINT ObjCBIndex = -1;
-
-	Material*     Mat = nullptr;
-	MeshGeometry* Geo = nullptr;
-
-	// Primitive topology.
-	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-	// DrawIndexedInstanced parameters.
-	UINT IndexCount         = 0;
-	UINT StartIndexLocation = 0;
-	int  BaseVertexLocation = 0;
-};
-
-class CameraAndDynamicIndexingApp : public D3DApp
-{
-public:
-	CameraAndDynamicIndexingApp(HINSTANCE hInstance);
-	CameraAndDynamicIndexingApp(const CameraAndDynamicIndexingApp& rhs)            = delete;
-	CameraAndDynamicIndexingApp& operator=(const CameraAndDynamicIndexingApp& rhs) = delete;
-	~CameraAndDynamicIndexingApp() override;
-
-	bool Initialize() override;
-
-private:
-	void OnResize() override;
-	void Update(const GameTimer& gt) override;
-	void Draw(const GameTimer& gt) override;
-
-	void OnMouseDown(WPARAM btnState, int x, int y) override;
-	void OnMouseUp(WPARAM btnState, int x, int y) override;
-	void OnMouseMove(WPARAM btnState, int x, int y) override;
-
-	void OnKeyboardInput(const GameTimer& gt);
-	void AnimateMaterials(const GameTimer& gt);
-	void UpdateObjectCBs(const GameTimer& gt);
-	void UpdateMaterialBuffer(const GameTimer& gt);
-	void UpdateMainPassCB(const GameTimer& gt);
-
-	void LoadTextures();
-	void BuildRootSignature();
-	void BuildDescriptorHeaps();
-	void BuildShadersAndInputLayout();
-	void BuildShapeGeometry();
-	void BuildPSOs();
-	void BuildFrameResources();
-	void BuildMaterials();
-	void BuildRenderItems();
-	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
-
-	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
-
-private:
-	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
-	FrameResource*                              mCurrFrameResource      = nullptr;
-	int                                         mCurrFrameResourceIndex = 0;
-
-	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-
-	ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
-
-	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
-	std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
-	std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
-	std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
-	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
-
-	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
-
-	// List of all the render items.
-	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
-
-	// Render items divided by PSO.
-	std::vector<RenderItem*> mOpaqueRitems;
-
-	PassConstants mMainPassCB;
-
-	Camera mCamera;
-
-	POINT mLastMousePos;
-};
-
-int WINAPI WinMain(HINSTANCE hInstance,
-                   HINSTANCE prevInstance,
-                   PSTR      cmdLine,
-                   int       showCmd)
-{
-	// Enable run-time memory check for debug builds.
-	#if defined(DEBUG) | defined(_DEBUG)
-	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	#endif
-
-	try
-	{
-		CameraAndDynamicIndexingApp theApp(hInstance);
-		if (!theApp.Initialize())
-			return 0;
-
-		return theApp.Run();
-	}
-	catch (DxException& e)
-	{
-		MessageBox(nullptr, e.ToString().c_str(), L"HR Failed", MB_OK);
-		return 0;
-	}
-}
 
 CameraAndDynamicIndexingApp::CameraAndDynamicIndexingApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
@@ -315,7 +172,13 @@ void CameraAndDynamicIndexingApp::OnMouseMove(WPARAM btnState, int x, int y)
 		mCamera.Pitch(dy);
 		mCamera.RotateY(dx);
 	}
+	else if ((btnState & MK_RBUTTON) != 0)
+	{
+		// Make each pixel correspond to 0.2 unit in the scene.
+		float dx = 0.02f * static_cast<float>(x - mLastMousePos.x);
 
+		mCamera.Roll(dx);
+	}
 	mLastMousePos.x = x;
 	mLastMousePos.y = y;
 }
@@ -435,41 +298,37 @@ void CameraAndDynamicIndexingApp::LoadTextures()
 	auto bricksTex      = std::make_unique<Texture>();
 	bricksTex->Name     = "bricksTex";
 	bricksTex->Filename = L"../../Textures/bricks.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), bricksTex->Filename.c_str(),
-		              bricksTex->Resource, bricksTex->UploadHeap));
 
 	auto stoneTex      = std::make_unique<Texture>();
 	stoneTex->Name     = "stoneTex";
 	stoneTex->Filename = L"../../Textures/stone.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), stoneTex->Filename.c_str(),
-		              stoneTex->Resource, stoneTex->UploadHeap));
 
 	auto tileTex      = std::make_unique<Texture>();
 	tileTex->Name     = "tileTex";
 	tileTex->Filename = L"../../Textures/tile.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), tileTex->Filename.c_str(),
-		              tileTex->Resource, tileTex->UploadHeap));
 
 	auto crateTex      = std::make_unique<Texture>();
 	crateTex->Name     = "crateTex";
 	crateTex->Filename = L"../../Textures/WoodCrate01.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), crateTex->Filename.c_str(),
-		              crateTex->Resource, crateTex->UploadHeap));
 
 	mTextures[bricksTex->Name] = std::move(bricksTex);
 	mTextures[stoneTex->Name]  = std::move(stoneTex);
 	mTextures[tileTex->Name]   = std::move(tileTex);
 	mTextures[crateTex->Name]  = std::move(crateTex);
+
+	for (auto& tex : mTextures)
+	{
+		tex.second->Resource = d3dUtil::CreateTexture(md3dDevice.Get(),
+		                                              mCommandList.Get(),
+		                                              tex.second->Filename.c_str(),
+		                                              tex.second->UploadHeap);
+	}
 }
 
 void CameraAndDynamicIndexingApp::BuildRootSignature()
 {
 	CD3DX12_DESCRIPTOR_RANGE texTable;
-	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 0); // t0-t3 in space 0 describes texture shader resources
+	texTable.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 0, 0); // (t0-t3, space 0) describes texture shader resources
 
 	// Root parameter can be a table, root descriptor or root constants.
 	CD3DX12_ROOT_PARAMETER slotRootParameter[4];
@@ -479,8 +338,8 @@ void CameraAndDynamicIndexingApp::BuildRootSignature()
 	// Least: bind it per frame
 	slotRootParameter[0].InitAsConstantBufferView(0);                                        // Per Object constant buffer: b0
 	slotRootParameter[1].InitAsConstantBufferView(1);                                        // Per frame constant buffer: b1
-	slotRootParameter[2].InitAsShaderResourceView(0, 1);                                     // Per frame material array data: t0, space 1
-	slotRootParameter[3].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL); // Per frame texture array data: t0-t3 in space 0
+	slotRootParameter[2].InitAsShaderResourceView(0, 1);                                     // Per frame material array data: (t0, space 1)
+	slotRootParameter[3].InitAsDescriptorTable(1, &texTable, D3D12_SHADER_VISIBILITY_PIXEL); // Per frame texture array data: (t0-t3, space 0)
 
 	auto staticSamplers = GetStaticSamplers();
 
@@ -878,8 +737,7 @@ void CameraAndDynamicIndexingApp::BuildRenderItems()
 void CameraAndDynamicIndexingApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems)
 {
 	UINT objCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(ObjectConstants));
-
-	auto objectCB = mCurrFrameResource->ObjectCB->Resource();
+	auto objectCB      = mCurrFrameResource->ObjectCB->Resource();
 
 	// For each render item...
 	for (size_t i = 0; i < ritems.size(); ++i)

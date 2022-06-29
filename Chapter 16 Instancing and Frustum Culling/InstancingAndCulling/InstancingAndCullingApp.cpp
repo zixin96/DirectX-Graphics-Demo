@@ -1,143 +1,7 @@
-//***************************************************************************************
-// InstancingAndCullingApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
-//***************************************************************************************
-
-#include "../../Common/d3dApp.h"
-#include "../../Common/MathHelper.h"
-#include "../../Common/UploadBuffer.h"
-#include "../../Common/GeometryGenerator.h"
-#include "../../Common/Camera.h"
-#include "FrameResource.h"
-
-using Microsoft::WRL::ComPtr;
-using namespace DirectX;
-using namespace DirectX::PackedVector;
+#include "InstancingAndCullingApp.h"
 
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
-
-const int gNumFrameResources = 3;
-
-// Lightweight structure stores parameters to draw a shape.  This will
-// vary from app-to-app.
-struct RenderItem
-{
-	RenderItem()                      = default;
-	RenderItem(const RenderItem& rhs) = delete;
-
-	// World matrix of the shape that describes the object's local space
-	// relative to the world space, which defines the position, orientation,
-	// and scale of the object in the world.
-	XMFLOAT4X4 World = MathHelper::Identity4x4();
-
-	XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
-
-	// Dirty flag indicating the object data has changed and we need to update the constant buffer.
-	// Because we have an object cbuffer for each FrameResource, we have to apply the
-	// update to each FrameResource.  Thus, when we modify obect data we should set 
-	// NumFramesDirty = gNumFrameResources so that each frame resource gets the update.
-	int NumFramesDirty = gNumFrameResources;
-
-	// Index into GPU constant buffer corresponding to the ObjectCB for this render item.
-	UINT ObjCBIndex = -1;
-
-	Material*     Mat = nullptr;
-	MeshGeometry* Geo = nullptr;
-
-	// Primitive topology.
-	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-	BoundingBox               Bounds;
-	std::vector<InstanceData> Instances; // store instance data for all instances of this render item in the scene
-
-	// DrawIndexedInstanced parameters.
-	UINT IndexCount         = 0;
-	UINT InstanceCount      = 0; // Number of instances to draw
-	UINT StartIndexLocation = 0;
-	int  BaseVertexLocation = 0;
-};
-
-class InstancingAndCullingApp : public D3DApp
-{
-public:
-	InstancingAndCullingApp(HINSTANCE hInstance);
-	InstancingAndCullingApp(const InstancingAndCullingApp& rhs)            = delete;
-	InstancingAndCullingApp& operator=(const InstancingAndCullingApp& rhs) = delete;
-	~InstancingAndCullingApp() override;
-	bool Initialize() override;
-
-private:
-	void OnResize() override;
-	void Update(const GameTimer& gt) override;
-	void Draw(const GameTimer& gt) override;
-
-	void OnMouseDown(WPARAM btnState, int x, int y) override;
-	void OnMouseUp(WPARAM btnState, int x, int y) override;
-	void OnMouseMove(WPARAM btnState, int x, int y) override;
-
-	void OnKeyboardInput(const GameTimer& gt);
-	void AnimateMaterials(const GameTimer& gt);
-	void UpdateInstanceData(const GameTimer& gt);
-	void UpdateMaterialBuffer(const GameTimer& gt);
-	void UpdateMainPassCB(const GameTimer& gt);
-
-	void LoadTextures();
-	void BuildRootSignature();
-	void BuildDescriptorHeaps();
-	void BuildShadersAndInputLayout();
-	void BuildSkullGeometry();
-	void BuildPSOs();
-	void BuildFrameResources();
-	void BuildMaterials();
-	void BuildRenderItems();
-	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
-
-	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
-
-private:
-	std::vector<std::unique_ptr<FrameResource>>                    mFrameResources;
-	FrameResource*                                                 mCurrFrameResource      = nullptr;
-	int                                                            mCurrFrameResourceIndex = 0;
-	ComPtr<ID3D12RootSignature>                                    mRootSignature          = nullptr;
-	ComPtr<ID3D12DescriptorHeap>                                   mSrvDescriptorHeap      = nullptr;
-	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
-	std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
-	std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
-	std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
-	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
-	std::vector<D3D12_INPUT_ELEMENT_DESC>                          mInputLayout;
-	std::vector<std::unique_ptr<RenderItem>>                       mAllRitems;
-	std::vector<RenderItem*>                                       mOpaqueRitems;
-	UINT                                                           mInstanceCount         = 0; // total instance to draw
-	bool                                                           mFrustumCullingEnabled = true;
-	BoundingFrustum                                                mCamFrustum; // BoundingFrustum is provided by DirectX collision library
-	PassConstants                                                  mMainPassCB;
-	Camera                                                         mCamera;
-	POINT                                                          mLastMousePos;
-};
-
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
-                   PSTR      cmdLine, int         showCmd)
-{
-	// Enable run-time memory check for debug builds.
-	#if defined(DEBUG) | defined(_DEBUG)
-	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	#endif
-
-	try
-	{
-		InstancingAndCullingApp theApp(hInstance);
-		if (!theApp.Initialize())
-			return 0;
-
-		return theApp.Run();
-	}
-	catch (DxException& e)
-	{
-		MessageBox(nullptr, e.ToString().c_str(), L"HR Failed", MB_OK);
-		return 0;
-	}
-}
 
 InstancingAndCullingApp::InstancingAndCullingApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
@@ -271,7 +135,7 @@ void InstancingAndCullingApp::Draw(const GameTimer& gt)
 
 	// Swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
@@ -346,6 +210,7 @@ void InstancingAndCullingApp::UpdateInstanceData(const GameTimer& gt)
 	XMMATRIX invView = XMMatrixInverse(&XMMatrixDeterminant(view), view);
 
 	auto currInstanceBuffer = mCurrFrameResource->InstanceBuffer.get();
+
 	for (auto& e : mAllRitems)
 	{
 		const auto& instanceData = e->Instances;
@@ -457,51 +322,30 @@ void InstancingAndCullingApp::LoadTextures()
 	auto bricksTex      = std::make_unique<Texture>();
 	bricksTex->Name     = "bricksTex";
 	bricksTex->Filename = L"../../Textures/bricks.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), bricksTex->Filename.c_str(),
-		              bricksTex->Resource, bricksTex->UploadHeap));
 
 	auto stoneTex      = std::make_unique<Texture>();
 	stoneTex->Name     = "stoneTex";
 	stoneTex->Filename = L"../../Textures/stone.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), stoneTex->Filename.c_str(),
-		              stoneTex->Resource, stoneTex->UploadHeap));
 
 	auto tileTex      = std::make_unique<Texture>();
 	tileTex->Name     = "tileTex";
 	tileTex->Filename = L"../../Textures/tile.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), tileTex->Filename.c_str(),
-		              tileTex->Resource, tileTex->UploadHeap));
 
 	auto crateTex      = std::make_unique<Texture>();
 	crateTex->Name     = "crateTex";
 	crateTex->Filename = L"../../Textures/WoodCrate01.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), crateTex->Filename.c_str(),
-		              crateTex->Resource, crateTex->UploadHeap));
 
 	auto iceTex      = std::make_unique<Texture>();
 	iceTex->Name     = "iceTex";
 	iceTex->Filename = L"../../Textures/ice.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), iceTex->Filename.c_str(),
-		              iceTex->Resource, iceTex->UploadHeap));
 
 	auto grassTex      = std::make_unique<Texture>();
 	grassTex->Name     = "grassTex";
 	grassTex->Filename = L"../../Textures/grass.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), grassTex->Filename.c_str(),
-		              grassTex->Resource, grassTex->UploadHeap));
 
 	auto defaultTex      = std::make_unique<Texture>();
 	defaultTex->Name     = "defaultTex";
 	defaultTex->Filename = L"../../Textures/white1x1.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), defaultTex->Filename.c_str(),
-		              defaultTex->Resource, defaultTex->UploadHeap));
 
 	mTextures[bricksTex->Name]  = std::move(bricksTex);
 	mTextures[stoneTex->Name]   = std::move(stoneTex);
@@ -510,6 +354,14 @@ void InstancingAndCullingApp::LoadTextures()
 	mTextures[iceTex->Name]     = std::move(iceTex);
 	mTextures[grassTex->Name]   = std::move(grassTex);
 	mTextures[defaultTex->Name] = std::move(defaultTex);
+
+	for (auto& tex : mTextures)
+	{
+		tex.second->Resource = d3dUtil::CreateTexture(md3dDevice.Get(),
+		                                              mCommandList.Get(),
+		                                              tex.second->Filename.c_str(),
+		                                              tex.second->UploadHeap);
+	}
 }
 
 void InstancingAndCullingApp::BuildRootSignature()
@@ -692,7 +544,7 @@ void InstancingAndCullingApp::BuildSkullGeometry()
 
 		vertices[i].TexC = {u, v};
 
-		// extract min and max out of each vertex (page 568)
+		// extract min and max out of each vertex
 		vMin = XMVectorMin(vMin, P);
 		vMax = XMVectorMax(vMax, P);
 	}
@@ -732,10 +584,16 @@ void InstancingAndCullingApp::BuildSkullGeometry()
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                    mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+	                                                    mCommandList.Get(),
+	                                                    vertices.data(),
+	                                                    vbByteSize,
+	                                                    geo->VertexBufferUploader);
 
 	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                   mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+	                                                   mCommandList.Get(),
+	                                                   indices.data(),
+	                                                   ibByteSize,
+	                                                   geo->IndexBufferUploader);
 
 	geo->VertexByteStride     = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
@@ -780,8 +638,8 @@ void InstancingAndCullingApp::BuildPSOs()
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	opaquePsoDesc.NumRenderTargets      = 1;
 	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.SampleDesc.Count      = 1;
+	opaquePsoDesc.SampleDesc.Quality    = 0;
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 }
