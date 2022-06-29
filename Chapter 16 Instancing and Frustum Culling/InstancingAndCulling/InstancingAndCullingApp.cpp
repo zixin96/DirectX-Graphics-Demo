@@ -72,7 +72,6 @@ void InstancingAndCullingApp::Update(const GameTimer& gt)
 		CloseHandle(eventHandle);
 	}
 
-	AnimateMaterials(gt);
 	UpdateInstanceData(gt);
 	UpdateMaterialBuffer(gt);
 	UpdateMainPassCB(gt);
@@ -95,7 +94,8 @@ void InstancingAndCullingApp::Draw(const GameTimer& gt)
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	                                                                       D3D12_RESOURCE_STATE_PRESENT,
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	// Clear the back buffer and depth buffer.
 	mCommandList->ClearRenderTargetView(CurrentBackBufferView(), Colors::LightSteelBlue, 0, nullptr);
@@ -124,7 +124,8 @@ void InstancingAndCullingApp::Draw(const GameTimer& gt)
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET,
+	                                                                       D3D12_RESOURCE_STATE_PRESENT));
 
 	// Done recording commands.
 	ThrowIfFailed(mCommandList->Close());
@@ -198,10 +199,6 @@ void InstancingAndCullingApp::OnKeyboardInput(const GameTimer& gt)
 		mFrustumCullingEnabled = false;
 
 	mCamera.UpdateViewMatrix();
-}
-
-void InstancingAndCullingApp::AnimateMaterials(const GameTimer& gt)
-{
 }
 
 void InstancingAndCullingApp::UpdateInstanceData(const GameTimer& gt)
@@ -728,7 +725,7 @@ void InstancingAndCullingApp::BuildRenderItems()
 	skullRitem->World              = MathHelper::Identity4x4();
 	skullRitem->TexTransform       = MathHelper::Identity4x4();
 	skullRitem->ObjCBIndex         = 0;
-	skullRitem->Mat                = mMaterials["tile0"].get();
+	skullRitem->Mat                = nullptr;
 	skullRitem->Geo                = mGeometries["skullGeo"].get();
 	skullRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 	skullRitem->InstanceCount      = 0; // initialize the number of instances to draw to 0
