@@ -16,9 +16,6 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{a7b3d8b9-a8a5-4a88-b7c6-2bfbe7e222b0}</UniqueIdentifier>
     </Filter>
-    <Filter Include="imgui">
-      <UniqueIdentifier>{daadc909-9097-4d0b-b8e5-db61f14a93f7}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FrameResource.cpp">
@@ -45,13 +42,7 @@
     <ClCompile Include="..\..\Common\MathHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\ImguiManager.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Common\imgui_wrapper.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\Common\DDSTextureLoader12.cpp">
+    <ClCompile Include="..\..\Common\DDSTextureLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="EntryPoint.cpp">
@@ -86,10 +77,7 @@
     <ClInclude Include="..\..\Common\UploadBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\ImguiManager.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\Common\DDSTextureLoader12.h">
+    <ClInclude Include="..\..\Common\DDSTextureLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="InstancingAndCullingApp.h">

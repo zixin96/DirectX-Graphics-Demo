@@ -22,7 +22,7 @@
 #include <sstream>
 #include <cassert>
 #include "d3dx12.h"
-#include "DDSTextureLoader12.h"
+#include "DDSTextureLoader.h"
 #include "MathHelper.h"
 
 extern const int gNumFrameResources;

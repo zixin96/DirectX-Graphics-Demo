@@ -8,7 +8,6 @@
 
 #include "d3dUtil.h"
 #include "GameTimer.h"
-#include "ImguiManager.h"
 
 // Link necessary d3d12 libraries.
 #pragma comment(lib,"d3dcompiler.lib")
@@ -90,9 +89,6 @@ protected:
 	void LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format);
 protected:
 	static D3DApp* mApp;
-	// always first initialize IMGUI
-	ImguiManager imgui_{};
-
 	HINSTANCE      mhAppInst        = nullptr; // application instance handle
 	HWND           mhMainWnd        = nullptr; // main window handle
 	bool           mAppPaused       = false;   // is the application paused?
@@ -128,7 +124,6 @@ protected:
 	Microsoft::WRL::ComPtr<ID3D12Resource>       mDepthStencilBuffer;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mSrvImGuiHeap;
 	UINT                                         mRtvDescriptorSize       = 0;
 	UINT                                         mDsvDescriptorSize       = 0;
 	UINT                                         mCbvSrvUavDescriptorSize = 0;
@@ -143,17 +138,3 @@ protected:
 	int             mClientWidth    = 800;
 	int             mClientHeight   = 600;
 };
-
-
-// bool Get4xMsaaState() const;
-// void Set4xMsaaState(bool value);
-
-
-// private:
-// 	void Query4XMSAAQualityLevel();
-
-// TODO: MSAA must be set to false. We must create an MSAA render target that we explicitly resolve in D3D 12. https://stackoverflow.com/q/56286975/13795171
-// quality level of 4X MSAA, range from [0, NumQualityLevels-1]
-
-//bool                                              m4xMsaaState     = false;   
-//UINT                                              m4xMsaaQuality   = 0;      

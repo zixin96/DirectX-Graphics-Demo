@@ -1,20 +1,13 @@
-#ifndef CAMERA_H
-#define CAMERA_H
+#pragma once
 
 #include "d3dUtil.h"
 
-/**
- * \brief Simple first person style camera class that lets the viewer explore the 3D scene.
- *  It keeps track of the camera coordinate system relative to the world space so that the view matrix can be constructed.
- *  It keeps track of the viewing frustum of the camera so that the projection matrix can be obtained.
- */
+// Simple first person style camera class that lets the viewer explore the 3D scene.
 class Camera
 {
 public:
 	Camera();
 	~Camera();
-
-	// Notice that we provide XMVECTOR return variations for many of the "get" method; this is just for convenience so that the client code doesn't need to convert if they need an XMVECTOR
 
 	// Get/Set world camera position.
 	DirectX::XMVECTOR GetPosition() const;
@@ -94,5 +87,3 @@ private:
 	DirectX::XMFLOAT4X4 mView = MathHelper::Identity4x4();
 	DirectX::XMFLOAT4X4 mProj = MathHelper::Identity4x4();
 };
-
-#endif // CAMERA_H
