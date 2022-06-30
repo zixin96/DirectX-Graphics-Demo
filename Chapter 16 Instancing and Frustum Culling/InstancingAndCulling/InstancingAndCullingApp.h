@@ -66,7 +66,7 @@ private:
 	void BuildRootSignature();
 	void BuildDescriptorHeaps();
 	void BuildShadersAndInputLayout();
-	void BuildSkullGeometry();
+	void BuildGeometryFromFile(const std::string& fileName);
 	void BuildPSOs();
 	void BuildFrameResources();
 	void BuildMaterials();

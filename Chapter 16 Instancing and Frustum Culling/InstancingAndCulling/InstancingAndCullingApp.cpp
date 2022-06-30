@@ -28,7 +28,8 @@ bool InstancingAndCullingApp::Initialize()
 	BuildRootSignature();
 	BuildDescriptorHeaps();
 	BuildShadersAndInputLayout();
-	BuildSkullGeometry();
+	BuildGeometryFromFile("Models/skull.txt");
+	BuildGeometryFromFile("Models/car.txt");
 	BuildMaterials();
 	BuildRenderItems();
 	BuildFrameResources();
@@ -492,13 +493,14 @@ void InstancingAndCullingApp::BuildShadersAndInputLayout()
 	};
 }
 
-void InstancingAndCullingApp::BuildSkullGeometry()
+void InstancingAndCullingApp::BuildGeometryFromFile(const std::string& fileName)
 {
-	std::ifstream fin("Models/skull.txt");
+	std::ifstream fin(fileName);
 
 	if (!fin)
 	{
-		MessageBox(0, L"Models/skull.txt not found.", 0, 0);
+		std::string msg = fileName + " not found!";
+		MessageBox(0, std::wstring(msg.begin(), msg.end()).c_str(), 0, 0);
 		return;
 	}
 
@@ -510,7 +512,7 @@ void InstancingAndCullingApp::BuildSkullGeometry()
 	fin >> ignore >> tcount;
 	fin >> ignore >> ignore >> ignore >> ignore;
 
-	// compute the bounding box of the skull mesh
+	// compute the bounding box of the mesh
 	XMFLOAT3 vMinf3(+MathHelper::Infinity, +MathHelper::Infinity, +MathHelper::Infinity);
 	XMFLOAT3 vMaxf3(-MathHelper::Infinity, -MathHelper::Infinity, -MathHelper::Infinity);
 	XMVECTOR vMin = XMLoadFloat3(&vMinf3);
@@ -572,7 +574,7 @@ void InstancingAndCullingApp::BuildSkullGeometry()
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::int32_t);
 
 	auto geo  = std::make_unique<MeshGeometry>();
-	geo->Name = "skullGeo";
+	geo->Name = fileName;
 
 	ThrowIfFailed(D3DCreateBlob(vbByteSize, &geo->VertexBufferCPU));
 	CopyMemory(geo->VertexBufferCPU->GetBufferPointer(), vertices.data(), vbByteSize);
@@ -603,7 +605,7 @@ void InstancingAndCullingApp::BuildSkullGeometry()
 	submesh.BaseVertexLocation = 0;
 	submesh.Bounds             = bounds;
 
-	geo->DrawArgs["skull"] = submesh;
+	geo->DrawArgs[fileName] = submesh;
 
 	mGeometries[geo->Name] = std::move(geo);
 }
@@ -726,13 +728,13 @@ void InstancingAndCullingApp::BuildRenderItems()
 	skullRitem->TexTransform       = MathHelper::Identity4x4();
 	skullRitem->ObjCBIndex         = 0;
 	skullRitem->Mat                = nullptr;
-	skullRitem->Geo                = mGeometries["skullGeo"].get();
+	skullRitem->Geo                = mGeometries["Models/skull.txt"].get();
 	skullRitem->PrimitiveType      = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	skullRitem->InstanceCount      = 0; // initialize the number of instances to draw to 0
-	skullRitem->IndexCount         = skullRitem->Geo->DrawArgs["skull"].IndexCount;
-	skullRitem->StartIndexLocation = skullRitem->Geo->DrawArgs["skull"].StartIndexLocation;
-	skullRitem->BaseVertexLocation = skullRitem->Geo->DrawArgs["skull"].BaseVertexLocation;
-	skullRitem->Bounds             = skullRitem->Geo->DrawArgs["skull"].Bounds;
+	skullRitem->InstanceCount      = 0; 
+	skullRitem->IndexCount         = skullRitem->Geo->DrawArgs["Models/skull.txt"].IndexCount;
+	skullRitem->StartIndexLocation = skullRitem->Geo->DrawArgs["Models/skull.txt"].StartIndexLocation;
+	skullRitem->BaseVertexLocation = skullRitem->Geo->DrawArgs["Models/skull.txt"].BaseVertexLocation;
+	skullRitem->Bounds             = skullRitem->Geo->DrawArgs["Models/skull.txt"].Bounds;
 
 	// Generate instance data.
 	const int n    = 5;

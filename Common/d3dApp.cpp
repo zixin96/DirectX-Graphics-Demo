@@ -371,7 +371,7 @@ LRESULT D3DApp::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		case WM_LBUTTONDOWN:
 		case WM_MBUTTONDOWN:
 		case WM_RBUTTONDOWN:
-			OnMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // GET_X/Y_LPARAM retrieves the signed x/y-coordinate from LPARAM value
+			OnMouseDown(wParam, GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam)); // GET_X/Y_LPARAM retrieves the signed x/y-coordinate from LPARAM value. Negative screen coordinates may be returned on multiple monitor systems
 			return 0;
 		case WM_LBUTTONUP:
 		case WM_MBUTTONUP:

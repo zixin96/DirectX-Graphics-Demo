@@ -16,8 +16,6 @@ using namespace DirectX::PackedVector;
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
 
-const int gNumFrameResources = 3;
-
 // Lightweight structure stores parameters to draw a shape.  This will
 // vary from app-to-app.
 struct RenderItem
@@ -292,7 +290,7 @@ void CubeMapApp::Draw(const GameTimer& gt)
 
 	// Swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
@@ -462,17 +460,18 @@ void CubeMapApp::LoadTextures()
 
 	for (int i = 0; i < (int)texNames.size(); ++i)
 	{
-		auto texMap      = std::make_unique<Texture>();
-		texMap->Name     = texNames[i];
-		texMap->Filename = texFilenames[i];
-		ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(
-			              md3dDevice.Get(),
-			              mCommandList.Get(),
-			              texMap->Filename.c_str(),
-			              texMap->Resource,
-			              texMap->UploadHeap));
-
+		auto texMap             = std::make_unique<Texture>();
+		texMap->Name            = texNames[i];
+		texMap->Filename        = texFilenames[i];
 		mTextures[texMap->Name] = std::move(texMap);
+	}
+
+	for (auto& tex : mTextures)
+	{
+		tex.second->Resource = d3dUtil::CreateTexture(md3dDevice.Get(),
+		                                              mCommandList.Get(),
+		                                              tex.second->Filename.c_str(),
+		                                              tex.second->UploadHeap);
 	}
 }
 
@@ -828,8 +827,6 @@ void CubeMapApp::BuildPSOs()
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	opaquePsoDesc.NumRenderTargets      = 1;
 	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
-	// opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
-	// opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
 	opaquePsoDesc.SampleDesc.Count      = 1;
 	opaquePsoDesc.SampleDesc.Quality    = 0;
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
@@ -887,7 +884,7 @@ void CubeMapApp::BuildMaterials()
 	tile0->DiffuseSrvHeapIndex = 1;
 	tile0->DiffuseAlbedo       = XMFLOAT4(0.9f, 0.9f, 0.9f, 1.0f);
 	tile0->FresnelR0           = XMFLOAT3(0.2f, 0.2f, 0.2f);
-	tile0->Roughness           = 0.1f;
+	tile0->Roughness           = 0.05f;
 
 	auto mirror0                 = std::make_unique<Material>();
 	mirror0->Name                = "mirror0";
@@ -923,7 +920,7 @@ void CubeMapApp::BuildMaterials()
 void CubeMapApp::BuildRenderItems()
 {
 	auto skyRitem = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&skyRitem->World, XMMatrixScaling(5000.0f, 5000.0f, 5000.0f)); // create a large sphere that surrounds the entire scene
+	// XMStoreFloat4x4(&skyRitem->World, XMMatrixScaling(0.5f, 0.5f, 0.5f)); // create a large sphere that surrounds the entire scene
 	skyRitem->TexTransform       = MathHelper::Identity4x4();
 	skyRitem->ObjCBIndex         = 0;
 	skyRitem->Mat                = mMaterials["sky"].get();

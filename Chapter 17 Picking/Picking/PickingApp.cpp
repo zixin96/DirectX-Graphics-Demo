@@ -16,8 +16,6 @@ using namespace DirectX::PackedVector;
 #pragma comment(lib, "d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
 
-const int gNumFrameResources = 3;
-
 // Lightweight structure stores parameters to draw a shape.  This will
 // vary from app-to-app.
 struct RenderItem
@@ -219,7 +217,8 @@ void PickingApp::Draw(const GameTimer& gt)
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+	                                                                       D3D12_RESOURCE_STATE_PRESENT,
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET));
 
 	// Clear the back buffer and depth buffer.
 	mCommandList->ClearRenderTargetView(CurrentBackBufferView(), Colors::LightSteelBlue, 0, nullptr);
@@ -253,7 +252,8 @@ void PickingApp::Draw(const GameTimer& gt)
 
 	// Indicate a state transition on the resource usage.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
-	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+	                                                                       D3D12_RESOURCE_STATE_RENDER_TARGET,
+	                                                                       D3D12_RESOURCE_STATE_PRESENT));
 
 	// Done recording commands.
 	ThrowIfFailed(mCommandList->Close());
@@ -264,7 +264,7 @@ void PickingApp::Draw(const GameTimer& gt)
 
 	// Swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
@@ -423,14 +423,18 @@ void PickingApp::UpdateMainPassCB(const GameTimer& gt)
 
 void PickingApp::LoadTextures()
 {
-	auto defaultDiffuseTex      = std::make_unique<Texture>();
-	defaultDiffuseTex->Name     = "defaultDiffuseTex";
-	defaultDiffuseTex->Filename = L"../../Textures/white1x1.dds";
-	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-		              mCommandList.Get(), defaultDiffuseTex->Filename.c_str(),
-		              defaultDiffuseTex->Resource, defaultDiffuseTex->UploadHeap));
-
+	auto defaultDiffuseTex             = std::make_unique<Texture>();
+	defaultDiffuseTex->Name            = "defaultDiffuseTex";
+	defaultDiffuseTex->Filename        = L"../../Textures/white1x1.dds";
 	mTextures[defaultDiffuseTex->Name] = std::move(defaultDiffuseTex);
+
+	for (auto& tex : mTextures)
+	{
+		tex.second->Resource = d3dUtil::CreateTexture(md3dDevice.Get(),
+		                                              mCommandList.Get(),
+		                                              tex.second->Filename.c_str(),
+		                                              tex.second->UploadHeap);
+	}
 }
 
 void PickingApp::BuildRootSignature()
@@ -641,8 +645,8 @@ void PickingApp::BuildPSOs()
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	opaquePsoDesc.NumRenderTargets      = 1;
 	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.SampleDesc.Count      = 1;
+	opaquePsoDesc.SampleDesc.Quality    = 0;
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 
@@ -680,7 +684,9 @@ void PickingApp::BuildFrameResources()
 	for (int i = 0; i < gNumFrameResources; ++i)
 	{
 		mFrameResources.push_back(std::make_unique<FrameResource>(md3dDevice.Get(),
-		                                                          1, (UINT)mAllRitems.size(), (UINT)mMaterials.size()));
+		                                                          1,
+		                                                          (UINT)mAllRitems.size(),
+		                                                          (UINT)mMaterials.size()));
 	}
 }
 
@@ -698,7 +704,7 @@ void PickingApp::BuildMaterials()
 	highlight0->Name                = "highlight0";
 	highlight0->MatCBIndex          = 1;
 	highlight0->DiffuseSrvHeapIndex = 0;
-	highlight0->DiffuseAlbedo       = XMFLOAT4(1.0f, 1.0f, 0.0f, 0.6f);
+	highlight0->DiffuseAlbedo       = XMFLOAT4(1.0f, 0.0f, 0.0f, 0.6f);
 	highlight0->FresnelR0           = XMFLOAT3(0.06f, 0.06f, 0.06f);
 	highlight0->Roughness           = 0.0f;
 
@@ -757,7 +763,9 @@ void PickingApp::DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::
 		auto ri = ritems[i];
 
 		if (ri->Visible == false)
+		{
 			continue;
+		}
 
 		cmdList->IASetVertexBuffers(0, 1, &ri->Geo->VertexBufferView());
 		cmdList->IASetIndexBuffer(&ri->Geo->IndexBufferView());
@@ -860,11 +868,10 @@ void PickingApp::Pick(int sx, int sy)
 		XMMATRIX W        = XMLoadFloat4x4(&ri->World);
 		XMMATRIX invWorld = XMMatrixInverse(&XMMatrixDeterminant(W), W);
 
-		// Tranform ray to vi space of Mesh.
+		// Tranform ray to local space of Mesh.
 		XMMATRIX toLocal = XMMatrixMultiply(invView, invWorld);
-
-		rayOrigin = XMVector3TransformCoord(rayOrigin, toLocal);
-		rayDir    = XMVector3TransformNormal(rayDir, toLocal);
+		rayOrigin        = XMVector3TransformCoord(rayOrigin, toLocal);
+		rayDir           = XMVector3TransformNormal(rayDir, toLocal);
 
 		// Make the ray direction unit length for the intersection tests.
 		rayDir = XMVector3Normalize(rayDir);
