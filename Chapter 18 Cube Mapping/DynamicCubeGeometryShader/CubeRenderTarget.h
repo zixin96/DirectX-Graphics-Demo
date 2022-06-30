@@ -34,14 +34,14 @@ public:
 
 	ID3D12Resource*               Resource();
 	CD3DX12_GPU_DESCRIPTOR_HANDLE Srv();
-	CD3DX12_CPU_DESCRIPTOR_HANDLE Rtv(int faceIndex);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE Rtv();
 
 	D3D12_VIEWPORT Viewport() const;
 	D3D12_RECT     ScissorRect() const;
 
 	void BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
 	                      CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv,
-	                      CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuRtv[6]);
+	                      CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuRtv);
 private:
 	void BuildDescriptors();
 	void BuildResource();
@@ -55,6 +55,6 @@ private:
 	DXGI_FORMAT                            mFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	CD3DX12_CPU_DESCRIPTOR_HANDLE          mhCpuSrv;
 	CD3DX12_GPU_DESCRIPTOR_HANDLE          mhGpuSrv;
-	CD3DX12_CPU_DESCRIPTOR_HANDLE          mhCpuRtv[6];
+	CD3DX12_CPU_DESCRIPTOR_HANDLE          mhCpuRtv;
 	Microsoft::WRL::ComPtr<ID3D12Resource> mCubeMap = nullptr;
 };

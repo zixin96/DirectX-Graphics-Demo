@@ -224,9 +224,10 @@ bool DynamicCubeMapApp::Initialize()
 
 void DynamicCubeMapApp::CreateRtvAndDsvDescriptorHeaps()
 {
-	// rendering to a cube map requires 6 additional RTVs, one for each face
+	//// rendering to a cube map requires 6 additional RTVs, one for each face
+	//!? we only need one additional RTV for the entire cube map
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
-	rtvHeapDesc.NumDescriptors = SWAP_CHAIN_BUFFER_COUNT + 6; // +6
+	rtvHeapDesc.NumDescriptors = SWAP_CHAIN_BUFFER_COUNT + 1;
 	rtvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	rtvHeapDesc.NodeMask       = 0;
@@ -713,11 +714,7 @@ void DynamicCubeMapApp::BuildDescriptorHeaps()
 	// Cubemap RTV goes after the swap chain descriptors.
 	int rtvOffset = SWAP_CHAIN_BUFFER_COUNT;
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE cubeRtvHandles[6];
-	for (int i = 0; i < 6; ++i)
-	{
-		cubeRtvHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, rtvOffset + i, mRtvDescriptorSize);
-	}
+	CD3DX12_CPU_DESCRIPTOR_HANDLE cubeRtvHandles = CD3DX12_CPU_DESCRIPTOR_HANDLE(rtvCpuStart, rtvOffset, mRtvDescriptorSize);;
 
 	mDynamicCubeMap->BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mDynamicTexHeapIndex, mCbvSrvUavDescriptorSize), // Dynamic cubemap SRV is after the sky SRV.
 	                                  CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mDynamicTexHeapIndex, mCbvSrvUavDescriptorSize),
@@ -737,7 +734,7 @@ void DynamicCubeMapApp::BuildCubeDepthStencil()
 	depthStencilDesc.Alignment          = 0;
 	depthStencilDesc.Width              = CubeMapSize;
 	depthStencilDesc.Height             = CubeMapSize;
-	depthStencilDesc.DepthOrArraySize   = 1;
+	depthStencilDesc.DepthOrArraySize   = 6; //!? an array of depth stencil buffers
 	depthStencilDesc.MipLevels          = 1;
 	depthStencilDesc.Format             = mDepthStencilFormat;
 	depthStencilDesc.SampleDesc.Count   = 1;
@@ -1303,11 +1300,11 @@ void DynamicCubeMapApp::DrawSceneToCubeMap()
 	for (int i = 0; i < 6; ++i)
 	{
 		// Clear the back buffer and depth buffer.
-		mCommandList->ClearRenderTargetView(mDynamicCubeMap->Rtv(i), Colors::LightSteelBlue, 0, nullptr);
+		mCommandList->ClearRenderTargetView(mDynamicCubeMap->Rtv(), Colors::LightSteelBlue, 0, nullptr);
 		mCommandList->ClearDepthStencilView(mCubeDSV, D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
 		// Specify the buffers we are going to render to.
-		mCommandList->OMSetRenderTargets(1, &mDynamicCubeMap->Rtv(i), true, &mCubeDSV);
+		mCommandList->OMSetRenderTargets(1, &mDynamicCubeMap->Rtv(), true, &mCubeDSV);
 
 		// Bind the pass constant buffer for this cube map face so we use 
 		// the right view/proj matrix for this cube face.

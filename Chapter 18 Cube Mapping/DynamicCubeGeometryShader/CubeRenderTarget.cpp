@@ -33,9 +33,9 @@ CD3DX12_GPU_DESCRIPTOR_HANDLE CubeRenderTarget::Srv()
 	return mhGpuSrv;
 }
 
-CD3DX12_CPU_DESCRIPTOR_HANDLE CubeRenderTarget::Rtv(int faceIndex)
+CD3DX12_CPU_DESCRIPTOR_HANDLE CubeRenderTarget::Rtv()
 {
-	return mhCpuRtv[faceIndex];
+	return mhCpuRtv;
 }
 
 D3D12_VIEWPORT CubeRenderTarget::Viewport() const
@@ -50,16 +50,12 @@ D3D12_RECT CubeRenderTarget::ScissorRect() const
 
 void CubeRenderTarget::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
                                         CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv,
-                                        CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuRtv[6])
+                                        CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuRtv)
 {
 	// Save references to the descriptors (to the whole cube map)
 	mhCpuSrv = hCpuSrv;
 	mhGpuSrv = hGpuSrv;
-
-	for (int i = 0; i < 6; ++i)
-	{
-		mhCpuRtv[i] = hCpuRtv[i];
-	}
+	mhCpuRtv = hCpuRtv;
 
 	// Create the descriptors
 	BuildDescriptors();
@@ -77,24 +73,17 @@ void CubeRenderTarget::BuildDescriptors()
 	srvDesc.TextureCube.ResourceMinLODClamp = 0.0f;
 	md3dDevice->CreateShaderResourceView(mCubeMap.Get(), &srvDesc, mhCpuSrv);
 
-	// create a RTV to each element in the cube map texture array so that we can render onto each cube map face one-by-one
-	for (int i = 0; i < 6; ++i)
-	{
-		D3D12_RENDER_TARGET_VIEW_DESC rtvDesc;
-		rtvDesc.ViewDimension             = D3D12_RTV_DIMENSION_TEXTURE2DARRAY; // The resource will be accessed as an array of 2D textures
-		rtvDesc.Format                    = mFormat;
-		rtvDesc.Texture2DArray.MipSlice   = 0;
-		rtvDesc.Texture2DArray.PlaneSlice = 0;
+	//!? create a render target view to the entire texture array
+	D3D12_RENDER_TARGET_VIEW_DESC rtvDesc;
+	rtvDesc.ViewDimension                  = D3D12_RTV_DIMENSION_TEXTURE2DARRAY; // The resource will be accessed as an array of 2D textures
+	rtvDesc.Format                         = mFormat;
+	rtvDesc.Texture2DArray.MipSlice        = 0;
+	rtvDesc.Texture2DArray.PlaneSlice      = 0;
+	rtvDesc.Texture2DArray.FirstArraySlice = 0; // The index of the first texture to use in an array of textures
+	rtvDesc.Texture2DArray.ArraySize       = 6; // Number of textures in the array to use in the render target view, starting from FirstArraySlice.
 
-		// Render target to ith element.
-		rtvDesc.Texture2DArray.FirstArraySlice = i; // The index of the first texture to use in an array of textures
-
-		// Only view one element of the array.
-		rtvDesc.Texture2DArray.ArraySize = 1; // Number of textures in the array to use in the render target view, starting from FirstArraySlice.
-
-		// Create RTV to ith cubemap face.
-		md3dDevice->CreateRenderTargetView(mCubeMap.Get(), &rtvDesc, mhCpuRtv[i]);
-	}
+	// Create RTV to ith cubemap face.
+	md3dDevice->CreateRenderTargetView(mCubeMap.Get(), &rtvDesc, mhCpuRtv);
 }
 
 // build cube map resource
