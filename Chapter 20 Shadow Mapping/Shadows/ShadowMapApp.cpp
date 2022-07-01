@@ -1,181 +1,4 @@
-//***************************************************************************************
-// ShadowMapApp.cpp by Frank Luna (C) 2015 All Rights Reserved.
-//***************************************************************************************
-
-#include <iostream>
-
-#include "../../Common/d3dApp.h"
-#include "../../Common/MathHelper.h"
-#include "../../Common/UploadBuffer.h"
-#include "../../Common/GeometryGenerator.h"
-#include "../../Common/Camera.h"
-#include "FrameResource.h"
-#include "ShadowMap.h"
-
-using Microsoft::WRL::ComPtr;
-using namespace DirectX;
-using namespace PackedVector;
-
-const int gNumFrameResources = 3;
-
-// Lightweight structure stores parameters to draw a shape.  This will vary from app-to-app.
-struct RenderItem
-{
-	RenderItem()                      = default;
-	RenderItem(const RenderItem& rhs) = delete;
-
-	// World matrix of the shape that describes the object's local space
-	// relative to the world space, which defines the position, orientation,
-	// and scale of the object in the world.
-	XMFLOAT4X4 World = MathHelper::Identity4x4();
-
-	XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
-
-	// Dirty flag indicating the object data has changed and we need to update the constant buffer.
-	// Because we have an object cbuffer for each FrameResource, we have to apply the
-	// update to each FrameResource.  Thus, when we modify obect data we should set 
-	// NumFramesDirty = gNumFrameResources so that each frame resource gets the update.
-	int NumFramesDirty = gNumFrameResources;
-
-	// Index into GPU constant buffer corresponding to the ObjectCB for this render item.
-	UINT ObjCBIndex = -1;
-
-	Material*     Mat = nullptr;
-	MeshGeometry* Geo = nullptr;
-
-	// Primitive topology.
-	D3D12_PRIMITIVE_TOPOLOGY PrimitiveType = D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-
-	// DrawIndexedInstanced parameters.
-	UINT IndexCount         = 0;
-	UINT StartIndexLocation = 0;
-	int  BaseVertexLocation = 0;
-};
-
-enum class RenderLayer : int
-{
-	Opaque = 0,
-	Debug,
-	Sky,
-	Count
-};
-
-class ShadowMapApp : public D3DApp
-{
-public:
-	ShadowMapApp(HINSTANCE hInstance);
-	ShadowMapApp(const ShadowMapApp& rhs)            = delete;
-	ShadowMapApp& operator=(const ShadowMapApp& rhs) = delete;
-	~ShadowMapApp() override;
-
-	bool Initialize() override;
-private:
-	void CreateRtvAndDsvDescriptorHeaps() override;
-	void OnResize() override;
-	void Update(const GameTimer& gt) override;
-	void Draw(const GameTimer& gt) override;
-
-	void OnMouseDown(WPARAM btnState, int x, int y) override;
-	void OnMouseUp(WPARAM btnState, int x, int y) override;
-	void OnMouseMove(WPARAM btnState, int x, int y) override;
-
-	void OnKeyboardInput(const GameTimer& gt);
-	void AnimateMaterials(const GameTimer& gt);
-	void UpdateObjectCBs(const GameTimer& gt);
-	void UpdateMaterialBuffer(const GameTimer& gt);
-	void UpdateShadowTransform(const GameTimer& gt);
-	void UpdateMainPassCB(const GameTimer& gt);
-	void UpdateShadowPassCB(const GameTimer& gt);
-
-	void LoadTextures();
-	void BuildRootSignature();
-	void BuildDescriptorHeaps();
-	void BuildShadersAndInputLayout();
-	void BuildShapeGeometry();
-	void BuildSkullGeometry();
-	void BuildPSOs();
-	void BuildFrameResources();
-	void BuildMaterials();
-	void BuildRenderItems();
-	void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
-	void DrawSceneToShadowMap();
-
-	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> GetStaticSamplers();
-
-private:
-	std::vector<std::unique_ptr<FrameResource>> mFrameResources;
-	FrameResource*                              mCurrFrameResource      = nullptr;
-	int                                         mCurrFrameResourceIndex = 0;
-
-	ComPtr<ID3D12RootSignature> mRootSignature = nullptr;
-
-	ComPtr<ID3D12DescriptorHeap> mSrvDescriptorHeap = nullptr;
-
-	std::unordered_map<std::string, std::unique_ptr<MeshGeometry>> mGeometries;
-	std::unordered_map<std::string, std::unique_ptr<Material>>     mMaterials;
-	std::unordered_map<std::string, std::unique_ptr<Texture>>      mTextures;
-	std::unordered_map<std::string, ComPtr<ID3DBlob>>              mShaders;
-	std::unordered_map<std::string, ComPtr<ID3D12PipelineState>>   mPSOs;
-
-	std::vector<D3D12_INPUT_ELEMENT_DESC> mInputLayout;
-
-	// List of all the render items.
-	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
-
-	// Render items divided by PSO.
-	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
-
-	UINT                          mSkyTexHeapIndex    = 0;
-	UINT                          mShadowMapHeapIndex = 0; //! NEW
-	UINT                          mNullCubeSrvIndex   = 0; //! NEW
-	UINT                          mNullTexSrvIndex    = 0; //! NEW
-	CD3DX12_GPU_DESCRIPTOR_HANDLE mNullSrv;                //! NEW
-	PassConstants                 mMainPassCB;             // index 0 of pass cbuffer.
-	PassConstants                 mShadowPassCB;           // index 1 of pass cbuffer.
-	Camera                        mCamera;
-	std::unique_ptr<ShadowMap>    mShadowMap;
-	BoundingSphere                mSceneBounds; // the bounding sphere of the entire scene
-
-	float      mLightNearZ = 0.0f;
-	float      mLightFarZ  = 0.0f;
-	XMFLOAT3   mLightPosW;
-	XMFLOAT4X4 mLightView       = MathHelper::Identity4x4();
-	XMFLOAT4X4 mLightProj       = MathHelper::Identity4x4();
-	XMFLOAT4X4 mShadowTransform = MathHelper::Identity4x4();
-
-	float    mLightRotationAngle     = 0.0f;
-	XMFLOAT3 mBaseLightDirections[3] = {
-		XMFLOAT3(0.57735f, -0.57735f, 0.57735f),
-		XMFLOAT3(-0.57735f, -0.57735f, 0.57735f),
-		XMFLOAT3(0.0f, -0.707f, -0.707f)
-	};
-	XMFLOAT3 mRotatedLightDirections[3];
-
-	POINT mLastMousePos;
-};
-
-int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
-                   PSTR      cmdLine, int         showCmd)
-{
-	// Enable run-time memory check for debug builds.
-	#if defined(DEBUG) | defined(_DEBUG)
-	_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	#endif
-
-	try
-	{
-		ShadowMapApp theApp(hInstance);
-		if (!theApp.Initialize())
-			return 0;
-
-		return theApp.Run();
-	}
-	catch (DxException& e)
-	{
-		MessageBox(nullptr, e.ToString().c_str(), L"HR Failed", MB_OK);
-		return 0;
-	}
-}
+#include "ShadowMapApp.h"
 
 ShadowMapApp::ShadowMapApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
@@ -233,7 +56,7 @@ void ShadowMapApp::CreateRtvAndDsvDescriptorHeaps()
 {
 	// Add +6 RTV for cube render target.
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
-	rtvHeapDesc.NumDescriptors = SwapChainBufferCount;
+	rtvHeapDesc.NumDescriptors = SWAP_CHAIN_BUFFER_COUNT;
 	rtvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
 	rtvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	rtvHeapDesc.NodeMask       = 0;
@@ -378,7 +201,7 @@ void ShadowMapApp::Draw(const GameTimer& gt)
 
 	// Swap the back and front buffers
 	ThrowIfFailed(mSwapChain->Present(0, 0));
-	mCurrBackBuffer = (mCurrBackBuffer + 1) % SwapChainBufferCount;
+	mCurrBackBuffer = (mCurrBackBuffer + 1) % SWAP_CHAIN_BUFFER_COUNT;
 
 	// Advance the fence value to mark commands up to this fence point.
 	mCurrFrameResource->Fence = ++mCurrentFence;
@@ -627,14 +450,18 @@ void ShadowMapApp::LoadTextures()
 
 	for (int i = 0; i < (int)texNames.size(); ++i)
 	{
-		auto texMap      = std::make_unique<Texture>();
-		texMap->Name     = texNames[i];
-		texMap->Filename = texFilenames[i];
-		ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
-			              mCommandList.Get(), texMap->Filename.c_str(),
-			              texMap->Resource, texMap->UploadHeap));
-
+		auto texMap             = std::make_unique<Texture>();
+		texMap->Name            = texNames[i];
+		texMap->Filename        = texFilenames[i];
 		mTextures[texMap->Name] = std::move(texMap);
+	}
+
+	for (auto& tex : mTextures)
+	{
+		tex.second->Resource = d3dUtil::CreateTexture(md3dDevice.Get(),
+		                                              mCommandList.Get(),
+		                                              tex.second->Filename.c_str(),
+		                                              tex.second->UploadHeap);
 	}
 }
 
@@ -1080,8 +907,8 @@ void ShadowMapApp::BuildPSOs()
 	opaquePsoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	opaquePsoDesc.NumRenderTargets      = 1;
 	opaquePsoDesc.RTVFormats[0]         = mBackBufferFormat;
-	opaquePsoDesc.SampleDesc.Count      = m4xMsaaState ? 4 : 1;
-	opaquePsoDesc.SampleDesc.Quality    = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+	opaquePsoDesc.SampleDesc.Count      = 1;
+	opaquePsoDesc.SampleDesc.Quality    = 0;
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 
@@ -1464,6 +1291,7 @@ std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> ShadowMapApp::GetStaticSamplers
 	                                                   0.0f,                             // mipLODBias
 	                                                   8);                               // maxAnisotropy
 
+	//!? 4-tap PCF needs a special sampler
 	const CD3DX12_STATIC_SAMPLER_DESC shadow(
 	                                         6,                                                // shaderRegister
 	                                         D3D12_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT, // filter

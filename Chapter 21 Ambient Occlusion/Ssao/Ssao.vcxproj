@@ -149,6 +149,7 @@
     <ClCompile Include="..\..\Common\GameTimer.cpp" />
     <ClCompile Include="..\..\Common\GeometryGenerator.cpp" />
     <ClCompile Include="..\..\Common\MathHelper.cpp" />
+    <ClCompile Include="EntryPoint.cpp" />
     <ClCompile Include="FrameResource.cpp" />
     <ClCompile Include="ShadowMap.cpp" />
     <ClCompile Include="Ssao.cpp" />
@@ -167,6 +168,7 @@
     <ClInclude Include="FrameResource.h" />
     <ClInclude Include="ShadowMap.h" />
     <ClInclude Include="Ssao.h" />
+    <ClInclude Include="SsaoApp.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\Common.hlsl">

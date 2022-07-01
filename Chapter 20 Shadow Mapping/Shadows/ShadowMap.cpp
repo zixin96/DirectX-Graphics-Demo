@@ -83,20 +83,6 @@ void ShadowMap::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
 	BuildDescriptors();
 }
 
-void ShadowMap::OnResize(UINT newWidth, UINT newHeight)
-{
-	if ((mWidth != newWidth) || (mHeight != newHeight))
-	{
-		mWidth  = newWidth;
-		mHeight = newHeight;
-
-		BuildResource();
-
-		// New resource, so we need new descriptors to that resource.
-		BuildDescriptors();
-	}
-}
-
 void ShadowMap::BuildDescriptors()
 {
 	// Create SRV to resource so we can sample the shadow map in a shader program.

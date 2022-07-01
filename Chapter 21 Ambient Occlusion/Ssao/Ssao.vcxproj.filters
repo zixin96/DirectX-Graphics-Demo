@@ -51,6 +51,9 @@
     <ClCompile Include="Ssao.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="EntryPoint.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FrameResource.h">
@@ -87,6 +90,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Ssao.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SsaoApp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
