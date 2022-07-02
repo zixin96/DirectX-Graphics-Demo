@@ -1,14 +1,17 @@
 #include "ShadowMapApp.h"
 
+static constexpr float GRID_WIDTH = 20.f;
+static constexpr float GRID_DEPTH = 30.f;
+
 ShadowMapApp::ShadowMapApp(HINSTANCE hInstance)
 	: D3DApp(hInstance)
 {
 	// Estimate the scene bounding sphere manually since we know how the scene was constructed.
-	// The grid is the "widest object" with a width of 20 and depth of 30.0f, and centered at
+	// The grid is the "widest object" with a width of GRID_WIDTH and depth of GRID_DEPTH, and centered at
 	// the world space origin.  In general, you need to loop over every world space vertex
 	// position and compute the bounding sphere.
 	mSceneBounds.Center = XMFLOAT3(0.0f, 0.0f, 0.0f);
-	mSceneBounds.Radius = sqrtf(10.0f * 10.0f + 15.0f * 15.0f);
+	mSceneBounds.Radius = sqrtf((GRID_WIDTH / 2.f) * (GRID_WIDTH / 2.f) + (GRID_DEPTH / 2.f) * (GRID_DEPTH / 2.f));
 }
 
 ShadowMapApp::~ShadowMapApp()
@@ -107,13 +110,7 @@ void ShadowMapApp::Update(const GameTimer& gt)
 void ShadowMapApp::Draw(const GameTimer& gt)
 {
 	auto cmdListAlloc = mCurrFrameResource->CmdListAlloc;
-
-	// Reuse the memory associated with command recording.
-	// We can only reset when the associated command lists have finished execution on the GPU.
 	ThrowIfFailed(cmdListAlloc->Reset());
-
-	// A command list can be reset after it has been added to the command queue via ExecuteCommandList.
-	// Reusing the command list reuses memory.
 	ThrowIfFailed(mCommandList->Reset(cmdListAlloc.Get(), mPSOs["opaque"].Get()));
 
 	ID3D12DescriptorHeap* descriptorHeaps[] = {mSrvDescriptorHeap.Get()};
@@ -121,17 +118,11 @@ void ShadowMapApp::Draw(const GameTimer& gt)
 
 	mCommandList->SetGraphicsRootSignature(mRootSignature.Get());
 
-	// Bind all the materials used in this scene.  For structured buffers, we can bypass the heap and 
-	// set as a root descriptor.
+	// Bind the structured material buffer
 	auto matBuffer = mCurrFrameResource->MaterialBuffer->Resource();
 	mCommandList->SetGraphicsRootShaderResourceView(2, matBuffer->GetGPUVirtualAddress());
 
-	// Bind null SRV for shadow map pass.
-	mCommandList->SetGraphicsRootDescriptorTable(3, mNullSrvGpu);
-
-	// Bind all the textures used in this scene.  Observe
-	// that we only have to specify the first descriptor in the table.  
-	// The root signature knows how many descriptors are expected in the table.
+	// Bind the texture array
 	mCommandList->SetGraphicsRootDescriptorTable(4, mSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
 	DrawSceneToShadowMap();
@@ -154,13 +145,9 @@ void ShadowMapApp::Draw(const GameTimer& gt)
 	auto passCB = mCurrFrameResource->PassCB->Resource();
 	mCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
 
-	// Bind the sky cube map.  For our demos, we just use one "world" cube map representing the environment
-	// from far away, so all objects will use the same cube map and we only need to set it once per-frame.  
-	// If we wanted to use "local" cube maps, we would have to change them per-object, or dynamically
-	// index into an array of cube maps.
-
+	// bind cube map and the generated shadow map
 	CD3DX12_GPU_DESCRIPTOR_HANDLE skyTexDescriptor(mSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-	skyTexDescriptor.Offset(mSkyTexHeapIndex, mCbvSrvUavDescriptorSize);
+	skyTexDescriptor.Offset(mSkyShadowTexStartHeapIndex, mCbvSrvUavDescriptorSize);
 	mCommandList->SetGraphicsRootDescriptorTable(3, skyTexDescriptor);
 
 	mCommandList->SetPipelineState(mPSOs["opaque"].Get());
@@ -339,8 +326,7 @@ void ShadowMapApp::UpdateShadowTransform(const GameTimer& gt)
 	XMMATRIX lightProj = XMMatrixOrthographicOffCenterLH(l, r, b, t, n, f);
 
 	// Transform NDC space [-1,+1]^2 to texture space [0,1]^2
-	XMMATRIX T(
-	           0.5f, 0.0f, 0.0f, 0.0f,
+	XMMATRIX T(0.5f, 0.0f, 0.0f, 0.0f,
 	           0.0f, -0.5f, 0.0f, 0.0f,
 	           0.0f, 0.0f, 1.0f, 0.0f,
 	           0.5f, 0.5f, 0.0f, 1.0f);
@@ -465,17 +451,18 @@ void ShadowMapApp::BuildRootSignature()
 	CD3DX12_ROOT_PARAMETER slotRootParameter[5];
 
 	// Perfomance TIP: Order from most frequent to least frequent.
-	slotRootParameter[0].InitAsConstantBufferView(0);
-	slotRootParameter[1].InitAsConstantBufferView(1);
-	slotRootParameter[2].InitAsShaderResourceView(0, 1);
+	slotRootParameter[0].InitAsConstantBufferView(0);    // cbPerObject
+	slotRootParameter[1].InitAsConstantBufferView(1);    // cbPass
+	slotRootParameter[2].InitAsShaderResourceView(0, 1); // gMaterialData
 
+	//!? You cannot combine these two descriptor tables. Texture array needs to be in a seperate table
 	CD3DX12_DESCRIPTOR_RANGE texTable0;
 	texTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0, 0);
 	CD3DX12_DESCRIPTOR_RANGE texTable1;
-	texTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10, 2, 0);
-	slotRootParameter[3].InitAsDescriptorTable(1, &texTable0, D3D12_SHADER_VISIBILITY_PIXEL);
-	slotRootParameter[4].InitAsDescriptorTable(1, &texTable1, D3D12_SHADER_VISIBILITY_PIXEL);
+	texTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6, 2, 0);
 
+	slotRootParameter[3].InitAsDescriptorTable(1, &texTable0, D3D12_SHADER_VISIBILITY_PIXEL); // gCubeMap and gShadowMap
+	slotRootParameter[4].InitAsDescriptorTable(1, &texTable1, D3D12_SHADER_VISIBILITY_PIXEL); // gTextureMaps[10]
 
 	auto staticSamplers = GetStaticSamplers();
 
@@ -510,10 +497,10 @@ void ShadowMapApp::BuildRootSignature()
 void ShadowMapApp::BuildDescriptorHeaps()
 {
 	// CBV_SRV_UAV Heaps: 
-	// Views:   [bricksDiffuseMap] [bricksNormalMap] [tileDiffuseMap] [tileNormalMap] [defaultDiffuseMap] [defaultNormalMap] [skyCubeMap] [shadowMap] [NullCube] [NullTex]
-	// Indices: 0				   1				 2				  3				  4					  5                  6            7           8          9
+	// Views:   [bricksDiffuseMap] [bricksNormalMap] [tileDiffuseMap] [tileNormalMap] [defaultDiffuseMap] [defaultNormalMap] [skyCubeMap] [shadowMap]
+	// Indices: 0				   1				 2				  3				  4					  5                  6            7          
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors             = 10;
+	srvHeapDesc.NumDescriptors             = 8;
 	srvHeapDesc.Type                       = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags                      = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mSrvDescriptorHeap)));
@@ -556,33 +543,15 @@ void ShadowMapApp::BuildDescriptorHeaps()
 	srvDesc.Format                          = skyCubeMap->GetDesc().Format;
 	md3dDevice->CreateShaderResourceView(skyCubeMap.Get(), &srvDesc, hDescriptor);
 
-	mSkyTexHeapIndex    = (UINT)tex2DList.size();
-	mShadowMapHeapIndex = mSkyTexHeapIndex + 1;
-
-	mNullCubeSrvIndex = mShadowMapHeapIndex + 1;
-	mNullTexSrvIndex  = mNullCubeSrvIndex + 1;
+	mSkyShadowTexStartHeapIndex = (UINT)tex2DList.size();
+	auto shadowMapHeapIndex     = mSkyShadowTexStartHeapIndex + 1;
 
 	auto srvCpuStart = mSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	auto srvGpuStart = mSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 	auto dsvCpuStart = mDsvHeap->GetCPUDescriptorHandleForHeapStart();
 
-	mNullSrvGpu = CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mNullCubeSrvIndex, mCbvSrvUavDescriptorSize);
-
-	auto nullSrvCpuStart = CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mNullCubeSrvIndex, mCbvSrvUavDescriptorSize);
-
-	md3dDevice->CreateShaderResourceView(nullptr, &srvDesc, nullSrvCpuStart);
-
-	nullSrvCpuStart.Offset(1, mCbvSrvUavDescriptorSize);
-
-	srvDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Format                        = DXGI_FORMAT_R8G8B8A8_UNORM;
-	srvDesc.Texture2D.MostDetailedMip     = 0;
-	srvDesc.Texture2D.MipLevels           = 1;
-	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-	md3dDevice->CreateShaderResourceView(nullptr, &srvDesc, nullSrvCpuStart);
-
-	mShadowMap->BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mShadowMapHeapIndex, mCbvSrvUavDescriptorSize),
-	                             CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mShadowMapHeapIndex, mCbvSrvUavDescriptorSize),
+	mShadowMap->BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, shadowMapHeapIndex, mCbvSrvUavDescriptorSize),
+	                             CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, shadowMapHeapIndex, mCbvSrvUavDescriptorSize),
 	                             // DSV:   [Back buffer DSV] [Shadow Mapping DSV]
 	                             // Index: 0                 1
 	                             CD3DX12_CPU_DESCRIPTOR_HANDLE(dsvCpuStart, 1, mDsvDescriptorSize));
@@ -622,7 +591,7 @@ void ShadowMapApp::BuildShapeGeometry()
 {
 	GeometryGenerator           geoGen;
 	GeometryGenerator::MeshData box      = geoGen.CreateBox(1.0f, 1.0f, 1.0f, 3);
-	GeometryGenerator::MeshData grid     = geoGen.CreateGrid(20.0f, 30.0f, 60, 40);
+	GeometryGenerator::MeshData grid     = geoGen.CreateGrid(GRID_WIDTH, GRID_DEPTH, 60, 40);
 	GeometryGenerator::MeshData sphere   = geoGen.CreateSphere(0.5f, 20, 20);
 	GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(0.5f, 0.3f, 3.0f, 20, 20);
 	GeometryGenerator::MeshData quad     = geoGen.CreateQuad(0.0f, 0.0f, 1.0f, 1.0f, 0.0f); // lower-left Debug quad
@@ -1214,7 +1183,8 @@ void ShadowMapApp::DrawSceneToShadowMap()
 
 	// Change to DEPTH_WRITE.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mShadowMap->Resource(),
-	                                                                       D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+	                                                                       D3D12_RESOURCE_STATE_GENERIC_READ,
+	                                                                       D3D12_RESOURCE_STATE_DEPTH_WRITE));
 
 	UINT passCBByteSize = d3dUtil::CalcConstantBufferByteSize(sizeof(PassConstants));
 
@@ -1238,7 +1208,8 @@ void ShadowMapApp::DrawSceneToShadowMap()
 
 	// Change back to GENERIC_READ so we can read the texture in a shader.
 	mCommandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(mShadowMap->Resource(),
-	                                                                       D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_GENERIC_READ));
+	                                                                       D3D12_RESOURCE_STATE_DEPTH_WRITE,
+	                                                                       D3D12_RESOURCE_STATE_GENERIC_READ));
 }
 
 std::array<const CD3DX12_STATIC_SAMPLER_DESC, 7> ShadowMapApp::GetStaticSamplers()

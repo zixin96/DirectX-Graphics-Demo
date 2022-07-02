@@ -27,12 +27,6 @@ public:
 
 	ID3D12Resource* Resource();
 
-	// The shadow mapping algorithm requires 2 render passes. In the first one,
-	// we render the scene depth from the viewpoint of the light into the shadow map (DSV).
-	// In the second one, we render the scene as normal to the back buffer from our "player" camera,
-	// but use the shadow map as a shader input (SRV) to implement the shadow mapping algorithm.
-	// Thus, the shadow map will be viewed as both depth/stencil (shadow pass) and shader resource (rendering pass)
-	CD3DX12_GPU_DESCRIPTOR_HANDLE Srv() const;
 	CD3DX12_CPU_DESCRIPTOR_HANDLE Dsv() const;
 
 	D3D12_VIEWPORT Viewport() const;

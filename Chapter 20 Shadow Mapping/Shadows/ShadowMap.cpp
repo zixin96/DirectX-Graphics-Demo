@@ -44,15 +44,8 @@ ID3D12Resource* ShadowMap::Resource()
 	return mShadowMap.Get();
 }
 
-CD3DX12_GPU_DESCRIPTOR_HANDLE ShadowMap::Srv() const
-{
-	// shadow map will be used as shader input
-	return mhGpuSrv;
-}
-
 CD3DX12_CPU_DESCRIPTOR_HANDLE ShadowMap::Dsv() const
 {
-	// shadow map will be used as a render target 
 	return mhCpuDsv;
 }
 
@@ -73,6 +66,7 @@ void ShadowMap::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
 	// Save references to the descriptors. 
 	mhCpuSrv = hCpuSrv;
 	mhGpuSrv = hGpuSrv;
+
 	mhCpuDsv = hCpuDsv;
 
 	//  Create the descriptors

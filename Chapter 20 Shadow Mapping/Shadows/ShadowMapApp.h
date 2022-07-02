@@ -119,11 +119,7 @@ private:
 	// Render items divided by PSO.
 	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
 
-	UINT                          mSkyTexHeapIndex    = 0;
-	UINT                          mShadowMapHeapIndex = 0;
-	UINT                          mNullCubeSrvIndex   = 0;
-	UINT                          mNullTexSrvIndex    = 0;
-	CD3DX12_GPU_DESCRIPTOR_HANDLE mNullSrvGpu;
+	UINT                          mSkyShadowTexStartHeapIndex    = 0;
 	PassConstants                 mMainPassCB;   // index 0 of pass cbuffer.
 	PassConstants                 mShadowPassCB; // index 1 of pass cbuffer.
 	Camera                        mCamera;
