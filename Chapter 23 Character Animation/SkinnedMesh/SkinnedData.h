@@ -1,4 +1,4 @@
-#ifndef SKINNEDDATA_H
+ #ifndef SKINNEDDATA_H
 #define SKINNEDDATA_H
 
 #include "../../Common/d3dUtil.h"

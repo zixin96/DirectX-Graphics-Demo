@@ -30,8 +30,7 @@ bool SsaoApp::Initialize()
 	mShadowMap = std::make_unique<ShadowMap>(md3dDevice.Get(),
 	                                         2048, 2048);
 
-	mSsao = std::make_unique<Ssao>(
-	                               md3dDevice.Get(),
+	mSsao = std::make_unique<Ssao>(md3dDevice.Get(),
 	                               mCommandList.Get(),
 	                               mClientWidth, mClientHeight);
 
