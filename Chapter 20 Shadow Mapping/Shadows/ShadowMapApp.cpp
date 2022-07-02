@@ -148,9 +148,9 @@ void ShadowMapApp::Draw(const GameTimer& gt)
 	mCommandList->SetGraphicsRootConstantBufferView(1, passCB->GetGPUVirtualAddress());
 
 	// bind cube map and the generated shadow map
-	CD3DX12_GPU_DESCRIPTOR_HANDLE skyTexDescriptor(mSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-	skyTexDescriptor.Offset(mSkyShadowTexStartHeapIndex, mCbvSrvUavDescriptorSize);
-	mCommandList->SetGraphicsRootDescriptorTable(3, skyTexDescriptor);
+	CD3DX12_GPU_DESCRIPTOR_HANDLE skyShadowTexStartLoc(mSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+	skyShadowTexStartLoc.Offset(mSkyShadowTexStartHeapIndex, mCbvSrvUavDescriptorSize);
+	mCommandList->SetGraphicsRootDescriptorTable(3, skyShadowTexStartLoc);
 
 	mCommandList->SetPipelineState(mPSOs["opaque"].Get());
 	DrawRenderItems(mCommandList.Get(), mRitemLayer[(int)RenderLayer::Opaque]);
@@ -546,7 +546,8 @@ void ShadowMapApp::BuildDescriptorHeaps()
 	md3dDevice->CreateShaderResourceView(skyCubeMap.Get(), &srvDesc, hDescriptor);
 
 	mSkyShadowTexStartHeapIndex = (UINT)tex2DList.size();
-	auto shadowMapHeapIndex     = mSkyShadowTexStartHeapIndex + 1;
+
+	auto shadowMapHeapIndex = mSkyShadowTexStartHeapIndex + 1;
 
 	auto srvCpuStart = mSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	auto dsvCpuStart = mDsvHeap->GetCPUDescriptorHandleForHeapStart();
