@@ -119,12 +119,12 @@ private:
 	// Render items divided by PSO.
 	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
 
-	UINT                          mSkyShadowTexStartHeapIndex    = 0;
-	PassConstants                 mMainPassCB;   // index 0 of pass cbuffer.
-	PassConstants                 mShadowPassCB; // index 1 of pass cbuffer.
-	Camera                        mCamera;
-	std::unique_ptr<ShadowMap>    mShadowMap;
-	BoundingSphere                mSceneBounds; // the bounding sphere of the entire scene
+	UINT                       mSkyShadowTexStartHeapIndex = 0;
+	PassConstants              mMainPassCB;   // index 0 of pass cbuffer.
+	PassConstants              mShadowPassCB; // index 1 of pass cbuffer.
+	Camera                     mCamera;
+	std::unique_ptr<ShadowMap> mShadowMap;
+	BoundingSphere             mSceneBounds; // the bounding sphere of the entire scene
 
 	float      mLightNearZ = 0.0f;
 	float      mLightFarZ  = 0.0f;
