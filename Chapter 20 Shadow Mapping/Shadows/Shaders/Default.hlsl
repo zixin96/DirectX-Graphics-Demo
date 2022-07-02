@@ -1,7 +1,3 @@
-//***************************************************************************************
-// Default.hlsl by Frank Luna (C) 2015 All Rights Reserved.
-//***************************************************************************************
-
 // Defaults for number of lights.
 #ifndef NUM_DIR_LIGHTS
 #define NUM_DIR_LIGHTS 3
@@ -90,9 +86,6 @@ float4 PS(VertexOut pin) : SV_Target
 
 	float4 normalMapSample = gTextureMaps[normalMapIndex].Sample(gsamAnisotropicWrap, pin.TexC);
 	float3 bumpedNormalW   = NormalSampleToWorldSpace(normalMapSample.rgb, pin.NormalW, pin.TangentW);
-
-	// Uncomment to turn off normal mapping.
-	//bumpedNormalW = pin.NormalW;
 
 	// Vector from point being lit to eye. 
 	float3 toEyeW = normalize(gEyePosW - pin.PosW);

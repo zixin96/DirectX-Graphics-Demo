@@ -60,21 +60,11 @@ D3D12_RECT ShadowMap::ScissorRect() const
 }
 
 void ShadowMap::BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuSrv,
-                                 CD3DX12_GPU_DESCRIPTOR_HANDLE hGpuSrv,
                                  CD3DX12_CPU_DESCRIPTOR_HANDLE hCpuDsv)
 {
-	// Save references to the descriptors. 
-	mhCpuSrv = hCpuSrv;
-	mhGpuSrv = hGpuSrv;
-
+	// Save reference to DSV CPU handle. 
 	mhCpuDsv = hCpuDsv;
 
-	//  Create the descriptors
-	BuildDescriptors();
-}
-
-void ShadowMap::BuildDescriptors()
-{
 	// Create SRV to resource so we can sample the shadow map in a shader program.
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping         = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -84,7 +74,7 @@ void ShadowMap::BuildDescriptors()
 	srvDesc.Texture2D.MipLevels             = 1;
 	srvDesc.Texture2D.ResourceMinLODClamp   = 0.0f;
 	srvDesc.Texture2D.PlaneSlice            = 0;
-	md3dDevice->CreateShaderResourceView(mShadowMap.Get(), &srvDesc, mhCpuSrv);
+	md3dDevice->CreateShaderResourceView(mShadowMap.Get(), &srvDesc, hCpuSrv);
 
 	// Create DSV to resource so we can render to the shadow map.
 	D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;

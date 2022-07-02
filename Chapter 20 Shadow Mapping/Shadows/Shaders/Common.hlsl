@@ -69,6 +69,7 @@ StructuredBuffer<MaterialData> gMaterialData : register(t0, space1);
 
 TextureCube gCubeMap : register(t0, space0);
 Texture2D   gShadowMap : register(t1, space0);
+
 // An array of textures, which is only supported in shader model 5.1+.  Unlike Texture2DArray, the textures
 // in this array can be different sizes and formats, making it more flexible than texture arrays.
 Texture2D gTextureMaps[6] : register(t2, space0);
@@ -80,7 +81,6 @@ SamplerState           gsamLinearClamp : register(s3);
 SamplerState           gsamAnisotropicWrap : register(s4);
 SamplerState           gsamAnisotropicClamp : register(s5);
 SamplerComparisonState gsamShadow : register(s6);
-
 
 //---------------------------------------------------------------------------------------
 // Transforms a normal map sample to world space.
@@ -106,7 +106,6 @@ float3 NormalSampleToWorldSpace(float3 normalMapSample, float3 unitNormalW, floa
 //---------------------------------------------------------------------------------------
 // PCF for shadow mapping.
 //---------------------------------------------------------------------------------------
-
 float CalcShadowFactor(float4 shadowPosH)
 {
 	// Complete projection by doing division by w.

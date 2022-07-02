@@ -127,6 +127,8 @@ void ShadowMapApp::Draw(const GameTimer& gt)
 
 	DrawSceneToShadowMap();
 
+	// ---------------------------------------------------------------------------------------------------------------------
+
 	mCommandList->RSSetViewports(1, &mScreenViewport);
 	mCommandList->RSSetScissorRects(1, &mScissorRect);
 
@@ -547,11 +549,9 @@ void ShadowMapApp::BuildDescriptorHeaps()
 	auto shadowMapHeapIndex     = mSkyShadowTexStartHeapIndex + 1;
 
 	auto srvCpuStart = mSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart();
-	auto srvGpuStart = mSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 	auto dsvCpuStart = mDsvHeap->GetCPUDescriptorHandleForHeapStart();
 
 	mShadowMap->BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, shadowMapHeapIndex, mCbvSrvUavDescriptorSize),
-	                             CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, shadowMapHeapIndex, mCbvSrvUavDescriptorSize),
 	                             // DSV:   [Back buffer DSV] [Shadow Mapping DSV]
 	                             // Index: 0                 1
 	                             CD3DX12_CPU_DESCRIPTOR_HANDLE(dsvCpuStart, 1, mDsvDescriptorSize));
@@ -858,7 +858,7 @@ void ShadowMapApp::BuildSkullGeometry()
 
 void ShadowMapApp::BuildPSOs()
 {
-	// PSO for opaque objects
+	//!? PSO for opaque objects
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
 	ZeroMemory(&opaquePsoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
 	opaquePsoDesc.InputLayout    = {mInputLayout.data(), (UINT)mInputLayout.size()};
@@ -887,7 +887,7 @@ void ShadowMapApp::BuildPSOs()
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 
-	// PSO for shadow map pass.
+	//!? PSO for shadow map pass.
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC smapPsoDesc   = opaquePsoDesc;
 	smapPsoDesc.RasterizerState.DepthBias            = 100000;
 	smapPsoDesc.RasterizerState.DepthBiasClamp       = 0.0f;
@@ -910,7 +910,7 @@ void ShadowMapApp::BuildPSOs()
 	smapPsoDesc.RTVFormats[0]    = DXGI_FORMAT_UNKNOWN;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&smapPsoDesc, IID_PPV_ARGS(&mPSOs["shadow_opaque"])));
 
-	// PSO for debug layer.
+	//!? PSO for debug layer.
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC debugPsoDesc = opaquePsoDesc;
 	debugPsoDesc.pRootSignature                     = mRootSignature.Get();
 
@@ -926,7 +926,7 @@ void ShadowMapApp::BuildPSOs()
 	};
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&debugPsoDesc, IID_PPV_ARGS(&mPSOs["debug"])));
 
-	// PSO for sky.
+	//!? PSO for sky.
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC skyPsoDesc = opaquePsoDesc;
 	// The camera is inside the sky sphere, so just turn off culling.
 	skyPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
@@ -1190,7 +1190,11 @@ void ShadowMapApp::DrawSceneToShadowMap()
 
 	// Clear the back buffer and depth buffer.
 	mCommandList->ClearDepthStencilView(mShadowMap->Dsv(),
-	                                    D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+	                                    D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL,
+	                                    1.0f,
+	                                    0,
+	                                    0,
+	                                    nullptr);
 
 	// Set null render target because we are only going to draw to
 	// depth buffer.  Setting a null render target will disable color writes.
