@@ -3,7 +3,10 @@
 
 using namespace DirectX;
 
-GeometryGenerator::MeshData GeometryGenerator::CreateBox(float width, float height, float depth, uint32 numSubdivisions)
+GeometryGenerator::MeshData GeometryGenerator::CreateBox(float  width,
+                                                         float  height,
+                                                         float  depth,
+                                                         uint32 numSubdivisions)
 {
 	MeshData meshData;
 
@@ -654,32 +657,40 @@ GeometryGenerator::MeshData GeometryGenerator::CreateGrid(float width, float dep
 
 GeometryGenerator::MeshData GeometryGenerator::CreateQuad(float x, float y, float w, float h, float depth)
 {
+	/*
+     
+uv: (0,0)				(1,0)
+	(x,y) - - - - - - (x+w,h)
+	  |					|
+	  |					|
+	  |					|
+	(x,y-h)- - - - - (x+w,y-w) 
+uv:	(0,1)				(1,1)
+
+	Up: +Y, Right: +X, into the screen: +Z
+	 */
 	MeshData meshData;
 
 	meshData.Vertices.resize(4);
 	meshData.Indices32.resize(6);
 
 	// Position coordinates specified in NDC space.
-	meshData.Vertices[0] = Vertex(
-	                              x, y - h, depth,
+	meshData.Vertices[0] = Vertex(x, y - h, depth,
 	                              0.0f, 0.0f, -1.0f,
 	                              1.0f, 0.0f, 0.0f,
 	                              0.0f, 1.0f);
 
-	meshData.Vertices[1] = Vertex(
-	                              x, y, depth,
+	meshData.Vertices[1] = Vertex(x, y, depth,
 	                              0.0f, 0.0f, -1.0f,
 	                              1.0f, 0.0f, 0.0f,
 	                              0.0f, 0.0f);
 
-	meshData.Vertices[2] = Vertex(
-	                              x + w, y, depth,
+	meshData.Vertices[2] = Vertex(x + w, y, depth,
 	                              0.0f, 0.0f, -1.0f,
 	                              1.0f, 0.0f, 0.0f,
 	                              1.0f, 0.0f);
 
-	meshData.Vertices[3] = Vertex(
-	                              x + w, y - h, depth,
+	meshData.Vertices[3] = Vertex(x + w, y - h, depth,
 	                              0.0f, 0.0f, -1.0f,
 	                              1.0f, 0.0f, 0.0f,
 	                              1.0f, 1.0f);

@@ -14,17 +14,8 @@
 #pragma comment(lib, "D3D12.lib")
 #pragma comment(lib, "dxgi.lib")
 
-/**
- * \brief Base D3D application class
- */
 class D3DApp
 {
-protected:
-	D3DApp(HINSTANCE hInstance);
-	D3DApp(const D3DApp& rhs)            = delete;
-	D3DApp& operator=(const D3DApp& rhs) = delete;
-	virtual ~D3DApp();
-
 public:
 	static D3DApp* GetApp();
 	HINSTANCE      AppInst() const;
@@ -42,6 +33,11 @@ public:
 	virtual LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 protected:
+	D3DApp(HINSTANCE hInstance);
+	D3DApp(const D3DApp& rhs)            = delete;
+	D3DApp& operator=(const D3DApp& rhs) = delete;
+	virtual ~D3DApp();
+
 	// Create the render target and depth stencil descriptor heaps to store the descriptors/views
 	// Clients may need to override this for more advanced rendering techniques
 	virtual void CreateRtvAndDsvDescriptorHeaps();
@@ -83,58 +79,86 @@ protected:
 	D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView() const;
 
 	void CalculateFrameStats();
-
 	void LogAdapters();
 	void LogAdapterOutputs(IDXGIAdapter* adapter);
 	void LogOutputDisplayModes(IDXGIOutput* output, DXGI_FORMAT format);
 protected:
-	static D3DApp* mApp;
-	HINSTANCE      mhAppInst        = nullptr; // application instance handle
-	HWND           mhMainWnd        = nullptr; // main window handle
-	bool           mAppPaused       = false;   // is the application paused?
-	bool           mMinimized       = false;   // is the application minimized?
-	bool           mMaximized       = false;   // is the application maximized?
-	bool           mResizing        = false;   // are the resize bars being dragged?
-	bool           mFullscreenState = false;   // fullscreen enabled
+	static D3DApp*   mApp;
+	static const int SWAP_CHAIN_BUFFER_COUNT = 2;
 
-	// GameTimer is used to keep track of the “delta-time” and game time
+	// application instance handle
+	HINSTANCE mhAppInst;
+
+	// main window handle
+	HWND mhMainWnd = nullptr;
+
+	// is the application paused?
+	bool mAppPaused = false;
+
+	// is the application minimized/maximized?
+	bool mMinimized = false;
+	bool mMaximized = false;
+
+	// are you resizing the window by drawing the window bars?
+	bool mResizing = false;
+
+	// TODO: Full Screen Support
+	bool mFullscreenState = false;
+
+	// GameTimer keeps tracks o delta time and game time
 	GameTimer mTimer;
 
 	// IDXGIFactory4 is used to create our swap chain and a WARP adapter if necessary
-	Microsoft::WRL::ComPtr<IDXGIFactory4> mdxgiFactory;
+	Microsoft::WRL::ComPtr<IDXGIFactory4> mdxgiFactory = nullptr;
 
-	// ID3D12Device is used to create D3D objects
-	Microsoft::WRL::ComPtr<ID3D12Device> md3dDevice;
+	// ID3D12Device is used to create various D3D objects
+	Microsoft::WRL::ComPtr<ID3D12Device> md3dDevice = nullptr;
 
-	// --------------D3D12 Sync CPU/GPU---------------
-	Microsoft::WRL::ComPtr<ID3D12Fence> mFence;            // fence is used to sync GPU and CPU
-	UINT64                              mCurrentFence = 0; // a fence object maintains a UINT64 value, which is an integer to identify a fence point in time. Every time we need to mark a new fence point, we increment the integer. 
-	// -----------End D3D12 Sync CPU/GPU---------------
+	// ID3D12Fence is used to sync GPU and CPU
+	Microsoft::WRL::ComPtr<ID3D12Fence> mFence = nullptr;
 
-	// --------------D3D12 Command Objects---------------
-	Microsoft::WRL::ComPtr<ID3D12CommandQueue>        mCommandQueue;
-	Microsoft::WRL::ComPtr<ID3D12CommandAllocator>    mDirectCmdListAlloc;
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> mCommandList;
-	// -----------End D3D12 Command Objects---------------
+	// a UINT64 fence object maintains an integer value that identifies a fence point in time.
+	// Every time we need to mark a new fence point, we increment the integer. 
+	UINT64 mCurrentFence = 0;
 
-	Microsoft::WRL::ComPtr<IDXGISwapChain>       mSwapChain; // swap chain stores the front and back buffer textures, and provides methods for resizing and presenting. 
-	static const int                             SWAP_CHAIN_BUFFER_COUNT = 2;
-	int                                          mCurrBackBuffer         = 0; // we need to track which buffer is the current back buffer so we know which one to render to 
-	Microsoft::WRL::ComPtr<ID3D12Resource>       mSwapChainBuffer[SWAP_CHAIN_BUFFER_COUNT];
-	Microsoft::WRL::ComPtr<ID3D12Resource>       mDepthStencilBuffer;
+	Microsoft::WRL::ComPtr<ID3D12CommandQueue> mCommandQueue = nullptr;
+
+	Microsoft::WRL::ComPtr<ID3D12CommandAllocator> mDirectCmdListAlloc = nullptr;
+
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> mCommandList = nullptr;
+
+	Microsoft::WRL::ComPtr<IDXGISwapChain> mSwapChain;
+
+	// this integer keeps track which buffer is the current back buffer so we know which one to render to 
+	int mCurrBackBuffer = 0;
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> mSwapChainBuffer[SWAP_CHAIN_BUFFER_COUNT];
+
+	Microsoft::WRL::ComPtr<ID3D12Resource> mDepthStencilBuffer;
+
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mRtvHeap;
+
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> mDsvHeap;
-	UINT                                         mRtvDescriptorSize       = 0;
-	UINT                                         mDsvDescriptorSize       = 0;
-	UINT                                         mCbvSrvUavDescriptorSize = 0;
-	DXGI_FORMAT                                  mBackBufferFormat        = DXGI_FORMAT_R8G8B8A8_UNORM;
-	DXGI_FORMAT                                  mDepthStencilFormat      = DXGI_FORMAT_D24_UNORM_S8_UINT;
+
+	UINT mRtvDescriptorSize = 0;
+
+	UINT mDsvDescriptorSize = 0;
+
+	UINT mCbvSrvUavDescriptorSize = 0;
+
+	DXGI_FORMAT mBackBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+	DXGI_FORMAT mDepthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
 
 	D3D12_VIEWPORT mScreenViewport;
-	D3D12_RECT     mScissorRect;
 
-	std::wstring    mMainWndCaption = L"d3d App";
-	D3D_DRIVER_TYPE md3dDriverType  = D3D_DRIVER_TYPE_HARDWARE;
-	int             mClientWidth    = 800;
-	int             mClientHeight   = 600;
+	D3D12_RECT mScissorRect;
+
+	std::wstring mMainWndCaption = L"D3D12 Graphics App";
+
+	D3D_DRIVER_TYPE md3dDriverType = D3D_DRIVER_TYPE_HARDWARE;
+
+	// default client window size
+	int mClientWidth  = 800;
+	int mClientHeight = 600;
 };

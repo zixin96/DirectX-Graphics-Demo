@@ -82,7 +82,6 @@ float D3DApp::AspectRatio() const
 int D3DApp::Run()
 {
 	MSG msg = {0};
-
 	mTimer.Reset();
 
 	while (msg.message != WM_QUIT)
@@ -97,7 +96,6 @@ int D3DApp::Run()
 		else
 		{
 			mTimer.Tick();
-
 			if (!mAppPaused)
 			{
 				CalculateFrameStats();

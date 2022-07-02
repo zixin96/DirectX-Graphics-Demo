@@ -54,7 +54,6 @@ bool ShadowMapApp::Initialize()
 
 void ShadowMapApp::CreateRtvAndDsvDescriptorHeaps()
 {
-	// Add +6 RTV for cube render target.
 	D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
 	rtvHeapDesc.NumDescriptors = SWAP_CHAIN_BUFFER_COUNT;
 	rtvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
@@ -63,9 +62,8 @@ void ShadowMapApp::CreateRtvAndDsvDescriptorHeaps()
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(
 		              &rtvHeapDesc, IID_PPV_ARGS(mRtvHeap.GetAddressOf())));
 
-	// Add +1 DSV for shadow map.
 	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
-	dsvHeapDesc.NumDescriptors = 2;
+	dsvHeapDesc.NumDescriptors = 2; //!? Add +1 DSV for shadow map.
 	dsvHeapDesc.Type           = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 	dsvHeapDesc.Flags          = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 	dsvHeapDesc.NodeMask       = 0;
@@ -98,20 +96,7 @@ void ShadowMapApp::Update(const GameTimer& gt)
 		CloseHandle(eventHandle);
 	}
 
-	//
-	// Animate the lights (and hence shadows).
-	//
-
-	mLightRotationAngle += 0.1f * gt.DeltaTime();
-	XMMATRIX R = XMMatrixRotationY(mLightRotationAngle);
-	for (int i = 0; i < 3; ++i)
-	{
-		XMVECTOR lightDir = XMLoadFloat3(&mBaseLightDirections[i]);
-		lightDir          = XMVector3TransformNormal(lightDir, R);
-		XMStoreFloat3(&mRotatedLightDirections[i], lightDir);
-	}
-
-	AnimateMaterials(gt);
+	AnimateLights(gt);
 	UpdateObjectCBs(gt);
 	UpdateMaterialBuffer(gt);
 	UpdateShadowTransform(gt);
@@ -142,7 +127,7 @@ void ShadowMapApp::Draw(const GameTimer& gt)
 	mCommandList->SetGraphicsRootShaderResourceView(2, matBuffer->GetGPUVirtualAddress());
 
 	// Bind null SRV for shadow map pass.
-	mCommandList->SetGraphicsRootDescriptorTable(3, mNullSrv);
+	mCommandList->SetGraphicsRootDescriptorTable(3, mNullSrvGpu);
 
 	// Bind all the textures used in this scene.  Observe
 	// that we only have to specify the first descriptor in the table.  
@@ -260,8 +245,17 @@ void ShadowMapApp::OnKeyboardInput(const GameTimer& gt)
 	mCamera.UpdateViewMatrix();
 }
 
-void ShadowMapApp::AnimateMaterials(const GameTimer& gt)
+void ShadowMapApp::AnimateLights(const GameTimer& gt)
 {
+	// Animate the lights (and hence shadows).
+	mLightRotationAngle += 0.1f * gt.DeltaTime();
+	XMMATRIX R = XMMatrixRotationY(mLightRotationAngle);
+	for (int i = 0; i < 3; ++i)
+	{
+		XMVECTOR lightDir = XMLoadFloat3(&mBaseLightDirections[i]);
+		lightDir          = XMVector3TransformNormal(lightDir, R);
+		XMStoreFloat3(&mRotatedLightDirections[i], lightDir);
+	}
 }
 
 void ShadowMapApp::UpdateObjectCBs(const GameTimer& gt)
@@ -467,12 +461,6 @@ void ShadowMapApp::LoadTextures()
 
 void ShadowMapApp::BuildRootSignature()
 {
-	CD3DX12_DESCRIPTOR_RANGE texTable0;
-	texTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0, 0);
-
-	CD3DX12_DESCRIPTOR_RANGE texTable1;
-	texTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10, 2, 0);
-
 	// Root parameter can be a table, root descriptor or root constants.
 	CD3DX12_ROOT_PARAMETER slotRootParameter[5];
 
@@ -480,6 +468,11 @@ void ShadowMapApp::BuildRootSignature()
 	slotRootParameter[0].InitAsConstantBufferView(0);
 	slotRootParameter[1].InitAsConstantBufferView(1);
 	slotRootParameter[2].InitAsShaderResourceView(0, 1);
+
+	CD3DX12_DESCRIPTOR_RANGE texTable0;
+	texTable0.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 0, 0);
+	CD3DX12_DESCRIPTOR_RANGE texTable1;
+	texTable1.Init(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10, 2, 0);
 	slotRootParameter[3].InitAsDescriptorTable(1, &texTable0, D3D12_SHADER_VISIBILITY_PIXEL);
 	slotRootParameter[4].InitAsDescriptorTable(1, &texTable1, D3D12_SHADER_VISIBILITY_PIXEL);
 
@@ -487,15 +480,19 @@ void ShadowMapApp::BuildRootSignature()
 	auto staticSamplers = GetStaticSamplers();
 
 	// A root signature is an array of root parameters.
-	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(5, slotRootParameter,
-	                                        (UINT)staticSamplers.size(), staticSamplers.data(),
+	CD3DX12_ROOT_SIGNATURE_DESC rootSigDesc(5,
+	                                        slotRootParameter,
+	                                        (UINT)staticSamplers.size(),
+	                                        staticSamplers.data(),
 	                                        D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	// create a root signature with a single slot which points to a descriptor range consisting of a single constant buffer
 	ComPtr<ID3DBlob> serializedRootSig = nullptr;
 	ComPtr<ID3DBlob> errorBlob         = nullptr;
-	HRESULT          hr                = D3D12SerializeRootSignature(&rootSigDesc, D3D_ROOT_SIGNATURE_VERSION_1,
-	                                                                 serializedRootSig.GetAddressOf(), errorBlob.GetAddressOf());
+	HRESULT          hr                = D3D12SerializeRootSignature(&rootSigDesc,
+	                                                                 D3D_ROOT_SIGNATURE_VERSION_1,
+	                                                                 serializedRootSig.GetAddressOf(),
+	                                                                 errorBlob.GetAddressOf());
 
 	if (errorBlob != nullptr)
 	{
@@ -512,18 +509,16 @@ void ShadowMapApp::BuildRootSignature()
 
 void ShadowMapApp::BuildDescriptorHeaps()
 {
-	//
-	// Create the SRV heap.
-	//
+	// CBV_SRV_UAV Heaps: 
+	// Views:   [bricksDiffuseMap] [bricksNormalMap] [tileDiffuseMap] [tileNormalMap] [defaultDiffuseMap] [defaultNormalMap] [skyCubeMap] [shadowMap] [NullCube] [NullTex]
+	// Indices: 0				   1				 2				  3				  4					  5                  6            7           8          9
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors             = 14;
+	srvHeapDesc.NumDescriptors             = 10;
 	srvHeapDesc.Type                       = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags                      = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mSrvDescriptorHeap)));
 
-	//
 	// Fill out the heap with actual descriptors.
-	//
 	CD3DX12_CPU_DESCRIPTOR_HANDLE hDescriptor(mSrvDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 
 	std::vector<ComPtr<ID3D12Resource>> tex2DList =
@@ -571,23 +566,25 @@ void ShadowMapApp::BuildDescriptorHeaps()
 	auto srvGpuStart = mSrvDescriptorHeap->GetGPUDescriptorHandleForHeapStart();
 	auto dsvCpuStart = mDsvHeap->GetCPUDescriptorHandleForHeapStart();
 
+	mNullSrvGpu = CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mNullCubeSrvIndex, mCbvSrvUavDescriptorSize);
 
-	auto nullSrv = CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mNullCubeSrvIndex, mCbvSrvUavDescriptorSize);
-	mNullSrv     = CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mNullCubeSrvIndex, mCbvSrvUavDescriptorSize);
+	auto nullSrvCpuStart = CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mNullCubeSrvIndex, mCbvSrvUavDescriptorSize);
 
-	md3dDevice->CreateShaderResourceView(nullptr, &srvDesc, nullSrv);
-	nullSrv.Offset(1, mCbvSrvUavDescriptorSize);
+	md3dDevice->CreateShaderResourceView(nullptr, &srvDesc, nullSrvCpuStart);
+
+	nullSrvCpuStart.Offset(1, mCbvSrvUavDescriptorSize);
 
 	srvDesc.ViewDimension                 = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Format                        = DXGI_FORMAT_R8G8B8A8_UNORM;
 	srvDesc.Texture2D.MostDetailedMip     = 0;
 	srvDesc.Texture2D.MipLevels           = 1;
 	srvDesc.Texture2D.ResourceMinLODClamp = 0.0f;
-	md3dDevice->CreateShaderResourceView(nullptr, &srvDesc, nullSrv);
+	md3dDevice->CreateShaderResourceView(nullptr, &srvDesc, nullSrvCpuStart);
 
-	mShadowMap->BuildDescriptors(
-	                             CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mShadowMapHeapIndex, mCbvSrvUavDescriptorSize),
+	mShadowMap->BuildDescriptors(CD3DX12_CPU_DESCRIPTOR_HANDLE(srvCpuStart, mShadowMapHeapIndex, mCbvSrvUavDescriptorSize),
 	                             CD3DX12_GPU_DESCRIPTOR_HANDLE(srvGpuStart, mShadowMapHeapIndex, mCbvSrvUavDescriptorSize),
+	                             // DSV:   [Back buffer DSV] [Shadow Mapping DSV]
+	                             // Index: 0                 1
 	                             CD3DX12_CPU_DESCRIPTOR_HANDLE(dsvCpuStart, 1, mDsvDescriptorSize));
 }
 
@@ -628,7 +625,7 @@ void ShadowMapApp::BuildShapeGeometry()
 	GeometryGenerator::MeshData grid     = geoGen.CreateGrid(20.0f, 30.0f, 60, 40);
 	GeometryGenerator::MeshData sphere   = geoGen.CreateSphere(0.5f, 20, 20);
 	GeometryGenerator::MeshData cylinder = geoGen.CreateCylinder(0.5f, 0.3f, 3.0f, 20, 20);
-	GeometryGenerator::MeshData quad     = geoGen.CreateQuad(0.0f, 0.0f, 1.0f, 1.0f, 0.0f);
+	GeometryGenerator::MeshData quad     = geoGen.CreateQuad(0.0f, 0.0f, 1.0f, 1.0f, 0.0f); // lower-left Debug quad
 
 	//
 	// We are concatenating all the geometry into one big vertex/index buffer.  So
@@ -749,10 +746,16 @@ void ShadowMapApp::BuildShapeGeometry()
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                    mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+	                                                    mCommandList.Get(),
+	                                                    vertices.data(),
+	                                                    vbByteSize,
+	                                                    geo->VertexBufferUploader);
 
 	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                   mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+	                                                   mCommandList.Get(),
+	                                                   indices.data(),
+	                                                   ibByteSize,
+	                                                   geo->IndexBufferUploader);
 
 	geo->VertexByteStride     = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
@@ -801,7 +804,6 @@ void ShadowMapApp::BuildSkullGeometry()
 		vertices[i].TexC = {0.0f, 0.0f};
 
 		XMVECTOR P = XMLoadFloat3(&vertices[i].Pos);
-
 		XMVECTOR N = XMLoadFloat3(&vertices[i].Normal);
 
 		// Generate a tangent vector so normal mapping works.  We aren't applying
@@ -819,7 +821,6 @@ void ShadowMapApp::BuildSkullGeometry()
 			XMVECTOR T = XMVector3Normalize(XMVector3Cross(N, up));
 			XMStoreFloat3(&vertices[i].TangentU, T);
 		}
-
 
 		vMin = XMVectorMin(vMin, P);
 		vMax = XMVectorMax(vMax, P);
@@ -859,10 +860,16 @@ void ShadowMapApp::BuildSkullGeometry()
 	CopyMemory(geo->IndexBufferCPU->GetBufferPointer(), indices.data(), ibByteSize);
 
 	geo->VertexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                    mCommandList.Get(), vertices.data(), vbByteSize, geo->VertexBufferUploader);
+	                                                    mCommandList.Get(),
+	                                                    vertices.data(),
+	                                                    vbByteSize,
+	                                                    geo->VertexBufferUploader);
 
 	geo->IndexBufferGPU = d3dUtil::CreateDefaultBuffer(md3dDevice.Get(),
-	                                                   mCommandList.Get(), indices.data(), ibByteSize, geo->IndexBufferUploader);
+	                                                   mCommandList.Get(),
+	                                                   indices.data(),
+	                                                   ibByteSize,
+	                                                   geo->IndexBufferUploader);
 
 	geo->VertexByteStride     = sizeof(Vertex);
 	geo->VertexBufferByteSize = vbByteSize;
@@ -882,15 +889,13 @@ void ShadowMapApp::BuildSkullGeometry()
 
 void ShadowMapApp::BuildPSOs()
 {
+	// PSO for opaque objects
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC opaquePsoDesc;
-
-	//
-	// PSO for opaque objects.
-	//
 	ZeroMemory(&opaquePsoDesc, sizeof(D3D12_GRAPHICS_PIPELINE_STATE_DESC));
 	opaquePsoDesc.InputLayout    = {mInputLayout.data(), (UINT)mInputLayout.size()};
 	opaquePsoDesc.pRootSignature = mRootSignature.Get();
-	opaquePsoDesc.VS             =
+
+	opaquePsoDesc.VS =
 	{
 		reinterpret_cast<BYTE*>(mShaders["standardVS"]->GetBufferPointer()),
 		mShaders["standardVS"]->GetBufferSize()
@@ -900,6 +905,7 @@ void ShadowMapApp::BuildPSOs()
 		reinterpret_cast<BYTE*>(mShaders["opaquePS"]->GetBufferPointer()),
 		mShaders["opaquePS"]->GetBufferSize()
 	};
+
 	opaquePsoDesc.RasterizerState       = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	opaquePsoDesc.BlendState            = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	opaquePsoDesc.DepthStencilState     = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
@@ -912,15 +918,14 @@ void ShadowMapApp::BuildPSOs()
 	opaquePsoDesc.DSVFormat             = mDepthStencilFormat;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&opaquePsoDesc, IID_PPV_ARGS(&mPSOs["opaque"])));
 
-	//
 	// PSO for shadow map pass.
-	//
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC smapPsoDesc   = opaquePsoDesc;
 	smapPsoDesc.RasterizerState.DepthBias            = 100000;
 	smapPsoDesc.RasterizerState.DepthBiasClamp       = 0.0f;
 	smapPsoDesc.RasterizerState.SlopeScaledDepthBias = 1.0f;
 	smapPsoDesc.pRootSignature                       = mRootSignature.Get();
-	smapPsoDesc.VS                                   =
+
+	smapPsoDesc.VS =
 	{
 		reinterpret_cast<BYTE*>(mShaders["shadowVS"]->GetBufferPointer()),
 		mShaders["shadowVS"]->GetBufferSize()
@@ -932,16 +937,15 @@ void ShadowMapApp::BuildPSOs()
 	};
 
 	// Shadow map pass does not have a render target.
-	smapPsoDesc.RTVFormats[0]    = DXGI_FORMAT_UNKNOWN;
 	smapPsoDesc.NumRenderTargets = 0;
+	smapPsoDesc.RTVFormats[0]    = DXGI_FORMAT_UNKNOWN;
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&smapPsoDesc, IID_PPV_ARGS(&mPSOs["shadow_opaque"])));
 
-	//
 	// PSO for debug layer.
-	//
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC debugPsoDesc = opaquePsoDesc;
 	debugPsoDesc.pRootSignature                     = mRootSignature.Get();
-	debugPsoDesc.VS                                 =
+
+	debugPsoDesc.VS =
 	{
 		reinterpret_cast<BYTE*>(mShaders["debugVS"]->GetBufferPointer()),
 		mShaders["debugVS"]->GetBufferSize()
@@ -953,20 +957,17 @@ void ShadowMapApp::BuildPSOs()
 	};
 	ThrowIfFailed(md3dDevice->CreateGraphicsPipelineState(&debugPsoDesc, IID_PPV_ARGS(&mPSOs["debug"])));
 
-	//
 	// PSO for sky.
-	//
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC skyPsoDesc = opaquePsoDesc;
-
 	// The camera is inside the sky sphere, so just turn off culling.
 	skyPsoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
-
 	// Make sure the depth function is LESS_EQUAL and not just LESS.  
 	// Otherwise, the normalized depth values at z = 1 (NDC) will 
 	// fail the depth test if the depth buffer was cleared to 1.
 	skyPsoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 	skyPsoDesc.pRootSignature              = mRootSignature.Get();
-	skyPsoDesc.VS                          =
+
+	skyPsoDesc.VS =
 	{
 		reinterpret_cast<BYTE*>(mShaders["skyVS"]->GetBufferPointer()),
 		mShaders["skyVS"]->GetBufferSize()
@@ -1032,7 +1033,7 @@ void ShadowMapApp::BuildMaterials()
 	sky->Name                = "sky";
 	sky->MatCBIndex          = 4;
 	sky->DiffuseSrvHeapIndex = 6;
-	sky->NormalSrvHeapIndex  = 7;
+	sky->NormalSrvHeapIndex  = -1; // note: it doesn't matter which normal srv to use 
 	sky->DiffuseAlbedo       = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	sky->FresnelR0           = XMFLOAT3(0.1f, 0.1f, 0.1f);
 	sky->Roughness           = 1.0f;
@@ -1046,8 +1047,8 @@ void ShadowMapApp::BuildMaterials()
 
 void ShadowMapApp::BuildRenderItems()
 {
-	auto skyRitem = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&skyRitem->World, XMMatrixScaling(5000.0f, 5000.0f, 5000.0f));
+	auto skyRitem                = std::make_unique<RenderItem>();
+	skyRitem->World              = MathHelper::Identity4x4();
 	skyRitem->TexTransform       = MathHelper::Identity4x4();
 	skyRitem->ObjCBIndex         = 0;
 	skyRitem->Mat                = mMaterials["sky"].get();

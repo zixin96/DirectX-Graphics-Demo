@@ -51,8 +51,11 @@ private:
 	D3D12_VIEWPORT mViewport;
 	D3D12_RECT     mScissorRect;
 
-	UINT        mWidth  = 0;
-	UINT        mHeight = 0;
+	UINT mWidth  = 0;
+	UINT mHeight = 0;
+
+	// Since we will create 2 views (DSV and SRV) on the same resource,
+	// we will use a typeless format here: 
 	DXGI_FORMAT mFormat = DXGI_FORMAT_R24G8_TYPELESS;
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE mhCpuSrv;

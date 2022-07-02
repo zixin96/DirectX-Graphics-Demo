@@ -22,8 +22,7 @@ struct RenderItem
 	// World matrix of the shape that describes the object's local space
 	// relative to the world space, which defines the position, orientation,
 	// and scale of the object in the world.
-	XMFLOAT4X4 World = MathHelper::Identity4x4();
-
+	XMFLOAT4X4 World        = MathHelper::Identity4x4();
 	XMFLOAT4X4 TexTransform = MathHelper::Identity4x4();
 
 	// Dirty flag indicating the object data has changed and we need to update the constant buffer.
@@ -75,7 +74,7 @@ private:
 	void OnMouseMove(WPARAM btnState, int x, int y) override;
 
 	void OnKeyboardInput(const GameTimer& gt);
-	void AnimateMaterials(const GameTimer& gt);
+	void AnimateLights(const GameTimer& gt);
 	void UpdateObjectCBs(const GameTimer& gt);
 	void UpdateMaterialBuffer(const GameTimer& gt);
 	void UpdateShadowTransform(const GameTimer& gt);
@@ -121,12 +120,12 @@ private:
 	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
 
 	UINT                          mSkyTexHeapIndex    = 0;
-	UINT                          mShadowMapHeapIndex = 0; //! NEW
-	UINT                          mNullCubeSrvIndex   = 0; //! NEW
-	UINT                          mNullTexSrvIndex    = 0; //! NEW
-	CD3DX12_GPU_DESCRIPTOR_HANDLE mNullSrv;                //! NEW
-	PassConstants                 mMainPassCB;             // index 0 of pass cbuffer.
-	PassConstants                 mShadowPassCB;           // index 1 of pass cbuffer.
+	UINT                          mShadowMapHeapIndex = 0;
+	UINT                          mNullCubeSrvIndex   = 0;
+	UINT                          mNullTexSrvIndex    = 0;
+	CD3DX12_GPU_DESCRIPTOR_HANDLE mNullSrvGpu;
+	PassConstants                 mMainPassCB;   // index 0 of pass cbuffer.
+	PassConstants                 mShadowPassCB; // index 1 of pass cbuffer.
 	Camera                        mCamera;
 	std::unique_ptr<ShadowMap>    mShadowMap;
 	BoundingSphere                mSceneBounds; // the bounding sphere of the entire scene
