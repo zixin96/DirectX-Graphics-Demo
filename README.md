@@ -37,7 +37,9 @@ ThrowIfFailed(md3dDevice->CreateCommittedResource(
         IID_PPV_ARGS(&mDepthStencilBuffer)));
 ```
 
-Fix 1: ![image-20220628182625395](../DirectX12Exercise/images/image-20220628182625395.png)
+Fix 1:
+
+![image-20220628182625395](images/image-20220628182625395.png)
 
 Fix 2: 
 
