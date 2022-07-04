@@ -1,26 +1,35 @@
-# DirectX 12 Graphics Techniques
+# DirectX 12 Graphics Playground
+
+This repo servers as my DirectX 12 playground to try new ideas and rendering techniques. The initial framework comes from the book *Introduction to 3D Game Programming with DirectX 12 by Frank Luna*. This project also contains lots of modifications to the original framework and my solutions to most of the written and coding exercises in the book. 
+
+
 
 # Demos
 
 | Name                                                         | Screenshot                                                   | Description                                                  |
 | ------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| Sky Rendering                                                |                                                              |                                                              |
+| Picking                                                      |                                                              |                                                              |
+| SSAO                                                         |                                                              |                                                              |
 | [Shadow Mapping](https://github.com/zixin96/d3d12book/blob/master/Chapter%2020%20Shadow%20Mapping/Shadows) | ![](https://github.com/zixin96/d3d12book/blob/master/Chapter%2020%20Shadow%20Mapping/Shadows/images/demo.gif) | This demo shows a basic implementation of the shadow mapping algorithm. |
 
 
+
+## Points of Interest
 
 We hardcode values and define things in the source code that might normally be data-driven. 
 
 ---
 
-Built using C++ 14, Visual Studio 2022
+Non-standard Microsoft C++ extension errors
 
-C++ 20 is not supported. 
+> Taking an address of class r-value is non-standard Microsoft C++ extension
 
 Reason: 
 
 ```c++
 ThrowIfFailed(md3dDevice->CreateCommittedResource(
-        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), // Incorrect in C++ 20, Visual Studio 2022
+        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT), // HERE!
         D3D12_HEAP_FLAG_NONE,
         &depthStencilDesc,          
         D3D12_RESOURCE_STATE_COMMON, 
@@ -28,7 +37,9 @@ ThrowIfFailed(md3dDevice->CreateCommittedResource(
         IID_PPV_ARGS(&mDepthStencilBuffer)));
 ```
 
-Fix: 
+Fix 1: ![image-20220628182625395](../DirectX12Exercise/images/image-20220628182625395.png)
+
+Fix 2: 
 
 ```c++
 CD3DX12_HEAP_PROPERTIES defaultHeap = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
@@ -162,12 +173,33 @@ In HLSL, `operator*` is **component-wise!**
 gout[i].PosH  = mul(float4(v[i].PosW, 1.f), gWorld * gViewProj);
 ```
 
-`gWorld * gViewProj` is done component-wise!. **If `gWorld` is the identify matrix, it will corrupt your `gViewProj`**!
+`gWorld * gViewProj` is done component-wise!. **If `gWorld` is an identity matrix, it will corrupt your `gViewProj`**!
 
- **in GLSL ‘*’ operator between matrices, is the standar linear algebra matrix multiplication, while in HLSL is a component wise multiplication.** 
+ **In GLSL, `operator*` between matrices is the standard linear algebra matrix multiplication whereas in HLSL it is the component-wise multiplication.** 
+
+HLSL: 
+
+>All of the operators that do something to the value, such as + and *, work per component. 
+
+https://docs.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-operators#additive-and-multiplicative-operators
+
+GLSL:
+
+> For matrices, these operators also work component-wise, **except** for the `*`-operator, which represents a matrix-matrix product, e.g.:
+
+https://en.wikibooks.org/wiki/GLSL_Programming/Vector_and_Matrix_Operations
 
 ---
 
-## TODO
 
-How does DirectX 12 fit into a well-designed rendering engine? 
+
+## Credits
+
+https://www.3dgep.com/category/graphics-programming/directx/
+
+[Introduction to 3D Game Programming with DirectX 12](https://www.amazon.com/Introduction-3D-Game-Programming-DirectX/dp/1942270062)
+
+[DirectXTex repo](https://github.com/microsoft/DirectXTex)
+
+
+
