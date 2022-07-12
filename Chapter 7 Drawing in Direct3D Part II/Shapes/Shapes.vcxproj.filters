@@ -51,7 +51,7 @@
     <ClCompile Include="..\..\Common\imgui_wrapper.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Common\DDSTextureLoader12.cpp">
+    <ClCompile Include="..\..\Common\DDSTextureLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -86,7 +86,7 @@
     <ClInclude Include="..\..\Common\ImguiManager.h">
       <Filter>imgui</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\Common\DDSTextureLoader12.h">
+    <ClInclude Include="..\..\Common\DDSTextureLoader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
